@@ -15,6 +15,8 @@ import {
 } from '@/components/ui/badge'
 import { ReportEditor } from './ReportEditor'
 import { VersionHistory } from './VersionHistory'
+import { PatientExplanationPanel } from './PatientExplanationPanel'
+import { getExplanationByReport } from '@/lib/data/explanations'
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -34,8 +36,13 @@ export default async function ReportPage({ params }: Props) {
   // Fetch templates filtered to the study's modality (+ generic templates)
   const templates = await getTemplates({ activeOnly: true, modality: study?.modality })
 
-  const canWrite = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
-  const canAmend = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
+  const canWrite  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
+  const canAmend  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
+  const canReview = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
+
+  const explanation = canReview && report.status === 'finalized'
+    ? await getExplanationByReport(id)
+    : null
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -89,6 +96,15 @@ export default async function ReportPage({ params }: Props) {
       />
 
       <VersionHistory versions={versions} />
+
+      {canReview && report.status === 'finalized' && (
+        <PatientExplanationPanel
+          reportId={id}
+          modality={study?.modality ?? null}
+          bodyPart={study?.bodyPart ?? null}
+          initialExplanation={explanation}
+        />
+      )}
 
     </div>
   )

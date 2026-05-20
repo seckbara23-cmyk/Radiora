@@ -16,9 +16,14 @@ const ENTITY_TABS = [
 
 const EVENT_LABELS: Record<string, string> = {
   // AI
-  'ai.draft_generated':    'AI draft generated',
-  'ai.draft_accepted':     'AI draft accepted',
-  'ai.draft_rejected':     'AI draft rejected',
+  'ai.draft_generated':                'AI draft generated',
+  'ai.draft_accepted':                 'AI draft accepted',
+  'ai.draft_rejected':                 'AI draft rejected',
+  // Patient explanations
+  'patient_explanation.generated':     'Explanation generated',
+  'patient_explanation.approved':      'Explanation approved',
+  'patient_explanation.rejected':      'Explanation rejected',
+  'patient_explanation.archived':      'Explanation archived',
   // Reports
   'report.created':        'Report created',
   'report.saved':          'Draft saved',
@@ -43,9 +48,14 @@ const EVENT_LABELS: Record<string, string> = {
 
 const BADGE_COLORS: Record<string, string> = {
   // AI
-  'ai.draft_generated':    'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
-  'ai.draft_accepted':     'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
-  'ai.draft_rejected':     'bg-gray-50 text-gray-600 ring-gray-500/20',
+  'ai.draft_generated':                'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+  'ai.draft_accepted':                 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+  'ai.draft_rejected':                 'bg-gray-50 text-gray-600 ring-gray-500/20',
+  // Patient explanations
+  'patient_explanation.generated':     'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+  'patient_explanation.approved':      'bg-green-50 text-green-700 ring-green-600/20',
+  'patient_explanation.rejected':      'bg-red-50 text-red-700 ring-red-600/20',
+  'patient_explanation.archived':      'bg-gray-50 text-gray-600 ring-gray-500/20',
   // Reports
   'report.created':        'bg-sky-50 text-sky-700 ring-sky-600/20',
   'report.saved':          'bg-gray-50 text-gray-600 ring-gray-500/20',
