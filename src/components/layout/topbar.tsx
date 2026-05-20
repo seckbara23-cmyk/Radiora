@@ -1,5 +1,7 @@
 'use client'
 
+import type { UserRole } from '@/types/user'
+
 const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Super Admin',
   clinic_admin: 'Admin',
@@ -11,7 +13,7 @@ const ROLE_LABELS: Record<string, string> = {
 interface TopbarUser {
   firstName: string
   lastName: string
-  role: string
+  role: UserRole
 }
 
 interface TopbarProps {

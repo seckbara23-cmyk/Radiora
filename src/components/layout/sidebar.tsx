@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { navigation, type IconName } from '@/config/navigation'
+import type { UserRole } from '@/types/user'
 
 // ─── Icon map ─────────────────────────────────────────────────────────────────
 
@@ -63,10 +64,24 @@ const icons: Record<IconName, React.ReactNode> = {
 
 interface SidebarProps {
   onClose?: () => void
+  userRole?: UserRole | null
 }
 
-export default function Sidebar({ onClose }: SidebarProps) {
+export default function Sidebar({ onClose, userRole }: SidebarProps) {
   const pathname = usePathname()
+
+  // Filter navigation by role: hide groups and items the current user can't see
+  const visibleNav = navigation
+    .filter((group) =>
+      !group.roles || (userRole && group.roles.includes(userRole))
+    )
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => !item.roles || (userRole && item.roles.includes(userRole))
+      ),
+    }))
+    .filter((group) => group.items.length > 0)
 
   return (
     <aside className="h-full w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -100,7 +115,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4">
-        {navigation.map((group, i) => (
+        {visibleNav.map((group, i) => (
           <div key={i} className={i > 0 ? 'mt-6' : ''}>
             {group.title && (
               <p className="px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">

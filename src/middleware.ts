@@ -7,6 +7,7 @@ const PROTECTED_PATHS = [
   '/studies',
   '/reports',
   '/settings',
+  '/users',
   '/admin',
 ]
 

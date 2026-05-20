@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import Sidebar from './sidebar'
 import Topbar from './topbar'
+import type { UserRole } from '@/types/user'
 
 interface TopbarUser {
   firstName: string
   lastName: string
-  role: string
+  role: UserRole
 }
 
 interface DashboardShellProps {
@@ -43,7 +44,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         ].join(' ')}
       >
-        <Sidebar onClose={() => setSidebarOpen(false)} />
+        <Sidebar onClose={() => setSidebarOpen(false)} userRole={user?.role ?? null} />
       </div>
 
       {/* Main area */}

@@ -73,9 +73,10 @@ export async function getCurrentUser(): Promise<CurrentUserResult> {
 
 /**
  * Like getCurrentUser() but handles redirects automatically:
- *   no session   → redirect to /login
- *   no profile   → redirect to /onboarding-error
- *   ok           → returns CurrentUser
+ *   no session      → redirect to /login
+ *   no profile      → redirect to /onboarding-error
+ *   inactive account → redirect to /deactivated
+ *   ok              → returns CurrentUser
  *
  * Safe to call directly from async Server Components and Route Handlers.
  */
@@ -88,6 +89,10 @@ export async function requireCurrentUser(): Promise<CurrentUser> {
 
   if (result.status === 'no_profile') {
     redirect('/onboarding-error')
+  }
+
+  if (!result.user.isActive) {
+    redirect('/deactivated')
   }
 
   return result.user
