@@ -16,7 +16,10 @@ import {
 import { ReportEditor } from './ReportEditor'
 import { VersionHistory } from './VersionHistory'
 import { PatientExplanationPanel } from './PatientExplanationPanel'
+import { ReportTranslationPanel } from './ReportTranslationPanel'
+import { ExplanationTranslationPanel } from './ExplanationTranslationPanel'
 import { getExplanationByReport } from '@/lib/data/explanations'
+import { getTranslationByReport, getTranslationByExplanation } from '@/lib/data/translations'
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -40,9 +43,20 @@ export default async function ReportPage({ params }: Props) {
   const canAmend  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
   const canReview = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
 
-  const explanation = canReview && report.status === 'finalized'
+  const isFinalized = report.status === 'finalized'
+
+  const explanation = canReview && isFinalized
     ? await getExplanationByReport(id)
     : null
+
+  const [reportTranslation, explanationTranslation] = await Promise.all([
+    canReview && isFinalized
+      ? getTranslationByReport(id)
+      : Promise.resolve(null),
+    canReview && explanation?.status === 'approved'
+      ? getTranslationByExplanation(explanation.id)
+      : Promise.resolve(null),
+  ])
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -97,12 +111,32 @@ export default async function ReportPage({ params }: Props) {
 
       <VersionHistory versions={versions} />
 
-      {canReview && report.status === 'finalized' && (
+      {canReview && isFinalized && (
         <PatientExplanationPanel
           reportId={id}
           modality={study?.modality ?? null}
           bodyPart={study?.bodyPart ?? null}
           initialExplanation={explanation}
+        />
+      )}
+
+      {canReview && isFinalized && (
+        <ReportTranslationPanel
+          reportId={id}
+          sourceFindings={report.findings}
+          sourceImpression={report.impression}
+          sourceRecommendations={report.recommendations ?? ''}
+          initialTranslation={reportTranslation}
+        />
+      )}
+
+      {canReview && isFinalized && explanation?.status === 'approved' && (
+        <ExplanationTranslationPanel
+          explanationId={explanation.id}
+          reportId={id}
+          sourceExplanation={explanation.explanationText}
+          sourceDisclaimer={explanation.disclaimer}
+          initialTranslation={explanationTranslation}
         />
       )}
 
