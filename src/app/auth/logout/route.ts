@@ -9,12 +9,22 @@ export async function POST(request: NextRequest) {
   // back via next/headers cookieStore, which are included in the Route Handler response.
   await supabase.auth.signOut()
 
-  const loginUrl = request.nextUrl.clone()
-  loginUrl.pathname = '/login'
+  // 303 See Other forces the browser to follow the redirect as GET regardless of
+  // the original method. The default 307 would re-POST to /login, causing a 405.
+  const response = NextResponse.redirect(
+    new URL('/login', request.url),
+    { status: 303 },
+  )
 
-  const response = NextResponse.redirect(loginUrl)
-  // Prevent the browser from serving a cached version of a protected page
-  // when the user presses the back button after logging out.
+  // Belt-and-suspenders: explicitly expire all Supabase auth cookies on the
+  // response so they are cleared even if the SSR client's setAll callback does
+  // not propagate through the redirect in certain hosting environments.
+  for (const cookie of request.cookies.getAll()) {
+    if (cookie.name.startsWith('sb-') || cookie.name === 'supabase-auth-token') {
+      response.cookies.set(cookie.name, '', { maxAge: 0, path: '/' })
+    }
+  }
+
   response.headers.set('Cache-Control', 'no-store')
   return response
 }
