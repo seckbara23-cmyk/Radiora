@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { getLocale } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import type { UserRole } from '@/types/user'
 
@@ -82,17 +83,18 @@ export async function getCurrentUser(): Promise<CurrentUserResult> {
  */
 export async function requireCurrentUser(): Promise<CurrentUser> {
   const result = await getCurrentUser()
+  const locale = await getLocale().catch(() => 'fr')
 
   if (result.status === 'unauthenticated') {
-    redirect('/login')
+    redirect(`/${locale}/login`)
   }
 
   if (result.status === 'no_profile') {
-    redirect('/onboarding-error')
+    redirect(`/${locale}/onboarding-error`)
   }
 
   if (!result.user.isActive) {
-    redirect('/deactivated')
+    redirect(`/${locale}/deactivated`)
   }
 
   return result.user

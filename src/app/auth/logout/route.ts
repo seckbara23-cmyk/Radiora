@@ -9,10 +9,16 @@ export async function POST(request: NextRequest) {
   // back via next/headers cookieStore, which are included in the Route Handler response.
   await supabase.auth.signOut()
 
+  // Detect locale from the Referer header (e.g. https://radiora.vercel.app/fr/dashboard)
+  // so logout redirects to the same locale's login page.
+  const referer = request.headers.get('referer') ?? ''
+  const localeMatch = referer.match(/\/(fr|en)(\/|$)/)
+  const locale = localeMatch ? localeMatch[1] : 'fr'
+
   // 303 See Other forces the browser to follow the redirect as GET regardless of
   // the original method. The default 307 would re-POST to /login, causing a 405.
   const response = NextResponse.redirect(
-    new URL('/login', request.url),
+    new URL(`/${locale}/login`, request.url),
     { status: 303 },
   )
 

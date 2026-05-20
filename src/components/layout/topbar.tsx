@@ -1,32 +1,47 @@
 'use client'
 
+import { useTranslations, useLocale } from 'next-intl'
+import { useRouter, usePathname } from '@/i18n/navigation'
 import type { UserRole } from '@/types/user'
 
-const ROLE_LABELS: Record<string, string> = {
-  super_admin: 'Super Admin',
-  clinic_admin: 'Admin',
-  radiologist: 'Radiologist',
-  referring_physician: 'Physician',
-  technician: 'Technician',
+const ROLE_KEYS: Record<string, string> = {
+  super_admin:         'super_admin',
+  clinic_admin:        'clinic_admin',
+  radiologist:         'radiologist',
+  referring_physician: 'referring_physician',
+  technician:          'technician',
 }
 
 interface TopbarUser {
   firstName: string
-  lastName: string
-  role: UserRole
+  lastName:  string
+  role:      UserRole
 }
 
 interface TopbarProps {
   onMenuClick: () => void
-  user: TopbarUser | null
+  user:        TopbarUser | null
 }
 
 export default function Topbar({ onMenuClick, user }: TopbarProps) {
-  const initials = user
+  const t        = useTranslations('auth')
+  const tRoles   = useTranslations('roles')
+  const tAct     = useTranslations('actions')
+  const locale   = useLocale()
+  const router   = useRouter()
+  const pathname = usePathname()   // locale-stripped path, e.g. /dashboard
+
+  const initials    = user
     ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase()
     : '?'
   const displayName = user ? `${user.firstName} ${user.lastName}` : 'User'
-  const roleLabel = user ? (ROLE_LABELS[user.role] ?? user.role) : ''
+  const roleKey     = ROLE_KEYS[user?.role ?? ''] as Parameters<typeof tRoles>[0] | undefined
+  const roleLabel   = user && roleKey ? tRoles(roleKey) : (user?.role ?? '')
+
+  function handleLocaleSwitch() {
+    const next = locale === 'fr' ? 'en' : 'fr'
+    router.replace(pathname, { locale: next })
+  }
 
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
@@ -42,16 +57,24 @@ export default function Topbar({ onMenuClick, user }: TopbarProps) {
         </svg>
       </button>
 
-      {/* Desktop spacer */}
       <div className="hidden lg:block" />
 
       {/* Right */}
       <div className="flex items-center gap-2">
 
+        {/* Language switcher */}
+        <button
+          onClick={handleLocaleSwitch}
+          className="px-2.5 py-1 rounded-md text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition border border-gray-200"
+          title={tAct('switchLanguage')}
+        >
+          {locale === 'fr' ? 'EN' : 'FR'}
+        </button>
+
         {/* Notifications */}
         <button
           className="relative p-2 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition"
-          aria-label="Notifications"
+          aria-label={t('notifications')}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -61,7 +84,6 @@ export default function Topbar({ onMenuClick, user }: TopbarProps) {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
         </button>
 
-        {/* Divider */}
         <div className="h-6 w-px bg-gray-200 mx-1" />
 
         {/* User */}
@@ -75,7 +97,6 @@ export default function Topbar({ onMenuClick, user }: TopbarProps) {
           </div>
         </div>
 
-        {/* Divider */}
         <div className="h-6 w-px bg-gray-200 mx-1" />
 
         {/* Sign out */}
@@ -83,8 +104,8 @@ export default function Topbar({ onMenuClick, user }: TopbarProps) {
           <button
             type="submit"
             className="p-2 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
-            title="Sign out"
-            aria-label="Sign out"
+            title={t('signOut')}
+            aria-label={t('signOut')}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}

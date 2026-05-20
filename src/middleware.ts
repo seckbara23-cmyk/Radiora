@@ -1,7 +1,12 @@
+import createIntlMiddleware from 'next-intl/middleware'
 import { type NextRequest, NextResponse } from 'next/server'
+import { routing } from '@/i18n/routing'
 import { updateSession } from '@/lib/supabase/middleware'
 
-const PROTECTED_PATHS = [
+const handleI18n = createIntlMiddleware(routing)
+
+// Dashboard-app paths that require an authenticated session (locale-stripped).
+const PROTECTED_SEGMENTS = [
   '/dashboard',
   '/patients',
   '/studies',
@@ -11,59 +16,63 @@ const PROTECTED_PATHS = [
   '/admin',
   '/audit',
   '/templates',
+  '/analytics',
+  '/critical-queue',
 ]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // When Supabase is not configured (e.g. local dev without .env.local),
-  // skip auth enforcement and let every request through.
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  ) {
-    return NextResponse.next()
+  // Skip auth entirely when Supabase env vars are absent (CI, local no-env).
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return handleI18n(request)
   }
 
-  let supabaseResponse: NextResponse
-  let user: Awaited<ReturnType<typeof updateSession>>['user']
+  // Determine the locale and the locale-stripped path.
+  // e.g. /fr/dashboard → locale='fr', localelessPath='/dashboard'
+  //      /dashboard    → locale='fr' (default), localelessPath='/dashboard'
+  const localeMatch = pathname.match(/^\/(fr|en)(\/|$)/)
+  const locale = localeMatch ? localeMatch[1] : routing.defaultLocale
+  const localelessPath = localeMatch
+    ? pathname.slice(locale.length + 1) || '/'
+    : pathname
 
-  try {
-    const result = await updateSession(request)
-    supabaseResponse = result.supabaseResponse
-    user = result.user
-  } catch {
-    // If Supabase is unavailable, pass the request through.
-    // Server-side auth guards in each page will handle protection.
-    return NextResponse.next()
+  const isProtected = PROTECTED_SEGMENTS.some((p) => localelessPath.startsWith(p))
+  const isLoginPage = localelessPath === '/login' || localelessPath.startsWith('/login/')
+
+  if (isProtected || isLoginPage) {
+    let user: Awaited<ReturnType<typeof updateSession>>['user'] = null
+    let supabaseResponse: NextResponse = NextResponse.next({ request })
+
+    try {
+      const result = await updateSession(request)
+      supabaseResponse = result.supabaseResponse
+      user = result.user
+    } catch {
+      // Supabase unavailable — fall through to i18n handling.
+      return handleI18n(request)
+    }
+
+    // Unauthenticated → redirect to /{locale}/login.
+    if (isProtected && !user) {
+      return NextResponse.redirect(new URL(`/${locale}/login`, request.url), { status: 303 })
+    }
+
+    // Already authenticated → skip the login page.
+    if (isLoginPage && user) {
+      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url), { status: 303 })
+    }
+
+    // MUST return supabaseResponse — it carries the refreshed session cookie.
+    return supabaseResponse
   }
 
-  const isProtected = PROTECTED_PATHS.some((p) => pathname.startsWith(p))
-
-  // Unauthenticated → redirect to login
-  if (isProtected && !user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
-  }
-
-  // Already authenticated → skip login page
-  if (pathname === '/login' && user) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
-
-  // Must return supabaseResponse — it carries the refreshed session cookie.
-  return supabaseResponse
+  // For all other paths (root, landing, public) let next-intl handle locale routing.
+  return handleI18n(request)
 }
 
 export const config = {
   matcher: [
-    /*
-     * Run on all paths except Next.js internals and static assets.
-     * Must be a static string — no dynamic values.
-     */
     '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 }

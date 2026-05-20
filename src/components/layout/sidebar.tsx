@@ -1,7 +1,7 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import { Link, usePathname } from '@/i18n/navigation'
 import { navigation, type IconName } from '@/config/navigation'
 import type { UserRole } from '@/types/user'
 
@@ -91,18 +91,16 @@ const icons: Record<IconName, React.ReactNode> = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface SidebarProps {
-  onClose?: () => void
+  onClose?:  () => void
   userRole?: UserRole | null
 }
 
 export default function Sidebar({ onClose, userRole }: SidebarProps) {
-  const pathname = usePathname()
+  const t        = useTranslations('navigation')
+  const pathname = usePathname()   // locale-stripped, e.g. /dashboard
 
-  // Filter navigation by role: hide groups and items the current user can't see
   const visibleNav = navigation
-    .filter((group) =>
-      !group.roles || (userRole && group.roles.includes(userRole))
-    )
+    .filter((group) => !group.roles || (userRole && group.roles.includes(userRole)))
     .map((group) => ({
       ...group,
       items: group.items.filter(
@@ -127,7 +125,6 @@ export default function Sidebar({ onClose, userRole }: SidebarProps) {
           <span className="text-sm font-semibold text-gray-900 leading-none">Radiora Medical</span>
         </div>
 
-        {/* Mobile close button */}
         {onClose && (
           <button
             onClick={onClose}
@@ -147,13 +144,12 @@ export default function Sidebar({ onClose, userRole }: SidebarProps) {
           <div key={i} className={i > 0 ? 'mt-6' : ''}>
             {group.title && (
               <p className="px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {group.title}
+                {t('adminSection')}
               </p>
             )}
             <ul className="space-y-0.5">
               {group.items.map((item) => {
-                const isActive =
-                  pathname === item.href || pathname.startsWith(item.href + '/')
+                const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
                 return (
                   <li key={item.href}>
                     <Link
@@ -168,7 +164,7 @@ export default function Sidebar({ onClose, userRole }: SidebarProps) {
                       <span className={`flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-gray-400'}`}>
                         {icons[item.icon]}
                       </span>
-                      {item.label}
+                      {t(item.icon as Parameters<typeof t>[0])}
                     </Link>
                   </li>
                 )
