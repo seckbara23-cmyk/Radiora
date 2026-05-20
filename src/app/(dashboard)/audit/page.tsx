@@ -15,6 +15,10 @@ const ENTITY_TABS = [
 ] as const
 
 const EVENT_LABELS: Record<string, string> = {
+  // AI
+  'ai.draft_generated':    'AI draft generated',
+  'ai.draft_accepted':     'AI draft accepted',
+  'ai.draft_rejected':     'AI draft rejected',
   // Reports
   'report.created':        'Report created',
   'report.saved':          'Draft saved',
@@ -38,6 +42,10 @@ const EVENT_LABELS: Record<string, string> = {
 }
 
 const BADGE_COLORS: Record<string, string> = {
+  // AI
+  'ai.draft_generated':    'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+  'ai.draft_accepted':     'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+  'ai.draft_rejected':     'bg-gray-50 text-gray-600 ring-gray-500/20',
   // Reports
   'report.created':        'bg-sky-50 text-sky-700 ring-sky-600/20',
   'report.saved':          'bg-gray-50 text-gray-600 ring-gray-500/20',

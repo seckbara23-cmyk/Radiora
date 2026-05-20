@@ -2,8 +2,10 @@
 
 import { useState, useActionState } from 'react'
 import { handleReportForm } from '@/lib/actions/reports'
+import { SmartStructuringPanel } from './SmartStructuringPanel'
 import type { Report } from '@/types/report'
 import type { Template } from '@/types/template'
+import type { StructuredDraft } from '@/lib/ai/mock-engine'
 
 const textareaCls =
   'w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 resize-y'
@@ -16,9 +18,11 @@ interface Props {
   canWrite: boolean   // clinic_admin | super_admin | radiologist
   canAmend: boolean   // clinic_admin | super_admin | radiologist
   templates: Template[]
+  modality: string | null
+  bodyPart: string | null
 }
 
-export function ReportEditor({ report, canWrite, canAmend, templates }: Props) {
+export function ReportEditor({ report, canWrite, canAmend, templates, modality, bodyPart }: Props) {
   const isFinalized = report.status === 'finalized'
   const isEditable  = !isFinalized && canWrite
 
@@ -35,6 +39,12 @@ export function ReportEditor({ report, canWrite, canAmend, templates }: Props) {
   const [changeReason,   setChangeReason]   = useState('')
 
   const [state, formAction, isPending] = useActionState(handleReportForm, { error: null })
+
+  function handleAiAccept(draft: StructuredDraft) {
+    if (draft.findings)        setFindings(draft.findings)
+    if (draft.impression)      setImpression(draft.impression)
+    if (draft.recommendations) setRecommendations(draft.recommendations)
+  }
 
   function applyTemplate() {
     const tpl = templates.find((t) => t.id === selectedTpl)
@@ -79,6 +89,16 @@ export function ReportEditor({ report, canWrite, canAmend, templates }: Props) {
             Apply
           </button>
         </div>
+      )}
+
+      {/* ── Smart Structuring Panel ───────────────────────────────── */}
+      {isEditable && (
+        <SmartStructuringPanel
+          reportId={report.id}
+          modality={modality}
+          bodyPart={bodyPart}
+          onAccept={handleAiAccept}
+        />
       )}
 
       {/* ── Main editor ───────────────────────────────────────────── */}
@@ -208,21 +228,6 @@ export function ReportEditor({ report, canWrite, canAmend, templates }: Props) {
           )
         ) : (
           <>
-            {/* Disabled AI Draft button — placeholder for future phase */}
-            <button
-              type="button"
-              disabled
-              title="AI assistance will be available in a future release. Reports must always be reviewed and finalized by a clinician."
-              className="px-4 py-2 text-sm font-medium text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed select-none flex items-center gap-1.5"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                />
-              </svg>
-              Generate AI Draft
-            </button>
-
             <button
               type="submit"
               name="_submit"

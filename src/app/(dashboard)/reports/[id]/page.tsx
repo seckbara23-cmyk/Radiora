@@ -84,6 +84,8 @@ export default async function ReportPage({ params }: Props) {
         canWrite={canWrite}
         canAmend={canAmend}
         templates={templates}
+        modality={study?.modality ?? null}
+        bodyPart={study?.bodyPart ?? null}
       />
 
       <VersionHistory versions={versions} />
