@@ -4,11 +4,18 @@ import { useState } from 'react'
 import Sidebar from './sidebar'
 import Topbar from './topbar'
 
-interface DashboardShellProps {
-  children: React.ReactNode
+interface TopbarUser {
+  firstName: string
+  lastName: string
+  role: string
 }
 
-export default function DashboardShell({ children }: DashboardShellProps) {
+interface DashboardShellProps {
+  children: React.ReactNode
+  user: TopbarUser | null
+}
+
+export default function DashboardShell({ children, user }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   return (
@@ -41,7 +48,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
       {/* Main area */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Topbar onMenuClick={() => setSidebarOpen(true)} />
+        <Topbar onMenuClick={() => setSidebarOpen(true)} user={user} />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6">
           {children}
         </main>

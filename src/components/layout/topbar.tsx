@@ -1,10 +1,31 @@
 'use client'
 
-interface TopbarProps {
-  onMenuClick: () => void
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: 'Super Admin',
+  clinic_admin: 'Admin',
+  radiologist: 'Radiologist',
+  referring_physician: 'Physician',
+  technician: 'Technician',
 }
 
-export default function Topbar({ onMenuClick }: TopbarProps) {
+interface TopbarUser {
+  firstName: string
+  lastName: string
+  role: string
+}
+
+interface TopbarProps {
+  onMenuClick: () => void
+  user: TopbarUser | null
+}
+
+export default function Topbar({ onMenuClick, user }: TopbarProps) {
+  const initials = user
+    ? `${user.firstName[0] ?? ''}${user.lastName[0] ?? ''}`.toUpperCase()
+    : '?'
+  const displayName = user ? `${user.firstName} ${user.lastName}` : 'User'
+  const roleLabel = user ? (ROLE_LABELS[user.role] ?? user.role) : ''
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 lg:px-6 flex-shrink-0">
 
@@ -44,16 +65,32 @@ export default function Topbar({ onMenuClick }: TopbarProps) {
         {/* User */}
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0 select-none">
-            SC
+            {initials}
           </div>
           <div className="hidden sm:block leading-none">
-            <p className="text-sm font-medium text-gray-900">Dr. Sarah Chen</p>
-            <p className="text-xs text-gray-400 mt-0.5">Radiologist</p>
+            <p className="text-sm font-medium text-gray-900">{displayName}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{roleLabel}</p>
           </div>
-          <svg className="hidden sm:block w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
         </div>
+
+        {/* Divider */}
+        <div className="h-6 w-px bg-gray-200 mx-1" />
+
+        {/* Sign out */}
+        <form action="/auth/logout" method="post">
+          <button
+            type="submit"
+            className="p-2 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 transition"
+            title="Sign out"
+            aria-label="Sign out"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+          </button>
+        </form>
 
       </div>
     </header>
