@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useActionState } from 'react'
+import { useState, useRef, useActionState } from 'react'
 import { handleReportForm } from '@/lib/actions/reports'
 import { SmartStructuringPanel } from './SmartStructuringPanel'
+import { VoiceDictationPanel } from './VoiceDictationPanel'
 import type { Report } from '@/types/report'
 import type { Template } from '@/types/template'
 import type { StructuredDraft } from '@/lib/ai/mock-engine'
@@ -38,12 +39,20 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
   const [showAmendPanel, setShowAmendPanel] = useState(false)
   const [changeReason,   setChangeReason]   = useState('')
 
+  // Voice → Smart Structuring signal (nonce pattern: key increments on each apply)
+  const voiceKeyRef = useRef(0)
+  const [voiceSignal, setVoiceSignal] = useState<{ text: string; key: number } | null>(null)
+
   const [state, formAction, isPending] = useActionState(handleReportForm, { error: null })
 
   function handleAiAccept(draft: StructuredDraft) {
     if (draft.findings)        setFindings(draft.findings)
     if (draft.impression)      setImpression(draft.impression)
     if (draft.recommendations) setRecommendations(draft.recommendations)
+  }
+
+  function handleVoiceApply(text: string) {
+    setVoiceSignal({ text, key: ++voiceKeyRef.current })
   }
 
   function applyTemplate() {
@@ -91,6 +100,14 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
         </div>
       )}
 
+      {/* ── Voice Dictation Panel ─────────────────────────────────── */}
+      {isEditable && (
+        <VoiceDictationPanel
+          reportId={report.id}
+          onApply={handleVoiceApply}
+        />
+      )}
+
       {/* ── Smart Structuring Panel ───────────────────────────────── */}
       {isEditable && (
         <SmartStructuringPanel
@@ -98,6 +115,7 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
           modality={modality}
           bodyPart={bodyPart}
           onAccept={handleAiAccept}
+          voiceSignal={voiceSignal}
         />
       )}
 

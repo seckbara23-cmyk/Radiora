@@ -39,8 +39,9 @@ export default async function StudyDetailPage({ params }: Props) {
     getReportByStudy(id),
   ])
 
-  const canCreateReport = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
-  const canUpdateStatus  = ['super_admin', 'clinic_admin', 'radiologist', 'technician'].includes(user.role)
+  const canCreateReport   = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
+  const canUpdateStatus   = ['super_admin', 'clinic_admin', 'radiologist', 'technician'].includes(user.role)
+  const canViewExternalAi = ['super_admin', 'clinic_admin', 'radiologist', 'technician'].includes(user.role)
   // bind prefills prevState so this can be used as a direct form action
   const createReportAction = createReport.bind(null, { error: null }) as unknown as (formData: FormData) => Promise<void>
 
@@ -146,6 +147,23 @@ export default async function StudyDetailPage({ params }: Props) {
               <p className="text-sm text-gray-500">No report yet.</p>
             )}
           </div>
+
+          {canViewExternalAi && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-gray-900">External AI</h2>
+              </div>
+              <p className="text-xs text-gray-500 mb-3">
+                Review AI image analysis results imported for this study.
+              </p>
+              <Link
+                href={`/studies/${study.id}/external-ai`}
+                className="block w-full text-center px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition"
+              >
+                External AI Results
+              </Link>
+            </div>
+          )}
 
           {canUpdateStatus && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">

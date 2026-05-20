@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { generateStructuredDraft, acceptAiOutput, rejectAiOutput } from '@/lib/actions/ai'
 import type { StructuredDraft } from '@/lib/ai/mock-engine'
 
 interface Props {
-  reportId: string
-  modality: string | null
-  bodyPart: string | null
-  onAccept: (draft: StructuredDraft) => void
+  reportId:     string
+  modality:     string | null
+  bodyPart:     string | null
+  onAccept:     (draft: StructuredDraft) => void
+  voiceSignal?: { text: string; key: number } | null
 }
 
 type Phase = 'idle' | 'reviewing'
@@ -25,11 +26,19 @@ const IDLE: PanelState = { phase: 'idle', output: null, jobId: null, error: null
 const previewFieldCls =
   'w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 whitespace-pre-wrap min-h-[3rem]'
 
-export function SmartStructuringPanel({ reportId, modality, bodyPart, onAccept }: Props) {
+export function SmartStructuringPanel({ reportId, modality, bodyPart, onAccept, voiceSignal }: Props) {
   const [open, setOpen]         = useState(false)
   const [freeText, setFreeText] = useState('')
   const [state, setState]       = useState<PanelState>(IDLE)
   const [isPending, startTransition] = useTransition()
+
+  // When a voice transcript is forwarded here, pre-fill the text area and open the panel
+  useEffect(() => {
+    if (!voiceSignal) return
+    setFreeText(voiceSignal.text)
+    setState(IDLE)
+    setOpen(true)
+  }, [voiceSignal])
 
   function handleGenerate() {
     startTransition(async () => {

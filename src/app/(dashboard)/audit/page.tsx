@@ -49,6 +49,26 @@ const EVENT_LABELS: Record<string, string> = {
   'user.invited':          'User invited',
   'user.deactivated':      'User deactivated',
   'user.reactivated':      'User reactivated',
+  // Voice dictation
+  'voice.transcript_created':  'Transcript saved',
+  'voice.transcript_reviewed': 'Transcript reviewed',
+  'voice.transcript_rejected': 'Transcript rejected',
+  'voice.transcript_applied':  'Transcript sent to structuring',
+  // External AI
+  'external_ai.imported':         'External AI imported',
+  'external_ai.reviewed':         'External AI reviewed',
+  'external_ai.finding_accepted': 'AI finding accepted',
+  'external_ai.finding_rejected': 'AI finding rejected',
+  'external_ai.archived':         'External AI archived',
+  'report.external_ai_applied':   'AI findings inserted',
+  // Analytics & operational
+  'analytics.viewed':             'Analytics viewed',
+  'critical_queue.viewed':        'Critical queue viewed',
+  // Peer review
+  'peer_review.assigned':         'Peer review assigned',
+  'peer_review.completed':        'Peer review completed',
+  // SLA
+  'sla.breached':                 'SLA breached',
 }
 
 const BADGE_COLORS: Record<string, string> = {
@@ -86,6 +106,26 @@ const BADGE_COLORS: Record<string, string> = {
   'user.invited':          'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
   'user.deactivated':      'bg-red-50 text-red-700 ring-red-600/20',
   'user.reactivated':      'bg-green-50 text-green-700 ring-green-600/20',
+  // Voice dictation
+  'voice.transcript_created':  'bg-cyan-50 text-cyan-700 ring-cyan-600/20',
+  'voice.transcript_reviewed': 'bg-green-50 text-green-700 ring-green-600/20',
+  'voice.transcript_rejected': 'bg-red-50 text-red-700 ring-red-600/20',
+  'voice.transcript_applied':  'bg-cyan-50 text-cyan-700 ring-cyan-600/20',
+  // External AI
+  'external_ai.imported':         'bg-teal-50 text-teal-700 ring-teal-600/20',
+  'external_ai.reviewed':         'bg-blue-50 text-blue-700 ring-blue-600/20',
+  'external_ai.finding_accepted': 'bg-green-50 text-green-700 ring-green-600/20',
+  'external_ai.finding_rejected': 'bg-red-50 text-red-700 ring-red-600/20',
+  'external_ai.archived':         'bg-gray-50 text-gray-600 ring-gray-500/20',
+  'report.external_ai_applied':   'bg-teal-50 text-teal-700 ring-teal-600/20',
+  // Analytics & operational
+  'analytics.viewed':             'bg-blue-50 text-blue-700 ring-blue-600/20',
+  'critical_queue.viewed':        'bg-red-50 text-red-700 ring-red-600/20',
+  // Peer review
+  'peer_review.assigned':         'bg-purple-50 text-purple-700 ring-purple-600/20',
+  'peer_review.completed':        'bg-green-50 text-green-700 ring-green-600/20',
+  // SLA
+  'sla.breached':                 'bg-red-50 text-red-700 ring-red-600/20',
 }
 
 function formatDateTime(iso: string) {
