@@ -23,6 +23,14 @@ const PROTECTED_SEGMENTS = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  // Route handlers under src/app/auth/ (e.g. /auth/logout) are NOT under the
+  // [locale] segment. If we let createIntlMiddleware see them it will 307-redirect
+  // POST /auth/logout to /en/auth/logout which has no handler → 404.
+  // Bypass i18n and Supabase middleware entirely for these paths.
+  if (pathname.startsWith('/auth/')) {
+    return NextResponse.next()
+  }
+
   // Skip auth entirely when Supabase env vars are absent (CI, local no-env).
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return handleI18n(request)
