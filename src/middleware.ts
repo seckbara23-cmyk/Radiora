@@ -9,6 +9,7 @@ const PROTECTED_PATHS = [
   '/settings',
   '/users',
   '/admin',
+  '/audit',
 ]
 
 export async function middleware(request: NextRequest) {

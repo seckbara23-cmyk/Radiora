@@ -1,0 +1,164 @@
+import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { requireCurrentUser } from '@/lib/auth/get-current-user'
+import { getAuditLogs } from '@/lib/data/audit'
+
+export const metadata = { title: 'Audit History' }
+
+const ENTITY_TABS = [
+  { label: 'All',      value: ''         },
+  { label: 'Users',    value: 'user'     },
+  { label: 'Patients', value: 'patient'  },
+  { label: 'Studies',  value: 'study'    },
+  { label: 'Reports',  value: 'report'   },
+] as const
+
+const EVENT_LABELS: Record<string, string> = {
+  'patient.created':      'Patient created',
+  'patient.updated':      'Patient updated',
+  'study.created':        'Study uploaded',
+  'study.status_updated': 'Study status changed',
+  'report.created':       'Report created',
+  'report.finalized':     'Report finalized',
+  'report.amended':       'Report amended',
+  'user.invited':         'User invited',
+  'user.deactivated':     'User deactivated',
+  'user.reactivated':     'User reactivated',
+}
+
+const BADGE_COLORS: Record<string, string> = {
+  'patient.created':      'bg-green-50 text-green-700 ring-green-600/20',
+  'patient.updated':      'bg-blue-50 text-blue-700 ring-blue-600/20',
+  'study.created':        'bg-purple-50 text-purple-700 ring-purple-600/20',
+  'study.status_updated': 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
+  'report.created':       'bg-sky-50 text-sky-700 ring-sky-600/20',
+  'report.finalized':     'bg-green-50 text-green-700 ring-green-600/20',
+  'report.amended':       'bg-orange-50 text-orange-700 ring-orange-600/20',
+  'user.invited':         'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+  'user.deactivated':     'bg-red-50 text-red-700 ring-red-600/20',
+  'user.reactivated':     'bg-green-50 text-green-700 ring-green-600/20',
+}
+
+function formatDateTime(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleString('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  })
+}
+
+interface PageProps {
+  searchParams: Promise<{ entity?: string }>
+}
+
+export default async function AuditPage({ searchParams }: PageProps) {
+  const user = await requireCurrentUser()
+
+  if (!['clinic_admin', 'super_admin'].includes(user.role)) {
+    redirect('/dashboard')
+  }
+
+  const params = await searchParams
+  const entityType = params.entity ?? ''
+
+  const logs = await getAuditLogs({ entityType: entityType || undefined })
+
+  return (
+    <div className="space-y-6">
+
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-semibold text-gray-900">Audit History</h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Activity log for your clinic — {logs.length} event{logs.length !== 1 ? 's' : ''} shown.
+        </p>
+      </div>
+
+      {/* Entity type tabs */}
+      <div className="flex gap-1 border-b border-gray-200">
+        {ENTITY_TABS.map((tab) => {
+          const isActive = entityType === tab.value
+          return (
+            <Link
+              key={tab.value}
+              href={tab.value ? `/audit?entity=${tab.value}` : '/audit'}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                isActive
+                  ? 'border-blue-600 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {tab.label}
+            </Link>
+          )
+        })}
+      </div>
+
+      {/* Log list */}
+      {logs.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white px-6 py-16 text-center">
+          <p className="text-sm text-gray-500">No audit events found.</p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <ul className="divide-y divide-gray-100">
+            {logs.map((entry) => {
+              const label = EVENT_LABELS[entry.action] ?? entry.action
+              const badgeCls = BADGE_COLORS[entry.action] ?? 'bg-gray-50 text-gray-600 ring-gray-500/20'
+              const actorName = entry.actorFirstName
+                ? `${entry.actorFirstName} ${entry.actorLastName}`
+                : 'System'
+              const hasMetadata = Object.keys(entry.metadata).length > 0
+
+              return (
+                <li key={entry.id} className="px-5 py-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset flex-shrink-0 mt-0.5 ${badgeCls}`}
+                      >
+                        {label}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm text-gray-900">
+                          <span className="font-medium">{actorName}</span>
+                          {entry.actorRole && (
+                            <span className="text-gray-400 text-xs ml-1.5">
+                              ({entry.actorRole.replace('_', ' ')})
+                            </span>
+                          )}
+                        </p>
+                        {entry.entityId && (
+                          <p className="text-xs text-gray-400 mt-0.5 font-mono truncate">
+                            {entry.entityType}/{entry.entityId}
+                          </p>
+                        )}
+                        {hasMetadata && (
+                          <details className="mt-1.5 group">
+                            <summary className="text-xs text-blue-500 hover:text-blue-700 cursor-pointer list-none select-none">
+                              <span className="group-open:hidden">Show details</span>
+                              <span className="hidden group-open:inline">Hide details</span>
+                            </summary>
+                            <pre className="mt-1.5 text-xs text-gray-500 bg-gray-50 rounded-md px-3 py-2 overflow-x-auto whitespace-pre-wrap break-all">
+                              {JSON.stringify(entry.metadata, null, 2)}
+                            </pre>
+                          </details>
+                        )}
+                      </div>
+                    </div>
+                    <time
+                      dateTime={entry.createdAt}
+                      className="text-xs text-gray-400 flex-shrink-0 whitespace-nowrap mt-0.5"
+                    >
+                      {formatDateTime(entry.createdAt)}
+                    </time>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}

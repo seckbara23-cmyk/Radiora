@@ -8,6 +8,7 @@ export type IconName =
   | 'settings'
   | 'clinics'
   | 'users'
+  | 'audit'
 
 export interface NavItem {
   label: string
@@ -36,6 +37,12 @@ export const navigation: NavGroup[] = [
         label: 'Users',
         href: '/users',
         icon: 'users',
+        roles: ['clinic_admin', 'super_admin'],
+      },
+      {
+        label: 'Audit History',
+        href: '/audit',
+        icon: 'audit',
         roles: ['clinic_admin', 'super_admin'],
       },
     ],
