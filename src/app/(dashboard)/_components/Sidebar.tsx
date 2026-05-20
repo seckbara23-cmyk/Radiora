@@ -101,7 +101,7 @@ export default function Sidebar() {
           </svg>
         </div>
         <span className="text-sm font-semibold text-gray-900 leading-tight">
-          Radiology AI
+          Radiora Medical
         </span>
       </div>
 

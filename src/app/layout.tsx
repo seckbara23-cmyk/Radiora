@@ -8,8 +8,17 @@ const geist = Geist({
 })
 
 export const metadata: Metadata = {
-  title: 'Radiology AI Reporting',
-  description: 'AI-powered radiology reporting platform for healthcare professionals',
+  title: {
+    default: 'Radiora Medical',
+    template: '%s | Radiora Medical',
+  },
+  description: 'AI-powered radiology reporting platform for clinics and healthcare teams.',
+  openGraph: {
+    title: 'Radiora Medical',
+    description: 'AI-powered radiology reporting platform for clinics and healthcare teams.',
+    type: 'website',
+    siteName: 'Radiora Medical',
+  },
 }
 
 export default function RootLayout({

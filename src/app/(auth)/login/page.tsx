@@ -49,7 +49,7 @@ export default function LoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Radiology AI Reporting</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Radiora Medical</h1>
           <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
         </div>
 
@@ -167,7 +167,7 @@ export default function LoginPage() {
         </div>
 
         <p className="mt-6 text-center text-xs text-gray-400">
-          Radiology AI Reporting &copy; 2026 &mdash; HIPAA Compliant
+          Radiora Medical &copy; 2026 &mdash; HIPAA Compliant
         </p>
 
       </div>

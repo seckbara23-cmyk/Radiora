@@ -81,7 +81,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
               />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-gray-900 leading-none">Radiology AI</span>
+          <span className="text-sm font-semibold text-gray-900 leading-none">Radiora Medical</span>
         </div>
 
         {/* Mobile close button */}
@@ -137,7 +137,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
-        <p className="text-xs text-gray-400">Metro Radiology Center</p>
+        <p className="text-xs font-medium text-gray-400">Radiora Medical</p>
         <p className="text-xs text-gray-300 mt-0.5">HIPAA Compliant</p>
       </div>
 
