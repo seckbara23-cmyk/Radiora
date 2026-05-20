@@ -6,37 +6,58 @@ import { getAuditLogs } from '@/lib/data/audit'
 export const metadata = { title: 'Audit History' }
 
 const ENTITY_TABS = [
-  { label: 'All',      value: ''         },
-  { label: 'Users',    value: 'user'     },
-  { label: 'Patients', value: 'patient'  },
-  { label: 'Studies',  value: 'study'    },
-  { label: 'Reports',  value: 'report'   },
+  { label: 'All',       value: ''          },
+  { label: 'Reports',   value: 'report'    },
+  { label: 'Templates', value: 'template'  },
+  { label: 'Patients',  value: 'patient'   },
+  { label: 'Studies',   value: 'study'     },
+  { label: 'Users',     value: 'user'      },
 ] as const
 
 const EVENT_LABELS: Record<string, string> = {
-  'patient.created':      'Patient created',
-  'patient.updated':      'Patient updated',
-  'study.created':        'Study uploaded',
-  'study.status_updated': 'Study status changed',
-  'report.created':       'Report created',
-  'report.finalized':     'Report finalized',
-  'report.amended':       'Report amended',
-  'user.invited':         'User invited',
-  'user.deactivated':     'User deactivated',
-  'user.reactivated':     'User reactivated',
+  // Reports
+  'report.created':        'Report created',
+  'report.saved':          'Draft saved',
+  'report.finalized':      'Report finalized',
+  'report.amended':        'Report amended',
+  // Templates
+  'template.created':      'Template created',
+  'template.updated':      'Template updated',
+  'template.deactivated':  'Template deactivated',
+  'template.activated':    'Template reactivated',
+  // Patients
+  'patient.created':       'Patient created',
+  'patient.updated':       'Patient updated',
+  // Studies
+  'study.created':         'Study uploaded',
+  'study.status_updated':  'Study status changed',
+  // Users
+  'user.invited':          'User invited',
+  'user.deactivated':      'User deactivated',
+  'user.reactivated':      'User reactivated',
 }
 
 const BADGE_COLORS: Record<string, string> = {
-  'patient.created':      'bg-green-50 text-green-700 ring-green-600/20',
-  'patient.updated':      'bg-blue-50 text-blue-700 ring-blue-600/20',
-  'study.created':        'bg-purple-50 text-purple-700 ring-purple-600/20',
-  'study.status_updated': 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
-  'report.created':       'bg-sky-50 text-sky-700 ring-sky-600/20',
-  'report.finalized':     'bg-green-50 text-green-700 ring-green-600/20',
-  'report.amended':       'bg-orange-50 text-orange-700 ring-orange-600/20',
-  'user.invited':         'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
-  'user.deactivated':     'bg-red-50 text-red-700 ring-red-600/20',
-  'user.reactivated':     'bg-green-50 text-green-700 ring-green-600/20',
+  // Reports
+  'report.created':        'bg-sky-50 text-sky-700 ring-sky-600/20',
+  'report.saved':          'bg-gray-50 text-gray-600 ring-gray-500/20',
+  'report.finalized':      'bg-green-50 text-green-700 ring-green-600/20',
+  'report.amended':        'bg-orange-50 text-orange-700 ring-orange-600/20',
+  // Templates
+  'template.created':      'bg-violet-50 text-violet-700 ring-violet-600/20',
+  'template.updated':      'bg-violet-50 text-violet-700 ring-violet-600/20',
+  'template.deactivated':  'bg-gray-50 text-gray-600 ring-gray-500/20',
+  'template.activated':    'bg-violet-50 text-violet-700 ring-violet-600/20',
+  // Patients
+  'patient.created':       'bg-green-50 text-green-700 ring-green-600/20',
+  'patient.updated':       'bg-blue-50 text-blue-700 ring-blue-600/20',
+  // Studies
+  'study.created':         'bg-purple-50 text-purple-700 ring-purple-600/20',
+  'study.status_updated':  'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
+  // Users
+  'user.invited':          'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+  'user.deactivated':      'bg-red-50 text-red-700 ring-red-600/20',
+  'user.reactivated':      'bg-green-50 text-green-700 ring-green-600/20',
 }
 
 function formatDateTime(iso: string) {
@@ -124,7 +145,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
                           <span className="font-medium">{actorName}</span>
                           {entry.actorRole && (
                             <span className="text-gray-400 text-xs ml-1.5">
-                              ({entry.actorRole.replace('_', ' ')})
+                              ({entry.actorRole.replace(/_/g, ' ')})
                             </span>
                           )}
                         </p>

@@ -39,6 +39,10 @@ export function ReportEditor({ report, canWrite, canAmend, templates }: Props) {
   function applyTemplate() {
     const tpl = templates.find((t) => t.id === selectedTpl)
     if (!tpl) return
+    const hasContent = findings.trim() || impression.trim() || recommendations.trim()
+    if (hasContent && !window.confirm('Apply template? This will replace your current findings, impression, and recommendations.')) {
+      return
+    }
     setFindings(tpl.findingsTemplate)
     setImpression(tpl.impressionTemplate)
     setRecommendations(tpl.recommendationsTemplate)
@@ -52,12 +56,12 @@ export function ReportEditor({ report, canWrite, canAmend, templates }: Props) {
 
       {/* ── Template selector ─────────────────────────────────────── */}
       {isEditable && templates.length > 0 && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select
             value={selectedTpl}
             onChange={(e) => setSelectedTpl(e.target.value)}
             disabled={isPending}
-            className={selectCls}
+            className={`flex-1 min-w-0 ${selectCls}`}
           >
             <option value="">Apply a template…</option>
             {templates.map((t) => (
@@ -70,7 +74,7 @@ export function ReportEditor({ report, canWrite, canAmend, templates }: Props) {
             type="button"
             onClick={applyTemplate}
             disabled={!selectedTpl || isPending}
-            className="px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-40 rounded-lg transition"
+            className="flex-shrink-0 px-3 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 disabled:opacity-40 rounded-lg transition"
           >
             Apply
           </button>
@@ -159,6 +163,14 @@ export function ReportEditor({ report, canWrite, canAmend, templates }: Props) {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Amended status notice ────────────────────────────────── */}
+      {report.status === 'amended' && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+          <span className="font-medium">Amended</span> — this report was re-opened for editing.
+          Update the content and finalize again when your changes are complete.
         </div>
       )}
 

@@ -41,13 +41,13 @@ export function VersionHistory({ versions }: { versions: ReportVersion[] }) {
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset flex-shrink-0 ${badgeCls}`}
                     >
-                      {v.status.replace('_', ' ')}
+                      {v.status.replace(/_/g, ' ')}
                     </span>
                     <span className="text-sm text-gray-700 truncate">
                       {actorName}
                       {v.actorRole && (
                         <span className="text-gray-400 text-xs ml-1.5">
-                          ({v.actorRole.replace('_', ' ')})
+                          ({v.actorRole.replace(/_/g, ' ')})
                         </span>
                       )}
                     </span>
