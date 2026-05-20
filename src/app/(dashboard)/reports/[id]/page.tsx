@@ -4,6 +4,8 @@ import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getReport } from '@/lib/data/reports'
 import { getStudy } from '@/lib/data/studies'
 import { getPatient } from '@/lib/data/patients'
+import { getTemplates } from '@/lib/data/templates'
+import { getReportVersions } from '@/lib/data/report-versions'
 import {
   Badge,
   reportStatusVariant,
@@ -12,22 +14,28 @@ import {
   studyStatusVariant,
 } from '@/components/ui/badge'
 import { ReportEditor } from './ReportEditor'
+import { VersionHistory } from './VersionHistory'
 
 type Props = { params: Promise<{ id: string }> }
 
 export default async function ReportPage({ params }: Props) {
   const { id } = await params
-  const user = await requireCurrentUser()
+  const user   = await requireCurrentUser()
 
   const report = await getReport(id)
   if (!report) notFound()
 
-  const [study, patient] = await Promise.all([
+  const [study, patient, versions] = await Promise.all([
     getStudy(report.studyId),
     getPatient(report.patientId),
+    getReportVersions(id),
   ])
 
-  const isAdmin = user.role === 'clinic_admin' || user.role === 'super_admin'
+  // Fetch templates filtered to the study's modality (+ generic templates)
+  const templates = await getTemplates({ activeOnly: true, modality: study?.modality })
+
+  const canWrite = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
+  const canAmend = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -71,7 +79,14 @@ export default async function ReportPage({ params }: Props) {
         </div>
       )}
 
-      <ReportEditor report={report} isAdmin={isAdmin} />
+      <ReportEditor
+        report={report}
+        canWrite={canWrite}
+        canAmend={canAmend}
+        templates={templates}
+      />
+
+      <VersionHistory versions={versions} />
 
     </div>
   )

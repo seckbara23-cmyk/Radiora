@@ -10,6 +10,7 @@ const PROTECTED_PATHS = [
   '/users',
   '/admin',
   '/audit',
+  '/templates',
 ]
 
 export async function middleware(request: NextRequest) {

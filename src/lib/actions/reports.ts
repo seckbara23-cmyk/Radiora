@@ -9,6 +9,58 @@ import { logAudit } from '@/lib/actions/audit'
 export type FormState = { error: string | null; saved?: boolean }
 
 const REPORT_WRITE_ROLES = ['super_admin', 'clinic_admin', 'radiologist'] as const
+const AMEND_ROLES        = ['super_admin', 'clinic_admin', 'radiologist'] as const
+
+type WriteRole = typeof REPORT_WRITE_ROLES[number]
+type AmendRole = typeof AMEND_ROLES[number]
+
+// ─── Version snapshot helper ─────────────────────────────────────────────────
+// Creates an immutable version record. Failures are silently swallowed so they
+// never block the primary operation (save / finalize / amend).
+
+type SB = Awaited<ReturnType<typeof createClient>>
+
+async function createVersion(
+  supabase: SB,
+  opts: {
+    reportId: string
+    clinicId: string | null
+    findings: string
+    impression: string
+    recommendations: string | null
+    status: string
+    createdBy: string
+    changeReason?: string | null
+  }
+): Promise<void> {
+  try {
+    const { data: maxRow } = await supabase
+      .from('report_versions')
+      .select('version_number')
+      .eq('report_id', opts.reportId)
+      .order('version_number', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const versionNumber = ((maxRow?.version_number as number | null) ?? 0) + 1
+
+    await supabase.from('report_versions').insert({
+      report_id:      opts.reportId,
+      clinic_id:      opts.clinicId,
+      version_number: versionNumber,
+      findings:       opts.findings,
+      impression:     opts.impression,
+      recommendations: opts.recommendations,
+      status:         opts.status,
+      created_by:     opts.createdBy,
+      change_reason:  opts.changeReason ?? null,
+    })
+  } catch {
+    // Version failures must never block the primary clinical operation.
+  }
+}
+
+// ─── createReport ─────────────────────────────────────────────────────────────
 
 export async function createReport(
   _prev: FormState,
@@ -16,12 +68,12 @@ export async function createReport(
 ): Promise<FormState> {
   const user = await requireCurrentUser()
 
-  if (!REPORT_WRITE_ROLES.includes(user.role as typeof REPORT_WRITE_ROLES[number])) {
+  if (!REPORT_WRITE_ROLES.includes(user.role as WriteRole)) {
     return { error: 'You do not have permission to create reports.' }
   }
 
-  const studyId   = (formData.get('study_id')   as string).trim()
-  const patientId = (formData.get('patient_id') as string).trim()
+  const studyId   = ((formData.get('study_id')   as string) ?? '').trim()
+  const patientId = ((formData.get('patient_id') as string) ?? '').trim()
 
   if (!studyId || !patientId) return { error: 'Missing required fields.' }
 
@@ -52,26 +104,27 @@ export async function createReport(
   redirect(`/reports/${data.id}`)
 }
 
+// ─── saveDraftReport ─────────────────────────────────────────────────────────
+
 export async function saveDraftReport(
   _prev: FormState,
   formData: FormData
 ): Promise<FormState> {
   const user = await requireCurrentUser()
 
-  if (!REPORT_WRITE_ROLES.includes(user.role as typeof REPORT_WRITE_ROLES[number])) {
+  if (!REPORT_WRITE_ROLES.includes(user.role as WriteRole)) {
     return { error: 'You do not have permission to edit reports.' }
   }
 
-  const id              = (formData.get('id')              as string).trim()
-  const findings        = (formData.get('findings')        as string).trim()
-  const impression      = (formData.get('impression')      as string).trim()
-  const recommendations = (formData.get('recommendations') as string | null)?.trim() || null
+  const id              = ((formData.get('id')              as string) ?? '').trim()
+  const findings        = ((formData.get('findings')        as string) ?? '').trim()
+  const impression      = ((formData.get('impression')      as string) ?? '').trim()
+  const recommendations = ((formData.get('recommendations') as string) ?? '').trim() || null
 
   if (!id) return { error: 'Missing report ID.' }
 
   const supabase = await createClient()
 
-  // Only allow editing draft/in_review reports (finalized reports block writes via this action)
   const { data: existing } = await supabase
     .from('reports')
     .select('status')
@@ -79,8 +132,8 @@ export async function saveDraftReport(
     .single()
 
   if (!existing) return { error: 'Report not found.' }
-  if (existing.status === 'finalized' && user.role !== 'clinic_admin' && user.role !== 'super_admin') {
-    return { error: 'Finalized reports can only be edited by a clinic admin.' }
+  if (existing.status === 'finalized') {
+    return { error: 'Finalized reports cannot be edited directly. Use "Amend Report" to re-open.' }
   }
 
   const { error } = await supabase
@@ -90,9 +143,26 @@ export async function saveDraftReport(
 
   if (error) return { error: error.message }
 
+  await createVersion(supabase, {
+    reportId:        id,
+    clinicId:        user.clinicId,
+    findings,
+    impression,
+    recommendations,
+    status:          existing.status as string,
+    createdBy:       user.id,
+  })
+
+  await logAudit({
+    userId: user.id, clinicId: user.clinicId,
+    action: 'report.saved', entityType: 'report', entityId: id,
+  })
+
   revalidatePath(`/reports/${id}`)
   return { error: null, saved: true }
 }
+
+// ─── finalizeReport ───────────────────────────────────────────────────────────
 
 export async function finalizeReport(
   _prev: FormState,
@@ -100,21 +170,33 @@ export async function finalizeReport(
 ): Promise<FormState> {
   const user = await requireCurrentUser()
 
-  if (!REPORT_WRITE_ROLES.includes(user.role as typeof REPORT_WRITE_ROLES[number])) {
+  if (!REPORT_WRITE_ROLES.includes(user.role as WriteRole)) {
     return { error: 'You do not have permission to finalize reports.' }
   }
 
-  const id              = (formData.get('id')              as string).trim()
-  const studyId         = (formData.get('study_id')        as string).trim()
-  const findings        = (formData.get('findings')        as string).trim()
-  const impression      = (formData.get('impression')      as string).trim()
-  const recommendations = (formData.get('recommendations') as string | null)?.trim() || null
+  const id              = ((formData.get('id')              as string) ?? '').trim()
+  const studyId         = ((formData.get('study_id')        as string) ?? '').trim()
+  const findings        = ((formData.get('findings')        as string) ?? '').trim()
+  const impression      = ((formData.get('impression')      as string) ?? '').trim()
+  const recommendations = ((formData.get('recommendations') as string) ?? '').trim() || null
 
   if (!id || !studyId) return { error: 'Missing required fields.' }
-  if (!findings)       return { error: 'Findings are required before finalizing.' }
-  if (!impression)     return { error: 'Impression is required before finalizing.' }
+  if (!findings)        return { error: 'Findings are required before finalizing.' }
+  if (!impression)      return { error: 'Impression is required before finalizing.' }
 
   const supabase = await createClient()
+
+  const { data: existing } = await supabase
+    .from('reports')
+    .select('status')
+    .eq('id', id)
+    .single()
+
+  if (!existing) return { error: 'Report not found.' }
+  if (existing.status === 'finalized') {
+    return { error: 'Report is already finalized.' }
+  }
+
   const { error } = await supabase
     .from('reports')
     .update({ findings, impression, recommendations, status: 'finalized' })
@@ -123,7 +205,17 @@ export async function finalizeReport(
   if (error) return { error: error.message }
 
   // DB trigger (handle_report_finalized) sets signed_at automatically.
-  // DB trigger (sync_study_has_report) updates studies.has_report automatically.
+  // DB trigger (on_report_finalized_sync_study) advances study status to 'reported'.
+
+  await createVersion(supabase, {
+    reportId:        id,
+    clinicId:        user.clinicId,
+    findings,
+    impression,
+    recommendations,
+    status:          'finalized',
+    createdBy:       user.id,
+  })
 
   await logAudit({
     userId: user.id, clinicId: user.clinicId,
@@ -137,6 +229,70 @@ export async function finalizeReport(
   redirect(`/studies/${studyId}`)
 }
 
+// ─── amendReport ─────────────────────────────────────────────────────────────
+// Requires a change_reason. Snapshots the finalized state before re-opening.
+// Accessible to radiologists, clinic_admin, and super_admin.
+
+export async function amendReport(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const user = await requireCurrentUser()
+
+  if (!AMEND_ROLES.includes(user.role as AmendRole)) {
+    return { error: 'You do not have permission to amend reports.' }
+  }
+
+  const id           = ((formData.get('id')            as string) ?? '').trim()
+  const changeReason = ((formData.get('change_reason') as string) ?? '').trim()
+
+  if (!id)           return { error: 'Missing report ID.' }
+  if (!changeReason) return { error: 'A reason is required to amend a finalized report.' }
+
+  const supabase = await createClient()
+
+  // Must be currently finalized
+  const { data: current } = await supabase
+    .from('reports')
+    .select('findings, impression, recommendations, status')
+    .eq('id', id)
+    .eq('status', 'finalized')
+    .single()
+
+  if (!current) return { error: 'Report not found or is not in a finalized state.' }
+
+  // Snapshot the finalized state along with the amendment reason
+  await createVersion(supabase, {
+    reportId:        id,
+    clinicId:        user.clinicId,
+    findings:        current.findings as string,
+    impression:      current.impression as string,
+    recommendations: (current.recommendations as string | null) ?? null,
+    status:          'finalized',
+    createdBy:       user.id,
+    changeReason,
+  })
+
+  const { error } = await supabase
+    .from('reports')
+    .update({ status: 'amended' })
+    .eq('id', id)
+    .eq('status', 'finalized')
+
+  if (error) return { error: error.message }
+
+  await logAudit({
+    userId: user.id, clinicId: user.clinicId,
+    action: 'report.amended', entityType: 'report', entityId: id,
+    metadata: { changeReason },
+  })
+
+  revalidatePath(`/reports/${id}`)
+  redirect(`/reports/${id}`)
+}
+
+// ─── handleReportForm ─────────────────────────────────────────────────────────
+
 export async function handleReportForm(
   prev: FormState,
   formData: FormData
@@ -145,35 +301,4 @@ export async function handleReportForm(
   if (submit === 'finalize') return finalizeReport(prev, formData)
   if (submit === 'amend')    return amendReport(prev, formData)
   return saveDraftReport(prev, formData)
-}
-
-export async function amendReport(
-  _prev: FormState,
-  formData: FormData
-): Promise<FormState> {
-  const user = await requireCurrentUser()
-
-  if (user.role !== 'clinic_admin' && user.role !== 'super_admin') {
-    return { error: 'Only clinic admins can amend finalized reports.' }
-  }
-
-  const id = (formData.get('id') as string).trim()
-  if (!id) return { error: 'Missing report ID.' }
-
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('reports')
-    .update({ status: 'amended' })
-    .eq('id', id)
-    .eq('status', 'finalized') // guard: only amend finalized reports
-
-  if (error) return { error: error.message }
-
-  await logAudit({
-    userId: user.id, clinicId: user.clinicId,
-    action: 'report.amended', entityType: 'report', entityId: id,
-  })
-
-  revalidatePath(`/reports/${id}`)
-  redirect(`/reports/${id}`)
 }
