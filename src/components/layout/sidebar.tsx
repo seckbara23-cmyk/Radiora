@@ -3,6 +3,7 @@
 import { useTranslations } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
 import { navigation, type IconName } from '@/config/navigation'
+import { SenegalDots } from '@/components/ui/senegal-accents'
 import type { UserRole } from '@/types/user'
 
 // ─── Icon map ─────────────────────────────────────────────────────────────────
@@ -123,6 +124,7 @@ export default function Sidebar({ onClose, userRole }: SidebarProps) {
             </svg>
           </div>
           <span className="text-sm font-semibold text-gray-900 leading-none">Radiora Medical</span>
+          <SenegalDots className="ml-1" />
         </div>
 
         {onClose && (
@@ -177,7 +179,10 @@ export default function Sidebar({ onClose, userRole }: SidebarProps) {
       {/* Footer */}
       <div className="px-5 py-4 border-t border-gray-100 flex-shrink-0">
         <p className="text-xs font-medium text-gray-400">Radiora Medical</p>
-        <p className="text-xs text-gray-300 mt-0.5">HIPAA Compliant</p>
+        <p className="text-xs text-gray-300 mt-0.5 flex items-center gap-1.5">
+          <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#00853F] opacity-60" aria-hidden="true" />
+          HIPAA Compliant
+        </p>
       </div>
 
     </aside>

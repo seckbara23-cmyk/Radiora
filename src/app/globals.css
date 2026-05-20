@@ -1,5 +1,30 @@
 @import "tailwindcss";
 
+:root {
+  --sn-green: #00853F;
+  --sn-gold:  #D4A017;
+  --sn-red:   #E31837;
+}
+
 body {
   font-family: var(--font-geist, system-ui, sans-serif);
+}
+
+/* Subtle West African diamond-grid texture — used on auth/landing backgrounds only */
+.bg-sn-pattern {
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 18px,
+      rgba(0, 133, 63, 0.032) 18px,
+      rgba(0, 133, 63, 0.032) 19px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 18px,
+      rgba(0, 133, 63, 0.032) 18px,
+      rgba(0, 133, 63, 0.032) 19px
+    );
 }

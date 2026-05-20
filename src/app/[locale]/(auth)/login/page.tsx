@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { SenegalBar } from '@/components/ui/senegal-accents'
 
 export default function LoginPage() {
   const t = useTranslations('auth')
@@ -31,7 +32,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-full flex items-center justify-center bg-gray-50 py-12 px-4">
+    <div className="min-h-full flex items-center justify-center bg-gray-50 bg-sn-pattern py-12 px-4">
       <div className="w-full max-w-md">
 
         {/* App identity */}
@@ -47,8 +48,11 @@ export default function LoginPage() {
           <p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
         </div>
 
+        {/* Tricolor accent bar above card */}
+        <SenegalBar className="rounded-t-2xl" />
+
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="bg-white rounded-b-2xl shadow-sm border border-t-0 border-gray-200 p-8">
           <form className="space-y-5" onSubmit={handleSubmit}>
 
             {error && (
