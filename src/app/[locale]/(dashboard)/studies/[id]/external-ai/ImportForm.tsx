@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useTransition } from 'react'
+import { useTranslations } from 'next-intl'
 import { importExternalAiResult } from '@/lib/actions/external-ai'
 import type { ExternalAiResult, ExternalAiFinding } from '@/lib/data/external-ai'
 import type { FindingInput } from '@/lib/actions/external-ai'
@@ -14,29 +15,6 @@ interface Props {
 interface FindingRow extends FindingInput {
   _key: number
 }
-
-const SOURCE_TYPES = [
-  { value: 'manual_entry',            label: 'Manual Entry'         },
-  { value: 'vendor_json',             label: 'Vendor JSON'          },
-  { value: 'dicom_sr',                label: 'DICOM SR'             },
-  { value: 'future_pacs_integration', label: 'PACS Integration'     },
-]
-
-const SEVERITY_OPTIONS = [
-  { value: '',         label: '— none —' },
-  { value: 'low',      label: 'Low'      },
-  { value: 'moderate', label: 'Moderate' },
-  { value: 'high',     label: 'High'     },
-  { value: 'critical', label: 'Critical' },
-]
-
-const LATERALITY_OPTIONS = [
-  { value: '',          label: '— none —'  },
-  { value: 'left',      label: 'Left'      },
-  { value: 'right',     label: 'Right'     },
-  { value: 'bilateral', label: 'Bilateral' },
-  { value: 'midline',   label: 'Midline'   },
-]
 
 const inputCls =
   'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50'
@@ -52,21 +30,42 @@ function emptyFinding(key: number): FindingRow {
 }
 
 export function ImportForm({ studyId, reportId, onImported }: Props) {
+  const t = useTranslations('externalAi')
   const [open, setOpen]           = useState(false)
   const [isPending, startTransition] = useTransition()
   const [error, setError]         = useState<string | null>(null)
   const keyRef                    = useRef(0)
 
-  // Result-level fields
   const [sourceType,        setSourceType]        = useState('manual_entry')
   const [vendorName,        setVendorName]        = useState('')
   const [modelName,         setModelName]         = useState('')
   const [modelVersion,      setModelVersion]      = useState('')
   const [overallConfStr,    setOverallConfStr]    = useState('')
   const [summaryText,       setSummaryText]       = useState('')
-
-  // Dynamic findings
   const [findings, setFindings] = useState<FindingRow[]>([emptyFinding(++keyRef.current)])
+
+  const SOURCE_TYPES = [
+    { value: 'manual_entry',            label: t('sourceManual')    },
+    { value: 'vendor_json',             label: t('sourceVendorJson') },
+    { value: 'dicom_sr',                label: t('sourceDicomSr')   },
+    { value: 'future_pacs_integration', label: t('sourcePacs')      },
+  ]
+
+  const SEVERITY_OPTIONS = [
+    { value: '',         label: t('severityNone')     },
+    { value: 'low',      label: t('severityLow')      },
+    { value: 'moderate', label: t('severityModerate') },
+    { value: 'high',     label: t('severityHigh')     },
+    { value: 'critical', label: t('severityCritical') },
+  ]
+
+  const LATERALITY_OPTIONS = [
+    { value: '',          label: t('lateralityNone')      },
+    { value: 'left',      label: t('lateralityLeft')      },
+    { value: 'right',     label: t('lateralityRight')     },
+    { value: 'bilateral', label: t('lateralityBilateral') },
+    { value: 'midline',   label: t('lateralityMidline')   },
+  ]
 
   function addFinding() {
     setFindings((prev) => [...prev, emptyFinding(++keyRef.current)])
@@ -95,13 +94,13 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
   function handleSubmit() {
     const parsedConf = overallConfStr ? parseFloat(overallConfStr) : null
     if (parsedConf !== null && (parsedConf < 0 || parsedConf > 100)) {
-      setError('Overall confidence must be between 0 and 100.')
+      setError(t('confidenceError'))
       return
     }
 
     const validFindings = findings.filter((f) => f.findingLabel.trim())
     if (validFindings.length === 0) {
-      setError('At least one finding with a label is required.')
+      setError(t('findingRequired'))
       return
     }
 
@@ -152,8 +151,8 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
             />
           </svg>
-          <span className="text-sm font-semibold text-teal-900">Import External AI Result</span>
-          <span className="text-xs text-teal-600 bg-teal-100 rounded-full px-2 py-0.5 font-medium">Manual Entry</span>
+          <span className="text-sm font-semibold text-teal-900">{t('importTitle')}</span>
+          <span className="text-xs text-teal-600 bg-teal-100 rounded-full px-2 py-0.5 font-medium">{t('importBadge')}</span>
         </div>
         <svg
           className={`w-4 h-4 text-teal-400 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -169,13 +168,13 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
           {/* Result metadata */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Source Type</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('sourceType')}</label>
               <select value={sourceType} onChange={(e) => setSourceType(e.target.value)} disabled={isPending} className={selectCls}>
                 {SOURCE_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Overall Confidence (0–100)</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('overallConfidence')}</label>
               <input
                 type="number" min="0" max="100" step="0.1"
                 value={overallConfStr}
@@ -186,7 +185,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Vendor Name</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('vendorName')}</label>
               <input
                 type="text" value={vendorName}
                 onChange={(e) => setVendorName(e.target.value)}
@@ -195,7 +194,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Model Name</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('modelName')}</label>
               <input
                 type="text" value={modelName}
                 onChange={(e) => setModelName(e.target.value)}
@@ -204,7 +203,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Model Version</label>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{t('modelVersion')}</label>
               <input
                 type="text" value={modelVersion}
                 onChange={(e) => setModelVersion(e.target.value)}
@@ -215,12 +214,12 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">AI Summary</label>
+            <label className="block text-xs font-medium text-gray-600 mb-1">{t('summary')}</label>
             <textarea
               rows={3} value={summaryText}
               onChange={(e) => setSummaryText(e.target.value)}
               disabled={isPending}
-              placeholder="Brief summary from the AI system…"
+              placeholder={t('summaryPlaceholder')}
               className={`${inputCls} resize-y`}
             />
           </div>
@@ -229,7 +228,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                Findings <span className="text-red-500">*</span>
+                {t('findingsSection')} <span className="text-red-500">*</span>
               </p>
               <button
                 type="button"
@@ -237,7 +236,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
                 disabled={isPending}
                 className="text-xs font-medium text-teal-700 hover:text-teal-900 bg-teal-100 hover:bg-teal-200 px-2.5 py-1 rounded-md transition disabled:opacity-50"
               >
-                + Add Finding
+                {t('addFinding')}
               </button>
             </div>
 
@@ -245,7 +244,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
               {findings.map((f, idx) => (
                 <div key={f._key} className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-gray-400">Finding {idx + 1}</p>
+                    <p className="text-xs font-medium text-gray-400">{t('findingNumber', { n: idx + 1 })}</p>
                     {findings.length > 1 && (
                       <button
                         type="button"
@@ -253,14 +252,14 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
                         disabled={isPending}
                         className="text-xs text-red-400 hover:text-red-600 transition"
                       >
-                        Remove
+                        {t('remove')}
                       </button>
                     )}
                   </div>
 
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
-                      Finding Label <span className="text-red-500">*</span>
+                      {t('findingLabel')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -274,7 +273,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
 
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Body Region</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('bodyRegion')}</label>
                       <input
                         type="text"
                         value={f.bodyRegion ?? ''}
@@ -285,7 +284,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Laterality</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('laterality')}</label>
                       <select
                         value={f.laterality ?? ''}
                         onChange={(e) => updateFinding(f._key, { laterality: e.target.value })}
@@ -296,7 +295,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Confidence (0–100)</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('confidence')}</label>
                       <input
                         type="number" min="0" max="100" step="0.1"
                         value={f.confidence !== null ? f.confidence : ''}
@@ -309,7 +308,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Severity</label>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">{t('severity')}</label>
                       <select
                         value={f.severity ?? ''}
                         onChange={(e) => updateFinding(f._key, { severity: e.target.value })}
@@ -322,7 +321,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">Recommendation</label>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">{t('recommendation')}</label>
                     <input
                       type="text"
                       value={f.recommendation ?? ''}
@@ -352,9 +351,9 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
                   </svg>
-                  Importing…
+                  {t('importing')}
                 </>
-              ) : 'Import Result'}
+              ) : t('importResult')}
             </button>
             <button
               type="button"
@@ -362,7 +361,7 @@ export function ImportForm({ studyId, reportId, onImported }: Props) {
               disabled={isPending}
               className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition"
             >
-              Cancel
+              {t('cancel')}
             </button>
           </div>
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import {
   generateExplanationTranslation,
   approveTranslation,
@@ -15,10 +16,10 @@ const STATUS_BADGE: Record<string, string> = {
   rejected: 'bg-red-50 text-red-700 ring-red-600/20',
 }
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-US', {
+function formatDateTime(iso: string, locale: string) {
+  return new Date(iso).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
-    hour: 'numeric', minute: '2-digit', hour12: true,
+    hour: 'numeric', minute: '2-digit', hour12: locale !== 'fr',
   })
 }
 
@@ -39,6 +40,8 @@ const readonlyCls =
 export function ExplanationTranslationPanel({
   explanationId, reportId, sourceExplanation, sourceDisclaimer, initialTranslation,
 }: Props) {
+  const t      = useTranslations('reportTranslation')
+  const locale = useLocale()
   const [translation,   setTranslation]   = useState(initialTranslation)
   const [editText,      setEditText]      = useState(initialTranslation?.translatedExplanation ?? '')
   const [showRejectForm, setShowRejectForm] = useState(false)
@@ -53,9 +56,9 @@ export function ExplanationTranslationPanel({
     setRejectReason('')
   }
 
-  function syncFromTranslation(t: ReportTranslation) {
-    setTranslation(t)
-    setEditText(t.translatedExplanation ?? '')
+  function syncFromTranslation(tr: ReportTranslation) {
+    setTranslation(tr)
+    setEditText(tr.translatedExplanation ?? '')
     resetRejectForm()
     setError(null)
   }
@@ -91,7 +94,7 @@ export function ExplanationTranslationPanel({
 
   function handleRegenerate() {
     if (!translation) return
-    if (!window.confirm('Regenerate translation? The current draft will be archived.')) return
+    if (!window.confirm(t('regenerateConfirm'))) return
     startTransition(async () => {
       setError(null)
       const result = await regenerateExplanationTranslation(
@@ -115,20 +118,20 @@ export function ExplanationTranslationPanel({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-            Patient Explanation Translation
+            {t('explanationTitle')}
           </h2>
           <span className="text-xs bg-violet-100 text-violet-700 rounded-full px-2 py-0.5 font-medium">
-            EN → FR
+            {t('badge')}
           </span>
           <span className="text-xs bg-gray-100 text-gray-500 rounded-full px-2 py-0.5">
-            Local Demo
+            {t('demoBadge')}
           </span>
         </div>
         {status && (
           <span
             className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset ${STATUS_BADGE[status] ?? STATUS_BADGE.draft}`}
           >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
+            {t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as Parameters<typeof t>[0])}
           </span>
         )}
       </div>
@@ -142,13 +145,13 @@ export function ExplanationTranslationPanel({
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
             />
           </svg>
-          Translations must be reviewed by a clinician before use. Local engine — not a professional translation.
+          {t('clinicianWarning')}
         </div>
 
         {/* ── Empty state ───────────────────────────────────────────────── */}
         {!status && (
           <div className="px-6 py-10 text-center space-y-4">
-            <p className="text-sm text-gray-500">No French translation of the patient explanation yet.</p>
+            <p className="text-sm text-gray-500">{t('noExplanationTranslation')}</p>
             {error && <p className="text-xs text-red-600">{error}</p>}
             <button
               type="button"
@@ -156,7 +159,7 @@ export function ExplanationTranslationPanel({
               disabled={isPending}
               className="mx-auto flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white text-sm font-semibold rounded-lg transition"
             >
-              {isPending ? <>{spinnerSvg} Generating…</> : 'Translate to French'}
+              {isPending ? <>{spinnerSvg} {t('generating')}</> : t('translateToFrench')}
             </button>
           </div>
         )}
@@ -167,12 +170,12 @@ export function ExplanationTranslationPanel({
             {/* Column headers */}
             <div className="grid grid-cols-1 md:grid-cols-2 border-b border-gray-100">
               <div className="px-4 py-2.5 text-xs font-semibold text-gray-500 bg-gray-50 md:border-r border-gray-100">
-                Original (English)
+                {t('originalColumn')}
               </div>
               <div className="px-4 py-2.5 text-xs font-semibold text-violet-700 bg-violet-50/40">
-                Translation (French)
+                {t('translationColumn')}
                 {status === 'draft' && (
-                  <span className="ml-2 font-normal text-gray-400">— editable</span>
+                  <span className="ml-2 font-normal text-gray-400">{t('editable')}</span>
                 )}
               </div>
             </div>
@@ -216,7 +219,7 @@ export function ExplanationTranslationPanel({
             <div className="border-t border-gray-100 px-4 py-4 space-y-3">
               {status === 'approved' && translation.approvedAt && (
                 <p className="text-xs text-gray-400">
-                  Approved {formatDateTime(translation.approvedAt)}
+                  {t('approvedAt', { date: formatDateTime(translation.approvedAt, locale) })}
                 </p>
               )}
 
@@ -230,7 +233,7 @@ export function ExplanationTranslationPanel({
                     disabled={!editText.trim() || isPending}
                     className="px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white text-sm font-semibold rounded-lg transition"
                   >
-                    {isPending ? 'Approving…' : 'Approve'}
+                    {isPending ? t('approving') : t('approve')}
                   </button>
                   <button
                     type="button"
@@ -238,7 +241,7 @@ export function ExplanationTranslationPanel({
                     disabled={isPending}
                     className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-sm font-medium rounded-lg transition"
                   >
-                    Reject
+                    {t('reject')}
                   </button>
                   <button
                     type="button"
@@ -246,20 +249,20 @@ export function ExplanationTranslationPanel({
                     disabled={isPending}
                     className="px-3 py-2 text-sm text-gray-400 hover:text-gray-600 transition"
                   >
-                    Regenerate
+                    {t('regenerate')}
                   </button>
                 </div>
               )}
 
               {status === 'draft' && showRejectForm && (
                 <div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4">
-                  <p className="text-sm font-medium text-red-900">Reason for rejection *</p>
+                  <p className="text-sm font-medium text-red-900">{t('rejectionReason')}</p>
                   <textarea
                     rows={2}
                     value={rejectReason}
                     onChange={(e) => setRejectReason(e.target.value)}
                     disabled={isPending}
-                    placeholder="e.g. Translation misses key phrases."
+                    placeholder={t('rejectPlaceholderExp')}
                     className="w-full rounded-lg border border-red-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-y"
                   />
                   <div className="flex gap-2">
@@ -269,7 +272,7 @@ export function ExplanationTranslationPanel({
                       disabled={!rejectReason.trim() || isPending}
                       className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-sm font-medium rounded-lg transition"
                     >
-                      {isPending ? 'Rejecting…' : 'Confirm Rejection'}
+                      {isPending ? t('rejecting') : t('confirmRejection')}
                     </button>
                     <button
                       type="button"
@@ -277,7 +280,7 @@ export function ExplanationTranslationPanel({
                       disabled={isPending}
                       className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition"
                     >
-                      Cancel
+                      {t('cancel')}
                     </button>
                   </div>
                 </div>
@@ -290,7 +293,7 @@ export function ExplanationTranslationPanel({
                   disabled={isPending}
                   className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 rounded-lg transition disabled:opacity-50"
                 >
-                  {isPending ? 'Regenerating…' : 'Regenerate'}
+                  {isPending ? t('regenerating') : t('regenerate')}
                 </button>
               )}
             </div>
@@ -301,11 +304,13 @@ export function ExplanationTranslationPanel({
         {status === 'rejected' && translation && (
           <div className="p-5 space-y-4">
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-xs text-red-800">
-              <span className="font-semibold">Rejected.</span>
-              {translation.rejectionReason && <span> Reason: {translation.rejectionReason}</span>}
+              <span className="font-semibold">{t('rejected')}</span>
+              {translation.rejectionReason && <span> {t('reason')}{translation.rejectionReason}</span>}
             </div>
             {translation.rejectedAt && (
-              <p className="text-xs text-gray-400">Rejected {formatDateTime(translation.rejectedAt)}</p>
+              <p className="text-xs text-gray-400">
+                {t('rejectedAt', { date: formatDateTime(translation.rejectedAt, locale) })}
+              </p>
             )}
             {error && <p className="text-xs text-red-600">{error}</p>}
             <button
@@ -314,7 +319,7 @@ export function ExplanationTranslationPanel({
               disabled={isPending}
               className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-300 text-white text-sm font-semibold rounded-lg transition"
             >
-              {isPending ? <>{spinnerSvg} Regenerating…</> : 'Generate New Translation'}
+              {isPending ? <>{spinnerSvg} {t('regenerating')}</> : t('generateNew')}
             </button>
           </div>
         )}

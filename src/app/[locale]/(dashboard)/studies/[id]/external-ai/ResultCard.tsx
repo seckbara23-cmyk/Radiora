@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import {
   reviewExternalAiResult,
   acceptFinding,
@@ -31,10 +32,10 @@ function confidenceCls(conf: number): string {
   return 'text-red-700 bg-red-50 border-red-200'
 }
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-US', {
+function formatDateTime(iso: string, locale: string) {
+  return new Date(iso).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
-    hour: 'numeric', minute: '2-digit', hour12: true,
+    hour: 'numeric', minute: '2-digit', hour12: locale !== 'fr',
   })
 }
 
@@ -67,6 +68,8 @@ function deriveFindingState(f: ExternalAiFinding): FindingState {
 }
 
 export function ResultCard({ result, findings, reportId, canManage, onArchived }: Props) {
+  const t      = useTranslations('externalAi')
+  const locale = useLocale()
   const [resultStatus, setResultStatus] = useState(result.status)
   const [findingStates, setFindingStates] = useState<Record<string, FindingState>>(
     () => Object.fromEntries(findings.map((f) => [f.id, deriveFindingState(f)])),
@@ -124,7 +127,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
   }
 
   function handleArchive() {
-    if (!window.confirm('Archive this AI result? It will no longer appear in the review list.')) return
+    if (!window.confirm(t('archiveConfirm'))) return
     startTransition(async () => {
       setError(null)
       const res = await archiveExternalAiResult(result.id, result.studyId)
@@ -166,11 +169,11 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
             {identity && (
               <p className="text-sm font-medium text-gray-900">{identity}</p>
             )}
-            <p className="text-xs text-gray-400">{formatDateTime(result.createdAt)}</p>
+            <p className="text-xs text-gray-400">{formatDateTime(result.createdAt, locale)}</p>
           </div>
           {result.overallConfidence !== null && (
             <span className={`text-sm font-semibold rounded-md border px-2.5 py-1 flex-shrink-0 ${confidenceCls(result.overallConfidence)}`}>
-              {result.overallConfidence}% confidence
+              {result.overallConfidence}{t('confidencePct')}
             </span>
           )}
         </div>
@@ -221,19 +224,19 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
                 {/* Status pill */}
                 {status === 'accepted' && (
                   <span className="text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-full px-2.5 py-1 flex-shrink-0">
-                    ✓ Accepted
+                    {t('accepted')}
                   </span>
                 )}
                 {status === 'rejected' && (
                   <span className="text-xs font-medium text-red-600 bg-red-50 border border-red-200 rounded-full px-2.5 py-1 flex-shrink-0">
-                    ✗ Rejected
+                    {t('rejected')}
                   </span>
                 )}
               </div>
 
               {status === 'rejected' && fs.rejectionReason && (
                 <p className="text-xs text-red-600 bg-red-50 rounded-md px-3 py-1.5">
-                  Reason: {fs.rejectionReason}
+                  {t('reason')}{fs.rejectionReason}
                 </p>
               )}
 
@@ -247,7 +250,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
                       disabled={isPending}
                       className="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white text-xs font-semibold rounded-lg transition"
                     >
-                      Accept
+                      {t('accept')}
                     </button>
                   )}
                   {status !== 'rejected' && (
@@ -257,7 +260,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
                       disabled={isPending}
                       className="px-3 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-xs font-medium rounded-lg transition"
                     >
-                      Reject
+                      {t('reject')}
                     </button>
                   )}
                   {status === 'accepted' && (
@@ -267,7 +270,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
                       disabled={isPending}
                       className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 transition"
                     >
-                      Undo Accept
+                      {t('undoAccept')}
                     </button>
                   )}
                 </div>
@@ -275,7 +278,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
 
               {canManage && fs.showRejectForm && (
                 <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
-                  <p className="text-xs font-medium text-red-900">Reason for rejection *</p>
+                  <p className="text-xs font-medium text-red-900">{t('rejectionReason')}</p>
                   <textarea
                     rows={2}
                     value={fs.rejectInput}
@@ -291,7 +294,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
                       disabled={!fs.rejectInput.trim() || isPending}
                       className="px-2.5 py-1 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-xs font-medium rounded-lg transition"
                     >
-                      Confirm
+                      {t('confirm')}
                     </button>
                     <button
                       type="button"
@@ -299,7 +302,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
                       disabled={isPending}
                       className="px-2.5 py-1 text-xs text-gray-500 hover:text-gray-700 transition"
                     >
-                      Cancel
+                      {t('cancel')}
                     </button>
                   </div>
                 </div>
@@ -315,9 +318,9 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
 
         {applied && reportId && (
           <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-xs text-green-800 flex items-center justify-between">
-            <span>✓ {acceptedCount} finding{acceptedCount !== 1 ? 's' : ''} appended to the report draft.</span>
+            <span>{t('findingsAppended', { count: acceptedCount })}</span>
             <a href={`/reports/${reportId}`} className="font-semibold underline ml-2 hover:text-green-900">
-              View Report →
+              {t('viewReport')}
             </a>
           </div>
         )}
@@ -330,7 +333,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
               disabled={isPending}
               className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-xs font-semibold rounded-lg transition"
             >
-              Mark as Reviewed
+              {t('markReviewed')}
             </button>
           )}
 
@@ -341,7 +344,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
               disabled={isPending}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white text-xs font-semibold rounded-lg transition"
             >
-              {isPending ? 'Inserting…' : `Insert ${acceptedCount} accepted finding${acceptedCount !== 1 ? 's' : ''} into report`}
+              {isPending ? t('inserting') : t('insertFindings', { count: acceptedCount })}
             </button>
           )}
 
@@ -352,7 +355,7 @@ export function ResultCard({ result, findings, reportId, canManage, onArchived }
               disabled={isPending}
               className="px-3 py-1.5 text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
             >
-              Archive
+              {t('archive')}
             </button>
           )}
         </div>

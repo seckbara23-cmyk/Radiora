@@ -48,13 +48,6 @@ export const studyStatusVariant: Record<StudyStatus, BadgeVariant> = {
   cancelled: 'neutral',
 }
 
-export const studyStatusLabel: Record<StudyStatus, string> = {
-  pending:   'Pending',
-  in_review: 'In Review',
-  reported:  'Reported',
-  validated: 'Validated',
-  cancelled: 'Cancelled',
-}
 
 export const studyPriorityVariant: Record<StudyPriority, BadgeVariant> = {
   routine: 'neutral',

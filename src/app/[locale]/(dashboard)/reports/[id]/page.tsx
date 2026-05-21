@@ -1,5 +1,6 @@
 import { Link } from '@/i18n/navigation'
 import { notFound } from 'next/navigation'
+import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getReport } from '@/lib/data/reports'
 import { getStudy } from '@/lib/data/studies'
@@ -10,7 +11,6 @@ import {
   Badge,
   reportStatusVariant,
   studyPriorityVariant,
-  studyStatusLabel,
   studyStatusVariant,
 } from '@/components/ui/badge'
 import { ReportEditor } from './ReportEditor'
@@ -21,11 +21,15 @@ import { ExplanationTranslationPanel } from './ExplanationTranslationPanel'
 import { getExplanationByReport } from '@/lib/data/explanations'
 import { getTranslationByReport, getTranslationByExplanation } from '@/lib/data/translations'
 
-type Props = { params: Promise<{ id: string }> }
+type Props = { params: Promise<{ id: string; locale: string }> }
 
 export default async function ReportPage({ params }: Props) {
-  const { id } = await params
-  const user   = await requireCurrentUser()
+  const { id, locale } = await params
+  setRequestLocale(locale)
+  const user = await requireCurrentUser()
+
+  const t   = await getTranslations('reports')
+  const tSt = await getTranslations('statuses')
 
   const report = await getReport(id)
   if (!report) notFound()
@@ -36,7 +40,6 @@ export default async function ReportPage({ params }: Props) {
     getReportVersions(id),
   ])
 
-  // Fetch templates filtered to the study's modality (+ generic templates)
   const templates = await getTemplates({ activeOnly: true, modality: study?.modality })
 
   const canWrite  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
@@ -68,9 +71,9 @@ export default async function ReportPage({ params }: Props) {
             href={`/studies/${report.studyId}`}
             className="text-sm text-gray-500 hover:text-gray-700 transition"
           >
-            ← {study ? `${study.modality} — ${study.bodyPart}` : 'Study'}
+            ← {study ? `${study.modality} — ${study.bodyPart}` : ''}
           </Link>
-          <h1 className="mt-1.5 text-xl font-semibold text-gray-900">Radiology Report</h1>
+          <h1 className="mt-1.5 text-xl font-semibold text-gray-900">{t('pageTitle')}</h1>
           {patient && (
             <p className="mt-0.5 text-sm text-gray-500">
               {patient.firstName} {patient.lastName}&nbsp;&middot;&nbsp;MRN {patient.mrn}
@@ -79,7 +82,7 @@ export default async function ReportPage({ params }: Props) {
         </div>
         <div className="mt-6 shrink-0">
           <Badge variant={reportStatusVariant[report.status]}>
-            {report.status.replace('_', ' ')}
+            {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
           </Badge>
         </div>
       </div>
@@ -92,8 +95,12 @@ export default async function ReportPage({ params }: Props) {
           </span>
           <span className="text-gray-700 font-medium">{study.bodyPart}</span>
           <span className="text-gray-400">{study.studyDate}</span>
-          <Badge variant={studyPriorityVariant[study.priority]}>{study.priority}</Badge>
-          <Badge variant={studyStatusVariant[study.status]}>{studyStatusLabel[study.status]}</Badge>
+          <Badge variant={studyPriorityVariant[study.priority]}>
+            {tSt(`priority.${study.priority}` as Parameters<typeof tSt>[0])}
+          </Badge>
+          <Badge variant={studyStatusVariant[study.status]}>
+            {tSt(`study.${study.status}` as Parameters<typeof tSt>[0])}
+          </Badge>
           {study.description && (
             <span className="text-gray-500 hidden sm:inline truncate max-w-xs">{study.description}</span>
           )}

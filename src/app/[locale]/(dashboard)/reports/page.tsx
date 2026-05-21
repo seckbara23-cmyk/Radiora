@@ -23,6 +23,7 @@ export default async function ReportsPage({ params, searchParams }: Props) {
   setRequestLocale(locale)
 
   const t          = await getTranslations('reports')
+  const tSt        = await getTranslations('statuses')
   const { status } = await searchParams
   await requireCurrentUser()
 
@@ -30,24 +31,17 @@ export default async function ReportsPage({ params, searchParams }: Props) {
 
   const TAB_LABELS: Record<string, string> = {
     '':         t('all'),
-    draft:      'Draft',
-    in_review:  'In Review',
-    finalized:  'Finalized',
-    amended:    'Amended',
-  }
-
-  const STATUS_DISPLAY: Record<ReportStatus, string> = {
-    draft:     'Draft',
-    in_review: 'In Review',
-    finalized: 'Finalized',
-    amended:   'Amended',
+    draft:      tSt('report.draft'),
+    in_review:  tSt('report.in_review'),
+    finalized:  tSt('report.finalized'),
+    amended:    tSt('report.amended'),
   }
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold text-gray-900">{t('title')}</h1>
-        <p className="mt-1 text-sm text-gray-500">{reports.length} found</p>
+        <p className="mt-1 text-sm text-gray-500">{t('found', { count: reports.length })}</p>
       </div>
 
       <div className="flex gap-1 flex-wrap">
@@ -100,11 +94,13 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                     </td>
                     <td className="px-6 py-3.5 text-xs text-gray-500 hidden sm:table-cell">{r.updatedAt.slice(0, 10)}</td>
                     <td className="px-6 py-3.5">
-                      <Badge variant={reportStatusVariant[r.status]}>{STATUS_DISPLAY[r.status]}</Badge>
+                      <Badge variant={reportStatusVariant[r.status]}>
+                        {tSt(`report.${r.status}` as Parameters<typeof tSt>[0])}
+                      </Badge>
                     </td>
                     <td className="px-6 py-3.5 text-right">
                       <Link href={`/reports/${r.id}`} className="text-xs font-medium text-blue-600 hover:text-blue-700">
-                        {r.status === 'finalized' ? 'View' : 'Edit'} →
+                        {r.status === 'finalized' ? t('viewReport' as 'all') : t('editReport' as 'all')}
                       </Link>
                     </td>
                   </tr>

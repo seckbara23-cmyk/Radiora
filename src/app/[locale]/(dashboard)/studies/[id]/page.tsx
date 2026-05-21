@@ -1,5 +1,6 @@
 import { Link } from '@/i18n/navigation'
 import { notFound } from 'next/navigation'
+import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getStudy } from '@/lib/data/studies'
 import { getPatient } from '@/lib/data/patients'
@@ -8,28 +9,21 @@ import { createReport } from '@/lib/actions/reports'
 import {
   Badge,
   studyStatusVariant,
-  studyStatusLabel,
   studyPriorityVariant,
   reportStatusVariant,
 } from '@/components/ui/badge'
 import { StudyStatusForm } from './StudyStatusForm'
 
-type Props = { params: Promise<{ id: string }> }
-
-function Field({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
-  return (
-    <div>
-      <dt className="text-xs font-medium text-gray-500">{label}</dt>
-      <dd className={`mt-0.5 text-sm text-gray-900 ${mono ? 'font-mono text-xs' : ''}`}>
-        {value ?? '—'}
-      </dd>
-    </div>
-  )
-}
+type Props = { params: Promise<{ id: string; locale: string }> }
 
 export default async function StudyDetailPage({ params }: Props) {
-  const { id } = await params
+  const { id, locale } = await params
+  setRequestLocale(locale)
   const user = await requireCurrentUser()
+
+  const t    = await getTranslations('studies')
+  const tP   = await getTranslations('patients')
+  const tSt  = await getTranslations('statuses')
 
   const study = await getStudy(id)
   if (!study) notFound()
@@ -42,7 +36,6 @@ export default async function StudyDetailPage({ params }: Props) {
   const canCreateReport   = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
   const canUpdateStatus   = ['super_admin', 'clinic_admin', 'radiologist', 'technician'].includes(user.role)
   const canViewExternalAi = ['super_admin', 'clinic_admin', 'radiologist', 'technician'].includes(user.role)
-  // bind prefills prevState so this can be used as a direct form action
   const createReportAction = createReport.bind(null, { error: null }) as unknown as (formData: FormData) => Promise<void>
 
   return (
@@ -52,7 +45,7 @@ export default async function StudyDetailPage({ params }: Props) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <Link href="/studies" className="text-sm text-gray-500 hover:text-gray-700 transition">
-            ← Studies
+            {t('back')}
           </Link>
           <h1 className="mt-1.5 text-xl font-semibold text-gray-900">
             {study.modality} — {study.bodyPart}
@@ -60,8 +53,12 @@ export default async function StudyDetailPage({ params }: Props) {
           <p className="mt-0.5 font-mono text-xs text-gray-400">{study.accessionNumber}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0 mt-6">
-          <Badge variant={studyPriorityVariant[study.priority]}>{study.priority}</Badge>
-          <Badge variant={studyStatusVariant[study.status]}>{studyStatusLabel[study.status]}</Badge>
+          <Badge variant={studyPriorityVariant[study.priority]}>
+            {tSt(`priority.${study.priority}` as Parameters<typeof tSt>[0])}
+          </Badge>
+          <Badge variant={studyStatusVariant[study.status]}>
+            {tSt(`study.${study.status}` as Parameters<typeof tSt>[0])}
+          </Badge>
         </div>
       </div>
 
@@ -71,18 +68,38 @@ export default async function StudyDetailPage({ params }: Props) {
         <div className="lg:col-span-2 space-y-6">
 
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Study Details</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('studyDetails')}</h2>
             <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3">
-              <Field label="Modality"            value={study.modality} />
-              <Field label="Body Part"           value={study.bodyPart} />
-              <Field label="Study Date"          value={study.studyDate} />
-              <Field label="Priority"            value={study.priority.charAt(0).toUpperCase() + study.priority.slice(1)} />
-              <Field label="Referring Physician" value={study.referringPhysician || null} />
-              <Field label="Accession"           value={study.accessionNumber} mono />
+              <div>
+                <dt className="text-xs font-medium text-gray-500">{t('modality')}</dt>
+                <dd className="mt-0.5 text-sm text-gray-900">{study.modality ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-gray-500">{t('bodyPart')}</dt>
+                <dd className="mt-0.5 text-sm text-gray-900">{study.bodyPart ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-gray-500">{t('studyDate')}</dt>
+                <dd className="mt-0.5 text-sm text-gray-900">{study.studyDate ?? '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-gray-500">{t('priority')}</dt>
+                <dd className="mt-0.5 text-sm text-gray-900">
+                  {study.priority.charAt(0).toUpperCase() + study.priority.slice(1)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-gray-500">{t('referringPhysician')}</dt>
+                <dd className="mt-0.5 text-sm text-gray-900">{study.referringPhysician || '—'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs font-medium text-gray-500">{t('accessionNumber')}</dt>
+                <dd className="mt-0.5 text-sm text-gray-900 font-mono text-xs">{study.accessionNumber ?? '—'}</dd>
+              </div>
             </dl>
             {study.description && (
               <div className="mt-4 pt-4 border-t border-gray-100">
-                <dt className="text-xs font-medium text-gray-500">Clinical Indication</dt>
+                <dt className="text-xs font-medium text-gray-500">{t('indication')}</dt>
                 <dd className="mt-1 text-sm text-gray-900">{study.description}</dd>
               </div>
             )}
@@ -91,17 +108,31 @@ export default async function StudyDetailPage({ params }: Props) {
           {patient && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-semibold text-gray-900">Patient</h2>
+                <h2 className="text-sm font-semibold text-gray-900">{t('patient')}</h2>
                 <Link href={`/patients/${patient.id}`}
                   className="text-xs font-medium text-blue-600 hover:text-blue-700">
-                  View record →
+                  {t('viewRecord')}
                 </Link>
               </div>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-4">
-                <Field label="Name"          value={`${patient.firstName} ${patient.lastName}`} />
-                <Field label="MRN"           value={patient.mrn} mono />
-                <Field label="Date of Birth" value={patient.dateOfBirth} />
-                <Field label="Sex"           value={patient.sex.charAt(0).toUpperCase() + patient.sex.slice(1)} />
+                <div>
+                  <dt className="text-xs font-medium text-gray-500">{t('name')}</dt>
+                  <dd className="mt-0.5 text-sm text-gray-900">{patient.firstName} {patient.lastName}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500">{tP('mrn')}</dt>
+                  <dd className="mt-0.5 text-sm text-gray-900 font-mono text-xs">{patient.mrn}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500">{tP('dateOfBirth')}</dt>
+                  <dd className="mt-0.5 text-sm text-gray-900">{patient.dateOfBirth}</dd>
+                </div>
+                <div>
+                  <dt className="text-xs font-medium text-gray-500">{tP('sex')}</dt>
+                  <dd className="mt-0.5 text-sm text-gray-900">
+                    {patient.sex === 'male' ? tP('male') : patient.sex === 'female' ? tP('female') : tP('other')}
+                  </dd>
+                </div>
               </dl>
             </div>
           )}
@@ -112,16 +143,16 @@ export default async function StudyDetailPage({ params }: Props) {
         <div className="space-y-6">
 
           <div className="bg-white rounded-xl border border-gray-200 p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-4">Report</h2>
+            <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('reportSection')}</h2>
             {report ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant={reportStatusVariant[report.status]}>
-                    {report.status.replace('_', ' ')}
+                    {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
                   </Badge>
                   {report.signedAt && (
                     <span className="text-xs text-gray-400">
-                      Signed {report.signedAt.slice(0, 10)}
+                      {t('signed')} {report.signedAt.slice(0, 10)}
                     </span>
                   )}
                 </div>
@@ -129,45 +160,43 @@ export default async function StudyDetailPage({ params }: Props) {
                   className="block w-full text-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
                 >
                   {report.status === 'finalized' || report.status === 'amended'
-                    ? 'View Report'
-                    : 'Edit Report'}
+                    ? t('viewReport')
+                    : t('editReport')}
                 </Link>
               </div>
             ) : canCreateReport ? (
               <form action={createReportAction} className="space-y-3">
                 <input type="hidden" name="study_id"   value={study.id} />
                 <input type="hidden" name="patient_id" value={study.patientId} />
-                <p className="text-sm text-gray-500">No report has been created for this study yet.</p>
+                <p className="text-sm text-gray-500">{t('noReport')}</p>
                 <button type="submit"
                   className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
-                  Create Report
+                  {t('createReport')}
                 </button>
               </form>
             ) : (
-              <p className="text-sm text-gray-500">No report yet.</p>
+              <p className="text-sm text-gray-500">{t('noReport')}</p>
             )}
           </div>
 
           {canViewExternalAi && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-900">External AI</h2>
+                <h2 className="text-sm font-semibold text-gray-900">{t('externalAi')}</h2>
               </div>
-              <p className="text-xs text-gray-500 mb-3">
-                Review AI image analysis results imported for this study.
-              </p>
+              <p className="text-xs text-gray-500 mb-3">{t('externalAiDesc')}</p>
               <Link
                 href={`/studies/${study.id}/external-ai`}
                 className="block w-full text-center px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium rounded-lg transition"
               >
-                External AI Results
+                {t('externalAiResults')}
               </Link>
             </div>
           )}
 
           {canUpdateStatus && (
             <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4">Update Status</h2>
+              <h2 className="text-sm font-semibold text-gray-900 mb-4">{t('updateStatus')}</h2>
               <StudyStatusForm studyId={study.id} currentStatus={study.status} />
             </div>
           )}

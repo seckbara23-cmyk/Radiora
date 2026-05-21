@@ -3,7 +3,7 @@ import { setRequestLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getStudies } from '@/lib/data/studies'
-import { Badge, studyStatusVariant, studyStatusLabel, studyPriorityVariant } from '@/components/ui/badge'
+import { Badge, studyStatusVariant, studyPriorityVariant } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import type { StudyStatus } from '@/types/study'
 
@@ -22,7 +22,8 @@ export default async function StudiesPage({ params, searchParams }: Props) {
   const { locale } = await params
   setRequestLocale(locale)
 
-  const t                  = await getTranslations('studies')
+  const t        = await getTranslations('studies')
+  const tSt      = await getTranslations('statuses')
   const { status, priority } = await searchParams
   await requireCurrentUser()
 
@@ -31,23 +32,13 @@ export default async function StudiesPage({ params, searchParams }: Props) {
     priority: priority as 'routine' | 'urgent' | 'stat' | undefined,
   })
 
-  const statusTabs = [
-    { label: t('all'),                    value: ''          },
-    { label: t('statuses', { count: 0 } as never) || 'Pending', value: 'pending'   },
-    { label: 'In Review',                 value: 'in_review' },
-    { label: 'Reported',                  value: 'reported'  },
-    { label: 'Validated',                 value: 'validated' },
-    { label: 'Cancelled',                 value: 'cancelled' },
-  ]
-
-  // Use simple status labels for tabs
   const TAB_LABELS: Record<string, string> = {
     '':          t('all'),
-    pending:     'Pending',
-    in_review:   'In Review',
-    reported:    'Reported',
-    validated:   'Validated',
-    cancelled:   'Cancelled',
+    pending:     tSt('study.pending'),
+    in_review:   tSt('study.in_review'),
+    reported:    tSt('study.reported'),
+    validated:   tSt('study.validated'),
+    cancelled:   tSt('study.cancelled'),
   }
 
   return (
@@ -55,7 +46,7 @@ export default async function StudiesPage({ params, searchParams }: Props) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-gray-500">{studies.length} found</p>
+          <p className="mt-1 text-sm text-gray-500">{t('found', { count: studies.length })}</p>
         </div>
       </div>
 
@@ -103,8 +94,16 @@ export default async function StudiesPage({ params, searchParams }: Props) {
                       </div>
                     </td>
                     <td className="px-6 py-3.5 text-gray-600 hidden sm:table-cell">{s.studyDate}</td>
-                    <td className="px-6 py-3.5"><Badge variant={studyPriorityVariant[s.priority]}>{s.priority}</Badge></td>
-                    <td className="px-6 py-3.5"><Badge variant={studyStatusVariant[s.status]}>{studyStatusLabel[s.status]}</Badge></td>
+                    <td className="px-6 py-3.5">
+                      <Badge variant={studyPriorityVariant[s.priority]}>
+                        {tSt(`priority.${s.priority}` as Parameters<typeof tSt>[0])}
+                      </Badge>
+                    </td>
+                    <td className="px-6 py-3.5">
+                      <Badge variant={studyStatusVariant[s.status]}>
+                        {tSt(`study.${s.status}` as Parameters<typeof tSt>[0])}
+                      </Badge>
+                    </td>
                     <td className="px-6 py-3.5 text-right">
                       <Link href={`/studies/${s.id}`} className="text-xs font-medium text-blue-600 hover:text-blue-700">→</Link>
                     </td>

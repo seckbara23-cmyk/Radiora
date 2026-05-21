@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useTranslations, useLocale } from 'next-intl'
 import {
   generatePatientExplanation,
   approveExplanation,
@@ -15,10 +16,10 @@ const STATUS_BADGE: Record<string, string> = {
   rejected: 'bg-red-50 text-red-700 ring-red-600/20',
 }
 
-function formatDateTime(iso: string) {
-  return new Date(iso).toLocaleString('en-US', {
+function formatDateTime(iso: string, locale: string) {
+  return new Date(iso).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US', {
     month: 'short', day: 'numeric', year: 'numeric',
-    hour: 'numeric', minute: '2-digit', hour12: true,
+    hour: 'numeric', minute: '2-digit', hour12: locale !== 'fr',
   })
 }
 
@@ -32,6 +33,8 @@ interface Props {
 export function PatientExplanationPanel({
   reportId, modality, bodyPart, initialExplanation,
 }: Props) {
+  const t      = useTranslations('patientExplanation')
+  const locale = useLocale()
   const [explanation,    setExplanation]    = useState(initialExplanation)
   const [editedText,     setEditedText]     = useState(initialExplanation?.explanationText ?? '')
   const [showRejectForm, setShowRejectForm] = useState(false)
@@ -111,7 +114,7 @@ export function PatientExplanationPanel({
 
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-          Patient Explanation
+          {t('title')}
         </h2>
         {status && (
           <span
@@ -135,10 +138,8 @@ export function PatientExplanationPanel({
               </svg>
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-700">No patient explanation yet</p>
-              <p className="mt-0.5 text-xs text-gray-400">
-                Generate a plain-language summary for the patient based on the finalized report.
-              </p>
+              <p className="text-sm font-medium text-gray-700">{t('noExplanation')}</p>
+              <p className="mt-0.5 text-xs text-gray-400">{t('generateDesc')}</p>
             </div>
             {error && <p className="text-xs text-red-600">{error}</p>}
             <button
@@ -147,7 +148,7 @@ export function PatientExplanationPanel({
               disabled={isPending}
               className="mx-auto flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold rounded-lg transition"
             >
-              {isPending ? <>{spinnerSvg} Generating…</> : 'Generate Patient Explanation'}
+              {isPending ? <>{spinnerSvg} {t('generating')}</> : t('generate')}
             </button>
           </div>
         )}
@@ -157,9 +158,7 @@ export function PatientExplanationPanel({
           <div className="p-5 space-y-4">
 
             <div className="rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800">
-              <span className="font-semibold">Clinician review required.</span>{' '}
-              Review and edit the explanation before approving. Write in plain language the patient
-              can understand. Approved explanations are read-only — use Regenerate to revise.
+              {t('clinicianReview')}
             </div>
 
             <div>
@@ -167,7 +166,7 @@ export function PatientExplanationPanel({
                 className="block text-sm font-medium text-gray-700 mb-1.5"
                 htmlFor="explanation-text"
               >
-                Explanation text
+                {t('explanationText')}
               </label>
               <textarea
                 id="explanation-text"
@@ -183,16 +182,15 @@ export function PatientExplanationPanel({
               {explanation.disclaimer}
             </div>
 
-            {/* Rejection form */}
             {showRejectForm ? (
               <div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4">
-                <p className="text-sm font-medium text-red-900">Reason for rejection *</p>
+                <p className="text-sm font-medium text-red-900">{t('rejectionReason')}</p>
                 <textarea
                   rows={2}
                   value={rejectReason}
                   onChange={(e) => setRejectReason(e.target.value)}
                   disabled={isPending}
-                  placeholder="e.g. Too technical — needs simpler language."
+                  placeholder={t('rejectPlaceholder')}
                   className="w-full rounded-lg border border-red-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-y"
                 />
                 <div className="flex items-center gap-2">
@@ -202,7 +200,7 @@ export function PatientExplanationPanel({
                     disabled={!rejectReason.trim() || isPending}
                     className="px-3 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white text-sm font-medium rounded-lg transition"
                   >
-                    {isPending ? 'Rejecting…' : 'Confirm Rejection'}
+                    {isPending ? t('rejecting') : t('confirmRejection')}
                   </button>
                   <button
                     type="button"
@@ -210,7 +208,7 @@ export function PatientExplanationPanel({
                     disabled={isPending}
                     className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition"
                   >
-                    Cancel
+                    {t('cancel')}
                   </button>
                 </div>
                 {error && <p className="text-xs text-red-700">{error}</p>}
@@ -225,7 +223,7 @@ export function PatientExplanationPanel({
                     disabled={!editedText.trim() || isPending}
                     className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold rounded-lg transition"
                   >
-                    {isPending ? 'Approving…' : 'Approve'}
+                    {isPending ? t('approving') : t('approve')}
                   </button>
                   <button
                     type="button"
@@ -233,7 +231,7 @@ export function PatientExplanationPanel({
                     disabled={isPending}
                     className="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-sm font-medium rounded-lg transition"
                   >
-                    Reject
+                    {t('reject')}
                   </button>
                   <button
                     type="button"
@@ -241,7 +239,7 @@ export function PatientExplanationPanel({
                     disabled={isPending}
                     className="px-3 py-2 text-sm text-gray-400 hover:text-gray-600 transition"
                   >
-                    {isPending ? 'Regenerating…' : 'Regenerate'}
+                    {isPending ? t('regenerating') : t('regenerate')}
                   </button>
                 </div>
               </>
@@ -255,8 +253,7 @@ export function PatientExplanationPanel({
           <div className="p-5 space-y-4">
 
             <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2.5 text-xs text-green-800">
-              Approved and ready for patient communication. Use Regenerate to create a new draft if
-              changes are needed.
+              {t('approvedReady')}
             </div>
 
             <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
@@ -269,7 +266,7 @@ export function PatientExplanationPanel({
 
             {explanation.approvedAt && (
               <p className="text-xs text-gray-400">
-                Approved {formatDateTime(explanation.approvedAt)}
+                {t('approvedAt', { date: formatDateTime(explanation.approvedAt, locale) })}
               </p>
             )}
 
@@ -281,7 +278,7 @@ export function PatientExplanationPanel({
               disabled={isPending}
               className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 bg-white hover:bg-gray-50 rounded-lg transition disabled:opacity-50"
             >
-              {isPending ? 'Regenerating…' : 'Regenerate'}
+              {isPending ? t('regenerating') : t('regenerate')}
             </button>
 
           </div>
@@ -292,9 +289,9 @@ export function PatientExplanationPanel({
           <div className="p-5 space-y-4">
 
             <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2.5 text-xs text-red-800">
-              <span className="font-semibold">Rejected.</span>
+              <span className="font-semibold">{t('rejectedTitle')}</span>
               {explanation.rejectionReason && (
-                <span> Reason: {explanation.rejectionReason}</span>
+                <span> {t('reason')}{explanation.rejectionReason}</span>
               )}
             </div>
 
@@ -304,7 +301,7 @@ export function PatientExplanationPanel({
 
             {explanation.rejectedAt && (
               <p className="text-xs text-gray-400">
-                Rejected {formatDateTime(explanation.rejectedAt)}
+                {t('rejectedAt', { date: formatDateTime(explanation.rejectedAt, locale) })}
               </p>
             )}
 
@@ -316,7 +313,7 @@ export function PatientExplanationPanel({
               disabled={isPending}
               className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-sm font-semibold rounded-lg transition"
             >
-              {isPending ? <>{spinnerSvg} Regenerating…</> : 'Generate New Explanation'}
+              {isPending ? <>{spinnerSvg} {t('regenerating')}</> : t('generateNew')}
             </button>
 
           </div>

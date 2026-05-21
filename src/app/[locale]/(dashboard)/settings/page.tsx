@@ -37,7 +37,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
               <p className="mt-0.5 text-sm text-gray-500">{t('comingSoon')}</p>
             </div>
             <button className="text-sm font-medium text-blue-600 hover:text-blue-700 transition flex-shrink-0 ml-4">
-              Configure
+              {t('configure')}
             </button>
           </div>
         ))}

@@ -6,7 +6,6 @@ import { getDashboardStats, getRecentStudies, getRecentReports } from '@/lib/dat
 import {
   Badge,
   studyStatusVariant,
-  studyStatusLabel,
   studyPriorityVariant,
   reportStatusVariant,
 } from '@/components/ui/badge'
@@ -22,6 +21,8 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
   setRequestLocale(locale)
 
   const t    = await getTranslations('dashboard')
+  const tSt  = await getTranslations('statuses')
+  const tCom = await getTranslations('common')
   const user = await requireCurrentUser()
 
   const [stats, recentStudies, recentReports] = await Promise.all([
@@ -83,7 +84,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         <div className="xl:col-span-2 bg-white rounded-xl border border-gray-200">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-gray-900">{t('recentStudies')}</h2>
-            <Link href="/studies" className="text-xs font-medium text-blue-600 hover:text-blue-700">{t('viewAll' as 'recentStudies')}</Link>
+            <Link href="/studies" className="text-xs font-medium text-blue-600 hover:text-blue-700">{tCom('viewAll')}</Link>
           </div>
           {recentStudies.length === 0 ? (
             <p className="px-6 py-8 text-sm text-gray-400 text-center">{t('noStudies')}</p>
@@ -99,8 +100,12 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                     <p className="text-xs text-gray-400 font-mono truncate">{study.accessionNumber}</p>
                   </div>
                   <span className="hidden sm:block text-xs text-gray-400 flex-shrink-0">{study.studyDate}</span>
-                  <Badge variant={studyPriorityVariant[study.priority]}>{study.priority}</Badge>
-                  <Badge variant={studyStatusVariant[study.status]}>{studyStatusLabel[study.status]}</Badge>
+                  <Badge variant={studyPriorityVariant[study.priority]}>
+                    {tSt(`priority.${study.priority}` as Parameters<typeof tSt>[0])}
+                  </Badge>
+                  <Badge variant={studyStatusVariant[study.status]}>
+                    {tSt(`study.${study.status}` as Parameters<typeof tSt>[0])}
+                  </Badge>
                   <Link href={`/studies/${study.id}`} className="text-xs font-medium text-blue-600 hover:text-blue-700 flex-shrink-0">
                     →
                   </Link>
@@ -114,7 +119,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         <div className="bg-white rounded-xl border border-gray-200">
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-gray-900">{t('recentReports')}</h2>
-            <Link href="/reports" className="text-xs font-medium text-blue-600 hover:text-blue-700">{t('viewAll' as 'recentStudies')}</Link>
+            <Link href="/reports" className="text-xs font-medium text-blue-600 hover:text-blue-700">{tCom('viewAll')}</Link>
           </div>
           {recentReports.length === 0 ? (
             <p className="px-6 py-8 text-sm text-gray-400 text-center">{t('noReports')}</p>
@@ -129,7 +134,7 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
                       <p className="text-xs text-gray-400 mt-0.5">{report.updatedAt.slice(0, 10)}</p>
                     </div>
                     <Badge variant={reportStatusVariant[report.status]}>
-                      {report.status.replace('_', ' ')}
+                      {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
                     </Badge>
                   </Link>
                 </li>

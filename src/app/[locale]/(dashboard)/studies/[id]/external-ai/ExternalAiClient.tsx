@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslations } from 'next-intl'
 import { ImportForm } from './ImportForm'
 import { ResultCard } from './ResultCard'
 import type { ExternalAiResult, ExternalAiFinding, ExternalAiResultWithFindings } from '@/lib/data/external-ai'
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export function ExternalAiClient({ studyId, reportId, canManage, initialData }: Props) {
+  const t = useTranslations('externalAi')
   const [resultList, setResultList] = useState<ExternalAiResultWithFindings[]>(initialData)
 
   function handleImported(result: ExternalAiResult, findings: ExternalAiFinding[]) {
@@ -36,9 +38,9 @@ export function ExternalAiClient({ studyId, reportId, canManage, initialData }: 
 
       {resultList.length === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white px-6 py-16 text-center">
-          <p className="text-sm text-gray-500">No external AI results imported for this study yet.</p>
+          <p className="text-sm text-gray-500">{t('noResults')}</p>
           {canManage && (
-            <p className="text-xs text-gray-400 mt-1">Use "Import External AI Result" above to add one.</p>
+            <p className="text-xs text-gray-400 mt-1">{t('addHint')}</p>
           )}
         </div>
       ) : (
