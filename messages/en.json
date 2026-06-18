@@ -772,5 +772,12 @@
       "medium": "Medium confidence",
       "low": "Low confidence"
     }
+  },
+  "queueReport": {
+    "title": "Report",
+    "noReportHint": "No report is linked to this exam yet.",
+    "create": "Create report",
+    "creating": "Creating…",
+    "confirmPatient": "Confirm the patient identity (section above) before creating the report."
   }
 }

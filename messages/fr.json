@@ -772,5 +772,12 @@
       "medium": "Confiance moyenne",
       "low": "Confiance faible"
     }
+  },
+  "queueReport": {
+    "title": "Compte rendu",
+    "noReportHint": "Aucun compte rendu nest encore associé à cet examen.",
+    "create": "Créer le compte rendu",
+    "creating": "Création…",
+    "confirmPatient": "Confirmez dabord lidentité du patient (section ci-dessus) avant de créer le compte rendu."
   }
 }

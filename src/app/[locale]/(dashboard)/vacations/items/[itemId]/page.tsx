@@ -15,6 +15,7 @@ import { ConnectMobileDictation } from './ConnectMobileDictation'
 import { TranscriptionEditor } from './TranscriptionEditor'
 import { PatientMatchControl } from './PatientMatchControl'
 import { StructuringReview } from './StructuringReview'
+import { CreateReportFromQueue } from './CreateReportFromQueue'
 import type { UserRole } from '@/types/user'
 import type { StructuringResult } from '@/types/structuring'
 
@@ -139,6 +140,11 @@ export default async function ItemWorkspacePage({ params }: Props) {
           <p className="text-sm text-gray-400">{t('noTranscriptYet')}</p>
         )}
       </section>
+
+      {/* Create report from queue (Feature 8) — only when none is linked yet */}
+      {canManage && !item.reportId && (
+        <CreateReportFromQueue itemId={item.id} hasPatient={Boolean(item.patientId)} />
+      )}
 
       {/* AI structuring (Feature 7) */}
       {(canManage || initialStructuring) && (
