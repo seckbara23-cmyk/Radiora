@@ -12,6 +12,7 @@ export type IconName =
   | 'templates'
   | 'analytics'
   | 'critical'
+  | 'vacations'
 
 export interface NavItem {
   label: string
@@ -34,6 +35,12 @@ export const navigation: NavGroup[] = [
       { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
       { label: 'Patients',  href: '/patients',  icon: 'patients'  },
       { label: 'Studies',   href: '/studies',   icon: 'studies'   },
+      {
+        label: 'Vacation Queue',
+        href: '/vacations',
+        icon: 'vacations',
+        roles: ['clinic_admin', 'radiologist', 'secretary', 'technician', 'super_admin'],
+      },
       { label: 'Reports',   href: '/reports',   icon: 'reports'   },
       { label: 'Settings',  href: '/settings',  icon: 'settings'  },
       {

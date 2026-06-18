@@ -87,6 +87,13 @@ const icons: Record<IconName, React.ReactNode> = {
       />
     </svg>
   ),
+  vacations: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M19 11a7 7 0 01-14 0m7 7v3m0-3a4 4 0 01-4-4V7a4 4 0 118 0v4a4 4 0 01-4 4z"
+      />
+    </svg>
+  ),
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

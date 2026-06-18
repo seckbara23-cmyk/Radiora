@@ -39,6 +39,7 @@ import type { ReportStatus } from '@/types/report'
 import type { PatientStatus } from '@/types/patient'
 import type { ClinicStatus } from '@/types/clinic'
 import type { UserRole } from '@/types/user'
+import type { VacationWorkflowStatus } from '@/types/vacation'
 
 export const studyStatusVariant: Record<StudyStatus, BadgeVariant> = {
   pending:   'warning',
@@ -79,6 +80,7 @@ export const userRoleLabel: Record<UserRole, string> = {
   super_admin:          'Super Admin',
   clinic_admin:         'Admin',
   radiologist:          'Radiologist',
+  secretary:            'Secretary',
   technician:           'Technician',
   referring_physician:  'Referring Physician',
   viewer:               'Viewer',
@@ -88,7 +90,19 @@ export const userRoleVariant: Record<UserRole, BadgeVariant> = {
   super_admin:         'danger',
   clinic_admin:        'purple',
   radiologist:         'info',
+  secretary:           'success',
   technician:          'neutral',
   referring_physician: 'warning',
   viewer:              'neutral',
+}
+
+export const vacationWorkflowVariant: Record<VacationWorkflowStatus, BadgeVariant> = {
+  audio_received:     'neutral',
+  transcribing:       'info',
+  secretary_review:   'warning',
+  radiologist_review: 'warning',
+  validated:          'info',
+  signed:             'success',
+  printed:            'purple',
+  exported:           'success',
 }

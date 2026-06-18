@@ -3,6 +3,7 @@ export type UserRole =
   | 'super_admin'          // Platform-level — cross-clinic access
   | 'clinic_admin'         // Clinic-level management
   | 'radiologist'          // Creates and signs reports
+  | 'secretary'            // Uploads/matches audio, reviews transcription, routes to radiologist
   | 'technician'           // Uploads and manages studies
   | 'referring_physician'  // Read-only access to own patients
   | 'viewer'               // Read-only observer
