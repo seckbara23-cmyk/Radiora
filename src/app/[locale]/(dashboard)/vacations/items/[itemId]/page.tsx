@@ -11,6 +11,7 @@ import {
 } from '@/lib/data/audio'
 import { Badge, vacationWorkflowVariant } from '@/components/ui/badge'
 import { AudioUploader } from './AudioUploader'
+import { ConnectMobileDictation } from './ConnectMobileDictation'
 import { TranscriptionEditor } from './TranscriptionEditor'
 import { PatientMatchControl } from './PatientMatchControl'
 import type { UserRole } from '@/types/user'
@@ -89,7 +90,15 @@ export default async function ItemWorkspacePage({ params }: Props) {
             )}
           </div>
         ) : canManage ? (
-          <AudioUploader vacationItemId={item.id} vacationId={item.vacationId} />
+          <div className="space-y-4">
+            <AudioUploader vacationItemId={item.id} vacationId={item.vacationId} />
+            <div className="flex items-center gap-3 text-xs text-gray-400">
+              <span className="h-px flex-1 bg-gray-200" />
+              {t('or')}
+              <span className="h-px flex-1 bg-gray-200" />
+            </div>
+            <ConnectMobileDictation itemId={item.id} />
+          </div>
         ) : (
           <p className="text-sm text-gray-400">{t('noAudioYet')}</p>
         )}
