@@ -24,6 +24,25 @@ import { getTranslationByReport, getTranslationByExplanation } from '@/lib/data/
 
 type Props = { params: Promise<{ id: string; locale: string }> }
 
+// French sex labels for the HPD document header.
+const SEX_FR: Record<string, string> = {
+  male:    'Masculin',
+  female:  'Féminin',
+  other:   'Autre',
+  unknown: '',
+}
+
+function computeAge(dob: string | undefined): string {
+  if (!dob) return ''
+  const birth = new Date(dob)
+  if (Number.isNaN(birth.getTime())) return ''
+  const now = new Date()
+  let age = now.getFullYear() - birth.getFullYear()
+  const m = now.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--
+  return age >= 0 ? `${age} ans` : ''
+}
+
 export default async function ReportPage({ params }: Props) {
   const { id, locale } = await params
   setRequestLocale(locale)
@@ -119,6 +138,12 @@ export default async function ReportPage({ params }: Props) {
         modality={study?.modality ?? null}
         bodyPart={study?.bodyPart ?? null}
         initialPhrases={initialPhrases}
+        patientInfo={{
+          name: patient ? `${patient.lastName.toUpperCase()} ${patient.firstName}`.trim() : '',
+          age:  computeAge(patient?.dateOfBirth),
+          sex:  patient ? (SEX_FR[patient.sex] ?? '') : '',
+        }}
+        examDate={study?.studyDate ?? report.createdAt.slice(0, 10)}
       />
 
       <VersionHistory versions={versions} />

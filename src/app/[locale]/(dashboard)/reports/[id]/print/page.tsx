@@ -136,7 +136,7 @@ export default async function ReportPrintPage({ params }: Props) {
             )}
             {sd.conclusion && (
               <div className="section">
-                <div className="section-label">EN CONCLUSION :</div>
+                <div className="section-label">CONCLUSION :</div>
                 <div className="section-body">{sd.conclusion}</div>
               </div>
             )}
@@ -157,7 +157,7 @@ export default async function ReportPrintPage({ params }: Props) {
             )}
             {report.impression && (
               <div className="section">
-                <div className="section-label">EN CONCLUSION :</div>
+                <div className="section-label">CONCLUSION :</div>
                 <div className="section-body">{report.impression}</div>
               </div>
             )}

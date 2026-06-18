@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useRef, useActionState } from 'react'
+import React, { useState, useRef, useEffect, useActionState } from 'react'
 import { useTranslations } from 'next-intl'
 import { handleReportForm } from '@/lib/actions/reports'
 import { SmartStructuringPanel } from './SmartStructuringPanel'
@@ -17,6 +17,12 @@ const textareaCls =
 const selectCls =
   'rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50'
 
+interface PatientInfo {
+  name: string
+  age:  string
+  sex:  string
+}
+
 interface Props {
   report:         Report
   canWrite:       boolean
@@ -25,46 +31,89 @@ interface Props {
   modality:       string | null
   bodyPart:       string | null
   initialPhrases: UserPhrasePreference[]
+  patientInfo:    PatientInfo
+  examDate:       string
 }
 
-// ─── Section editor ───────────────────────────────────────────────────────────
+// ─── Live document editor ─────────────────────────────────────────────────────
+// Renders the report as an editable radiology document (HPD format) rather than
+// a set of form fields. Editable text blends into the document and auto-grows;
+// on focus it highlights so the radiologist sees where they are typing.
 
-function HpdSectionRow({
-  label, value, onChange, disabled, placeholder, rows, required, suggestions,
+function AutoTextarea({
+  value, onChange, disabled, placeholder, ariaLabel,
+}: {
+  value: string
+  onChange: (v: string) => void
+  disabled: boolean
+  placeholder: string
+  ariaLabel: string
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [value])
+
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      disabled={disabled}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      spellCheck={false}
+      className="w-full bg-transparent resize-none overflow-hidden outline-none rounded px-1.5 -mx-1.5 py-0.5 text-[13.5px] leading-[1.75] text-justify text-gray-800 placeholder:text-gray-300 placeholder:text-left disabled:text-gray-700 disabled:cursor-default focus:bg-blue-50/50 transition-colors"
+    />
+  )
+}
+
+function PatientField({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex gap-1.5">
+      <span className="font-bold text-slate-600">{label} :</span>
+      <span className="text-slate-800">{value || '—'}</span>
+    </div>
+  )
+}
+
+function DocSection({
+  label, value, onChange, disabled, placeholder, ariaLabel, required, suggestions,
 }: {
   label: string
   value: string
   onChange: (v: string) => void
   disabled: boolean
   placeholder: string
-  rows: number
+  ariaLabel: string
   required?: boolean
   suggestions?: React.ReactNode
 }) {
   return (
-    <div>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-[11px] font-bold tracking-[0.15em] text-slate-600 uppercase select-none">
-          {label}
-          {required && <span className="text-red-500 ml-0.5">*</span>}
-        </span>
-        <div className="flex-1 h-px bg-slate-200" />
-      </div>
-      {suggestions}
-      <textarea
-        rows={rows}
+    <section className="mb-5">
+      <h3 className="text-[12px] font-bold tracking-[0.1em] text-slate-900 uppercase underline underline-offset-[5px] decoration-slate-400 mb-1.5">
+        {label}
+        {required && <span className="text-red-500 ml-0.5 no-underline">*</span>}
+      </h3>
+      {suggestions && <div className="font-sans">{suggestions}</div>}
+      <AutoTextarea
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
         disabled={disabled}
         placeholder={placeholder}
-        className={textareaCls}
+        ariaLabel={ariaLabel}
       />
-    </div>
+    </section>
   )
 }
 
 function StructuredEditor({
-  draft, disabled, onChange, t, phrases, reportId,
+  draft, disabled, onChange, t, phrases, reportId, examDate,
 }: {
   draft:    StructuredReportData
   disabled: boolean
@@ -72,6 +121,7 @@ function StructuredEditor({
   t:        ReturnType<typeof useTranslations>
   phrases:  UserPhrasePreference[]
   reportId: string
+  examDate: string
 }) {
   const phrasesBySection = React.useMemo(() => {
     const map: Record<string, UserPhrasePreference[]> = {}
@@ -82,117 +132,121 @@ function StructuredEditor({
     return map
   }, [phrases])
 
+  const p = draft.patient
+
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {/* Exam title header */}
-      <div className="bg-slate-800 text-white px-6 py-4 text-center">
-        <p className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-medium mb-1">
-          Compte Rendu Radiologique
-        </p>
-        <h2 className="text-base font-bold tracking-[0.1em] uppercase">
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      {/* ── Document paper ── */}
+      <div className="px-6 md:px-12 py-9 font-serif">
+
+        {/* Header band */}
+        <div className="flex items-end justify-between border-b-2 border-slate-900 pb-2.5 mb-5">
+          <div>
+            <p className="text-[13px] font-bold uppercase tracking-wide text-slate-900">
+              {t('docHeaderTitle')}
+            </p>
+            <p className="text-[10px] text-slate-500 mt-0.5">{t('docHeaderDept')}</p>
+          </div>
+          {!disabled && (
+            <span className="font-sans text-[10px] font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5">
+              {t('docEditable')}
+            </span>
+          )}
+        </div>
+
+        {/* Patient box */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1 border border-slate-300 rounded px-4 py-2.5 mb-6 text-[11px]">
+          <PatientField label={t('docPatientName')} value={p.name} />
+          <PatientField label={t('docDate')}        value={examDate} />
+          <PatientField label={t('docAge')}         value={p.age} />
+          <PatientField label={t('docSex')}         value={p.sex} />
+        </div>
+
+        {/* Exam title */}
+        <h2 className="text-center text-[15px] font-bold uppercase tracking-[0.07em] underline underline-offset-[6px] decoration-2 text-slate-900 mb-7">
           {draft.examTitle}
         </h2>
-        {(draft.patient.name && draft.patient.name !== '—') && (
-          <p className="mt-1.5 text-xs text-slate-400">
-            {draft.patient.name}
-            {draft.patient.age && draft.patient.age !== '—' ? ` · ${draft.patient.age}` : ''}
-            {draft.patient.sex && draft.patient.sex !== '—' ? ` · ${draft.patient.sex}` : ''}
-          </p>
-        )}
-      </div>
 
-      <div className="p-6 space-y-5">
-        {/* INDICATION — phrase suggestions enabled (not diagnostic content) */}
-        <HpdSectionRow
+        {/* INDICATION — phrasing preferences allowed (non-diagnostic) */}
+        <DocSection
           label={t('indicationLabel')}
           value={draft.indication}
           onChange={(v) => onChange('indication', v)}
           disabled={disabled}
           placeholder={t('indicationPlaceholder')}
-          rows={3}
+          ariaLabel={t('indicationLabel')}
           suggestions={
             <SectionSuggestions
-              section="indication"
-              examType={draft.examType}
-              reportId={reportId}
-              currentText={draft.indication}
-              phrases={phrasesBySection['indication'] ?? []}
-              onApply={(v) => onChange('indication', v)}
-              disabled={disabled}
+              section="indication" examType={draft.examType} reportId={reportId}
+              currentText={draft.indication} phrases={phrasesBySection['indication'] ?? []}
+              onApply={(v) => onChange('indication', v)} disabled={disabled}
             />
           }
         />
-        {/* TECHNIQUE — phrase suggestions enabled (pure protocol text, no diagnostics) */}
-        <HpdSectionRow
+        {/* TECHNIQUE — phrasing preferences allowed (pure protocol text) */}
+        <DocSection
           label={t('techniqueLabel')}
           value={draft.technique}
           onChange={(v) => onChange('technique', v)}
           disabled={disabled}
           placeholder={t('techniquePlaceholder')}
-          rows={3}
+          ariaLabel={t('techniqueLabel')}
           suggestions={
             <SectionSuggestions
-              section="technique"
-              examType={draft.examType}
-              reportId={reportId}
-              currentText={draft.technique}
-              phrases={phrasesBySection['technique'] ?? []}
-              onApply={(v) => onChange('technique', v)}
-              disabled={disabled}
+              section="technique" examType={draft.examType} reportId={reportId}
+              currentText={draft.technique} phrases={phrasesBySection['technique'] ?? []}
+              onApply={(v) => onChange('technique', v)} disabled={disabled}
             />
           }
         />
-        {/* RÉSULTATS — NO phrase suggestions. Diagnostic content must be typed by the physician. */}
-        <HpdSectionRow
+        {/* RÉSULTATS — NO phrasing preferences. Diagnostic content typed by the physician. */}
+        <DocSection
           label={t('resultsLabel')}
           value={draft.results}
           onChange={(v) => onChange('results', v)}
           disabled={disabled}
           placeholder={t('resultsPlaceholder')}
-          rows={9}
+          ariaLabel={t('resultsLabel')}
           required
         />
-        {/* EN CONCLUSION — phrase suggestions for phrasing/opener only */}
-        <HpdSectionRow
+        {/* CONCLUSION — phrasing preferences for openers only */}
+        <DocSection
           label={t('conclusionLabel')}
           value={draft.conclusion}
           onChange={(v) => onChange('conclusion', v)}
           disabled={disabled}
           placeholder={t('conclusionPlaceholder')}
-          rows={4}
+          ariaLabel={t('conclusionLabel')}
           required
           suggestions={
             <SectionSuggestions
-              section="conclusion"
-              examType={draft.examType}
-              reportId={reportId}
-              currentText={draft.conclusion}
-              phrases={phrasesBySection['conclusion'] ?? []}
-              onApply={(v) => onChange('conclusion', v)}
-              disabled={disabled}
+              section="conclusion" examType={draft.examType} reportId={reportId}
+              currentText={draft.conclusion} phrases={phrasesBySection['conclusion'] ?? []}
+              onApply={(v) => onChange('conclusion', v)} disabled={disabled}
             />
           }
         />
-        {/* RECOMMANDATIONS — phrase suggestions enabled */}
-        <HpdSectionRow
+        {/* RECOMMANDATIONS — optional; phrasing preferences allowed */}
+        <DocSection
           label={t('recommendationsLabel')}
           value={draft.recommendations ?? ''}
           onChange={(v) => onChange('recommendations', v)}
           disabled={disabled}
           placeholder={t('recommendationsPlaceholder')}
-          rows={2}
+          ariaLabel={t('recommendationsLabel')}
           suggestions={
             <SectionSuggestions
-              section="recommendations"
-              examType={draft.examType}
-              reportId={reportId}
-              currentText={draft.recommendations ?? ''}
-              phrases={phrasesBySection['recommendations'] ?? []}
-              onApply={(v) => onChange('recommendations', v)}
-              disabled={disabled}
+              section="recommendations" examType={draft.examType} reportId={reportId}
+              currentText={draft.recommendations ?? ''} phrases={phrasesBySection['recommendations'] ?? []}
+              onApply={(v) => onChange('recommendations', v)} disabled={disabled}
             />
           }
         />
+
+        {/* Signature line */}
+        <div className="mt-8 pt-3 text-right text-[12px] text-slate-700">
+          <span className="font-bold">{t('docSignature')}</span>
+        </div>
       </div>
     </div>
   )
@@ -252,16 +306,37 @@ function LegacyEditor({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReportEditor({ report, canWrite, canAmend, templates, modality, bodyPart, initialPhrases }: Props) {
+export function ReportEditor({ report, canWrite, canAmend, templates, modality, bodyPart, initialPhrases, patientInfo, examDate }: Props) {
   const t = useTranslations('reportEditor')
 
   const isFinalized = report.status === 'finalized'
   const isEditable  = !isFinalized && canWrite
 
-  // Structured mode
-  const [structuredDraft, setStructuredDraft] = useState<StructuredReportData | null>(
-    report.structuredData ?? null,
+  // Does this report carry pre-existing legacy content (created before the HPD workflow)?
+  const hasLegacyContent = Boolean(
+    report.findings?.trim() || report.impression?.trim() || (report.recommendations ?? '').trim(),
   )
+
+  // Default reporting experience = HPD structured workflow.
+  //  - Report already has structured data  → open it structured.
+  //  - Legacy report with content, no JSON  → keep the legacy editor (migration path).
+  //  - New / empty report                   → start a fresh HPD document in French.
+  const [structuredDraft, setStructuredDraft] = useState<StructuredReportData | null>(() => {
+    if (report.structuredData) return report.structuredData
+    if (hasLegacyContent)      return null
+    const { examType, examTitle } = buildExamInfo(modality, bodyPart)
+    return {
+      language:        'fr',
+      examType,
+      examTitle,
+      patient:         { name: patientInfo.name, age: patientInfo.age, sex: patientInfo.sex },
+      indication:      '',
+      technique:       buildDefaultTechnique(modality),
+      results:         '',
+      conclusion:      '',
+      recommendations: undefined,
+    }
+  })
 
   // Legacy fields — kept in sync with structured mode for backward compat
   const [findings,        setFindings]        = useState(report.findings)
@@ -307,7 +382,7 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
       language:        'fr',
       examType,
       examTitle,
-      patient:         { name: '', age: '', sex: '' },
+      patient:         { name: patientInfo.name, age: patientInfo.age, sex: patientInfo.sex },
       indication:      '',
       technique:       buildDefaultTechnique(modality),
       results:         findings,
@@ -410,6 +485,7 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
           t={t}
           phrases={initialPhrases}
           reportId={report.id}
+          examDate={examDate}
         />
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
