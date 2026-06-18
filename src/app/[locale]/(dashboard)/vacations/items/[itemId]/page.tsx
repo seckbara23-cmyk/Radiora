@@ -3,6 +3,8 @@ import { notFound, redirect } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getQueueItem } from '@/lib/data/vacations'
+import { getReport } from '@/lib/data/reports'
+import { getReportSections, type SectionTextMap } from '@/lib/safety/sections'
 import {
   getAudioAsset,
   getTranscription,
@@ -40,11 +42,23 @@ export default async function ItemWorkspacePage({ params }: Props) {
 
   const canManage = MANAGE_ROLES.includes(user.role)
 
-  const [asset, transcription, patients] = await Promise.all([
+  const [asset, transcription, patients, linkedReport] = await Promise.all([
     item.audioAssetId ? getAudioAsset(item.audioAssetId) : Promise.resolve(null),
     getTranscription(itemId),
     canManage ? getClinicPatients() : Promise.resolve([]),
+    item.reportId ? getReport(item.reportId) : Promise.resolve(null),
   ])
+
+  // Current state of the linked report — the 4th comparison column in the
+  // side-by-side safety review (raw / cleaned / structured / current report).
+  const finalSections: SectionTextMap | null = linkedReport
+    ? getReportSections({
+        structuredData:  linkedReport.structuredData ?? null,
+        findings:        linkedReport.findings,
+        impression:      linkedReport.impression,
+        recommendations: linkedReport.recommendations ?? null,
+      })
+    : null
 
   const audioUrl = asset ? await createSignedAudioUrl(asset.storagePath) : null
   const transcriptText = transcription?.correctedText || transcription?.rawText || ''
@@ -155,6 +169,7 @@ export default async function ItemWorkspacePage({ params }: Props) {
           hasTranscript={Boolean(transcriptText)}
           hasReport={Boolean(item.reportId)}
           initial={initialStructuring}
+          finalSections={finalSections}
         />
       )}
 

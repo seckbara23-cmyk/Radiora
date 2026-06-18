@@ -5,6 +5,9 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
+import { canSignReports } from '@/lib/safety/authority'
+import { evaluateSigningReadiness, describeBlockers } from '@/lib/safety/signing-gate'
+import { getReportSafetyContext } from '@/lib/data/safety'
 import type { StructuredReportData } from '@/types/report'
 
 export type FormState = { error: string | null; saved?: boolean }
@@ -29,19 +32,29 @@ async function createVersion(
     recommendations: string | null
     status: string
     createdBy: string
+    /** What triggered the snapshot: saved | finalized | amended. */
+    action?: string
     changeReason?: string | null
   }
 ): Promise<void> {
   try {
-    const { data: maxRow } = await supabase
+    // Fetch the latest version both for numbering and to compute a diff.
+    const { data: prev } = await supabase
       .from('report_versions')
-      .select('version_number')
+      .select('version_number, findings, impression, recommendations')
       .eq('report_id', opts.reportId)
       .order('version_number', { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    const versionNumber = ((maxRow?.version_number as number | null) ?? 0) + 1
+    const versionNumber = ((prev?.version_number as number | null) ?? 0) + 1
+
+    // Diff metadata: which clinical sections changed since the previous snapshot.
+    const changed: string[] = []
+    if ((prev?.findings as string | null ?? '')        !== opts.findings)              changed.push('results')
+    if ((prev?.impression as string | null ?? '')      !== opts.impression)            changed.push('conclusion')
+    if ((prev?.recommendations as string | null ?? '') !== (opts.recommendations ?? '')) changed.push('recommendations')
+    const diff = { changedSections: prev ? changed : ['results', 'conclusion', 'recommendations'], previousVersion: (prev?.version_number as number | null) ?? null }
 
     await supabase.from('report_versions').insert({
       report_id:       opts.reportId,
@@ -52,6 +65,8 @@ async function createVersion(
       recommendations: opts.recommendations,
       status:          opts.status,
       created_by:      opts.createdBy,
+      action:          opts.action ?? null,
+      diff,
       change_reason:   opts.changeReason ?? null,
     })
   } catch {
@@ -168,6 +183,7 @@ export async function saveDraftReport(
     recommendations,
     status:          existing.status as string,
     createdBy:       user.id,
+    action:          'saved',
   })
 
   await logAudit({
@@ -188,8 +204,10 @@ export async function finalizeReport(
 ): Promise<FormState> {
   const user = await requireCurrentUser()
 
-  if (!REPORT_WRITE_ROLES.includes(user.role as WriteRole)) {
-    return { error: 'You do not have permission to finalize reports.' }
+  // Only a radiologist may validate and sign. clinic_admin/super_admin have no
+  // clinical signing authority by default — see canSignReports().
+  if (!canSignReports(user.role)) {
+    return { error: 'Only a radiologist can validate and sign reports.' }
   }
 
   const id              = ((formData.get('id')              as string) ?? '').trim()
@@ -201,12 +219,25 @@ export async function finalizeReport(
 
   if (!id || !studyId) return { error: 'Missing required fields.' }
 
-  // Validate required sections — structured mode maps results → findings, conclusion → impression
-  const effectiveFindings   = structuredData ? structuredData.results    : findings
-  const effectiveConclusion = structuredData ? structuredData.conclusion : impression
+  // ── Signing gate ────────────────────────────────────────────────────────────
+  // Block signing if any required section is empty, assesses to LOW confidence,
+  // or has an unresolved AI review flag. The gate evaluates current content, so
+  // the radiologist resolves a flag by writing adequate content.
+  const contentInput = { structuredData, findings, impression, recommendations }
+  const safety = await getReportSafetyContext(id)
+  const readiness = evaluateSigningReadiness({
+    ...contentInput,
+    aiConfidence: safety?.aiConfidence ?? null,
+  })
 
-  if (!effectiveFindings)   return { error: 'Résultats (Findings) are required before finalizing.' }
-  if (!effectiveConclusion) return { error: 'Conclusion is required before finalizing.' }
+  if (!readiness.canSign) {
+    await logAudit({
+      userId: user.id, clinicId: user.clinicId,
+      action: 'report.signing_blocked', entityType: 'report', entityId: id,
+      metadata: { blockers: readiness.blockers },
+    })
+    return { error: describeBlockers(readiness.blockers) }
+  }
 
   const supabase = await createClient()
 
@@ -250,12 +281,13 @@ export async function finalizeReport(
     recommendations,
     status:          'finalized',
     createdBy:       user.id,
+    action:          'signed',
   })
 
   await logAudit({
     userId: user.id, clinicId: user.clinicId,
     action: 'report.finalized', entityType: 'report', entityId: id,
-    metadata: { studyId, structured: !!structuredData },
+    metadata: { studyId, structured: !!structuredData, signed: true, signedBy: user.id },
   })
 
   revalidatePath(`/reports/${id}`)
@@ -301,6 +333,7 @@ export async function amendReport(
     recommendations: (current.recommendations as string | null) ?? null,
     status:          'finalized',
     createdBy:       user.id,
+    action:          'amended',
     changeReason,
   })
 

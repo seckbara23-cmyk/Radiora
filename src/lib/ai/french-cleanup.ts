@@ -10,6 +10,7 @@
 // expandable. This engine is purely local — no model, no network.
 
 import { findMedicalCorrections, applyAllCorrections } from '@/lib/ai/voice-corrections'
+import { lostUncertaintyTerms } from '@/lib/ai/uncertainty'
 import type { RemovedToken } from '@/types/structuring'
 
 interface FillerRule {
@@ -99,6 +100,19 @@ export function cleanupFrench(input: string): { cleaned: string; removed: Remove
 
   // 5. Ensure the text ends on a terminator if it has content.
   if (text && !/[.!?]$/.test(text)) text += '.'
+
+  // 6. Safety net (F10): cleanup must NEVER drop medical uncertainty. If any
+  //    protected hedge present in the input is missing from the result, fall
+  //    back to a minimal pass (terminology + tidy only, no filler/repetition
+  //    removal). If even that loses a term, keep the raw input verbatim.
+  //    Preserving meaning always wins over tidiness.
+  if (lostUncertaintyTerms(input, text).length > 0) {
+    const safe = capitalizeSentences(tidy(corrections.length ? applyAllCorrections(input, findMedicalCorrections(input)) : input))
+    if (lostUncertaintyTerms(input, safe).length === 0) {
+      return { cleaned: safe, removed: [] }
+    }
+    return { cleaned: input.trim(), removed: [] }
+  }
 
   return { cleaned: text, removed }
 }

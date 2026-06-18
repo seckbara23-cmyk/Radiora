@@ -14,8 +14,10 @@ import {
   studyPriorityVariant,
   studyStatusVariant,
 } from '@/components/ui/badge'
+import { getReportSafetyContext } from '@/lib/data/safety'
 import { ReportEditor } from './ReportEditor'
 import { ReportExportActions } from './ReportExportActions'
+import { SafetyReviewPanel } from './SafetyReviewPanel'
 import { VersionHistory } from './VersionHistory'
 import { PatientExplanationPanel } from './PatientExplanationPanel'
 import { ReportTranslationPanel } from './ReportTranslationPanel'
@@ -61,9 +63,10 @@ export default async function ReportPage({ params }: Props) {
     getReportVersions(id),
   ])
 
-  const [templates, initialPhrases] = await Promise.all([
+  const [templates, initialPhrases, safetyContext] = await Promise.all([
     getTemplates({ activeOnly: true, modality: study?.modality }),
     getUserPhrases({ examType: report.examType ?? undefined }),
+    getReportSafetyContext(id),
   ])
 
   const canWrite  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
@@ -147,6 +150,10 @@ export default async function ReportPage({ params }: Props) {
         }}
         examDate={study?.studyDate ?? report.createdAt.slice(0, 10)}
       />
+
+      {canReview && !isFinalized && (
+        <SafetyReviewPanel report={report} safety={safetyContext} />
+      )}
 
       <VersionHistory versions={versions} />
 

@@ -790,5 +790,27 @@
     "batchExport": "Exporter la sélection ({count})",
     "selectAll": "Tout sélectionner",
     "allStatuses": "Tous les statuts"
+  },
+  "safety": {
+    "title": "Contrôle de sécurité avant signature",
+    "subtitle": "Le radiologue reste l'autorité médicale finale. L'IA assiste mais ne valide jamais.",
+    "ready": "Prêt pour la validation et la signature.",
+    "blockedTitle": "Signature impossible",
+    "warningsTitle": "Avertissements cliniques",
+    "disclaimer": "Ces contrôles assistent le radiologue ; ils ne remplacent pas la relecture clinique. Aucun contenu n'est modifié automatiquement.",
+    "blocker": {
+      "empty_section": "{section} manquante",
+      "low_confidence": "{section} insuffisante (confiance faible)",
+      "review_required": "{section} à revérifier"
+    },
+    "warning": {
+      "empty_required_section": "Section requise vide : {detail}",
+      "measurement_in_conclusion_not_in_results": "Mesure dans la CONCLUSION absente des RÉSULTATS : {detail}",
+      "finding_in_conclusion_not_in_results": "Élément de la CONCLUSION non retrouvé dans les RÉSULTATS : {detail}",
+      "low_confidence_section": "Section à confiance faible : {section}",
+      "unresolved_review": "Section à revérifier : {section}",
+      "heavy_cleanup_drift": "Nettoyage important du transcript ({detail} supprimé) — vérifier le sens"
+    },
+    "columnFinal": "Compte rendu actuel"
   }
 }

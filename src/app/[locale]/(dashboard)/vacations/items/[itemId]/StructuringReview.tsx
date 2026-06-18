@@ -6,6 +6,7 @@ import { useRouter } from '@/i18n/navigation'
 import { structureTranscript, acceptStructuredReport } from '@/lib/actions/structuring'
 import type { StructuringResult, SectionConfidence, StructuredSectionKey, Confidence } from '@/types/structuring'
 import type { StructuredReportData } from '@/types/report'
+import type { SectionTextMap } from '@/lib/safety/sections'
 
 interface Props {
   itemId:      string
@@ -15,6 +16,8 @@ interface Props {
   hasReport:     boolean
   /** Stored result from a previous run, if any. */
   initial:      StructuringResult | null
+  /** Current state of the linked report — the 4th side-by-side column (F10 #7). */
+  finalSections?: SectionTextMap | null
 }
 
 const SECTION_ORDER: StructuredSectionKey[] = ['indication', 'technique', 'results', 'conclusion', 'recommendations']
@@ -35,8 +38,9 @@ function sectionText(data: StructuredReportData, key: StructuredSectionKey): str
   }
 }
 
-export function StructuringReview({ itemId, canStructure, canAccept, hasTranscript, hasReport, initial }: Props) {
+export function StructuringReview({ itemId, canStructure, canAccept, hasTranscript, hasReport, initial, finalSections }: Props) {
   const t = useTranslations('structuring')
+  const ts = useTranslations('safety')
   const router = useRouter()
   const [result, setResult] = useState<StructuringResult | null>(initial)
   const [error, setError]   = useState<string | null>(null)
@@ -99,8 +103,8 @@ export function StructuringReview({ itemId, canStructure, canAccept, hasTranscri
             </div>
           )}
 
-          {/* 3-column side-by-side */}
-          <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+          {/* Side-by-side: raw / cleaned / structured (+ current report when linked) */}
+          <div className={`mt-4 grid grid-cols-1 gap-3 ${finalSections ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
             {/* LEFT — raw */}
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">{t('columnRaw')}</h3>
@@ -157,6 +161,29 @@ export function StructuringReview({ itemId, canStructure, canAccept, hasTranscri
                 })}
               </div>
             </div>
+
+            {/* FAR RIGHT — current linked report (F10 #7 safety review) */}
+            {finalSections && (
+              <div className="rounded-lg border border-blue-200 bg-blue-50/40 p-3">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-blue-600">{ts('columnFinal')}</h3>
+                <div className="mt-2 space-y-3">
+                  {SECTION_ORDER.map((key) => {
+                    const value = finalSections[key] ?? ''
+                    if (key === 'recommendations' && !value) return null
+                    return (
+                      <div key={key}>
+                        <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                          {t(`sections.${key}` as Parameters<typeof t>[0])}
+                        </span>
+                        <p className="mt-1 whitespace-pre-wrap text-xs leading-relaxed text-gray-700">
+                          {value || <span className="italic text-gray-400">{t('empty')}</span>}
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Self-correction audit trail */}

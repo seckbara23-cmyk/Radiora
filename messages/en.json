@@ -790,5 +790,27 @@
     "batchExport": "Export selection ({count})",
     "selectAll": "Select all",
     "allStatuses": "All statuses"
+  },
+  "safety": {
+    "title": "Pre-signature safety check",
+    "subtitle": "The radiologist remains the final medical authority. AI assists but never validates.",
+    "ready": "Ready for validation and signature.",
+    "blockedTitle": "Signature blocked",
+    "warningsTitle": "Clinical warnings",
+    "disclaimer": "These checks assist the radiologist; they do not replace clinical review. No content is changed automatically.",
+    "blocker": {
+      "empty_section": "{section} missing",
+      "low_confidence": "{section} insufficient (low confidence)",
+      "review_required": "{section} needs re-check"
+    },
+    "warning": {
+      "empty_required_section": "Required section empty: {detail}",
+      "measurement_in_conclusion_not_in_results": "Measurement in CONCLUSION absent from RESULTS: {detail}",
+      "finding_in_conclusion_not_in_results": "Element in CONCLUSION not found in RESULTS: {detail}",
+      "low_confidence_section": "Low-confidence section: {section}",
+      "unresolved_review": "Section needs re-check: {section}",
+      "heavy_cleanup_drift": "Heavy transcript cleanup ({detail} removed) — verify meaning"
+    },
+    "columnFinal": "Current report"
   }
 }
