@@ -728,7 +728,6 @@
     "undoAccept": "Undo Accept",
     "rejectionReason": "Reason for rejection *",
     "confirm": "Confirm",
-    "cancel": "Cancel",
     "findingsAppended": "{count, plural, one {✓ # finding appended to the report draft.} other {✓ # findings appended to the report draft.}}",
     "viewReport": "View Report →",
     "noResults": "No external AI results imported for this study yet.",
@@ -739,5 +738,39 @@
     "system": "System",
     "latest": "Latest",
     "amendmentReason": "Amendment reason: "
+  },
+  "structuring": {
+    "title": "AI Structuring",
+    "subtitle": "Turns dictation into a structured HPD report. Self-corrections are detected and the text cleaned — never inventing a finding.",
+    "runButton": "Structure report",
+    "rerun": "Re-structure",
+    "running": "Structuring…",
+    "needsTranscript": "No transcript to structure yet.",
+    "reviewRequired": "Review required — some sections are incomplete or auto-filled.",
+    "reviewFlag": "review",
+    "columnRaw": "Raw transcript",
+    "columnCleaned": "Cleaned transcript",
+    "columnStructured": "Structured report (HPD)",
+    "removed": "Removed",
+    "corrections": "Detected self-corrections",
+    "autoFilled": "standard template",
+    "empty": "(empty — left as is)",
+    "apply": "Apply to report",
+    "applying": "Applying…",
+    "applied": "Report updated",
+    "applyNeedsReport": "Match this exam to a patient report first.",
+    "safety": "The AI never invents findings, measurements or diagnoses. Missing information stays blank. Radiologist validation and signature remain mandatory.",
+    "sections": {
+      "indication": "Indication",
+      "technique": "Technique",
+      "results": "Findings",
+      "conclusion": "Conclusion",
+      "recommendations": "Recommendations"
+    },
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    }
   }
 }

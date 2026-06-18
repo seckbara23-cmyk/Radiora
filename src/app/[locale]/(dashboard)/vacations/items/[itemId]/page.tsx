@@ -14,10 +14,13 @@ import { AudioUploader } from './AudioUploader'
 import { ConnectMobileDictation } from './ConnectMobileDictation'
 import { TranscriptionEditor } from './TranscriptionEditor'
 import { PatientMatchControl } from './PatientMatchControl'
+import { StructuringReview } from './StructuringReview'
 import type { UserRole } from '@/types/user'
+import type { StructuringResult } from '@/types/structuring'
 
 const VIEW_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'technician', 'super_admin']
 const MANAGE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'super_admin']
+const ACCEPT_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'super_admin']
 
 type Props = { params: Promise<{ itemId: string; locale: string }> }
 
@@ -44,6 +47,21 @@ export default async function ItemWorkspacePage({ params }: Props) {
 
   const audioUrl = asset ? await createSignedAudioUrl(asset.storagePath) : null
   const transcriptText = transcription?.correctedText || transcription?.rawText || ''
+
+  // Rebuild a previously-stored structuring result, if the engine has run.
+  const initialStructuring: StructuringResult | null = transcription?.structuredJson
+    ? {
+        rawTranscript:     transcriptText,
+        cleanedTranscript: transcription.cleanedText ?? '',
+        correctionEvents:  transcription.correctionEvents ?? [],
+        removedTokens:     [],
+        structured:        transcription.structuredJson,
+        confidence:        transcription.confidence ?? [],
+        reviewRequired:    (transcription.confidence ?? []).some((c) => c.reviewRequired),
+      }
+    : null
+
+  const canAccept = ACCEPT_ROLES.includes(user.role)
 
   const patientDisplay = item.patientName ?? item.patientLabel ?? tq('unmatched')
 
@@ -121,6 +139,18 @@ export default async function ItemWorkspacePage({ params }: Props) {
           <p className="text-sm text-gray-400">{t('noTranscriptYet')}</p>
         )}
       </section>
+
+      {/* AI structuring (Feature 7) */}
+      {(canManage || initialStructuring) && (
+        <StructuringReview
+          itemId={item.id}
+          canStructure={canManage}
+          canAccept={canAccept}
+          hasTranscript={Boolean(transcriptText)}
+          hasReport={Boolean(item.reportId)}
+          initial={initialStructuring}
+        />
+      )}
 
       {/* Report link */}
       {item.reportId && (

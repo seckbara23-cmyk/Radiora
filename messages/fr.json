@@ -728,7 +728,6 @@
     "undoAccept": "Annuler l'acceptation",
     "rejectionReason": "Motif de rejet *",
     "confirm": "Confirmer",
-    "cancel": "Annuler",
     "findingsAppended": "{count, plural, one {✓ # constatation ajoutée au brouillon du compte rendu.} other {✓ # constatations ajoutées au brouillon du compte rendu.}}",
     "viewReport": "Voir le compte rendu →",
     "noResults": "Aucun résultat IA externe importé pour cet examen.",
@@ -739,5 +738,39 @@
     "system": "Système",
     "latest": "Dernière",
     "amendmentReason": "Motif de modification : "
+  },
+  "structuring": {
+    "title": "Structuration IA",
+    "subtitle": "Transforme la dictée en rapport HPD structuré. L’autocorrection est détectée, le texte nettoyé — sans jamais inventer de résultat.",
+    "runButton": "Structurer le rapport",
+    "rerun": "Re-structurer",
+    "running": "Structuration…",
+    "needsTranscript": "Aucune transcription à structurer pour l’instant.",
+    "reviewRequired": "Révision requise — certaines sections sont incomplètes ou auto-remplies.",
+    "reviewFlag": "à revoir",
+    "columnRaw": "Transcription brute",
+    "columnCleaned": "Transcription nettoyée",
+    "columnStructured": "Rapport structuré (HPD)",
+    "removed": "Retiré",
+    "corrections": "Autocorrections détectées",
+    "autoFilled": "modèle standard",
+    "empty": "(vide — laissé tel quel)",
+    "apply": "Appliquer au rapport",
+    "applying": "Application…",
+    "applied": "Rapport mis à jour",
+    "applyNeedsReport": "Associez d’abord cet examen à un rapport patient.",
+    "safety": "L’IA n’invente jamais de résultats, mesures ou diagnostics. Les informations manquantes restent vides. La validation et la signature par le radiologue restent obligatoires.",
+    "sections": {
+      "indication": "Indication",
+      "technique": "Technique",
+      "results": "Résultats",
+      "conclusion": "Conclusion",
+      "recommendations": "Recommandations"
+    },
+    "confidence": {
+      "high": "Confiance élevée",
+      "medium": "Confiance moyenne",
+      "low": "Confiance faible"
+    }
   }
 }

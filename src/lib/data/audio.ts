@@ -14,7 +14,7 @@ const ASSET_SELECT =
   'id, clinic_id, vacation_id, uploaded_by, original_filename, mime_type, file_size_bytes, duration_seconds, storage_path, ingestion_mode, status, created_at, updated_at'
 
 const TRANSCRIPTION_SELECT =
-  'id, clinic_id, vacation_item_id, audio_asset_id, language, raw_text, corrected_text, status, created_by, reviewed_by, created_at, updated_at'
+  'id, clinic_id, vacation_item_id, audio_asset_id, language, raw_text, corrected_text, status, created_by, reviewed_by, created_at, updated_at, cleaned_text, correction_events, structured_json, confidence, structured_at, structured_by'
 
 function mapAsset(row: Record<string, unknown>): AudioAsset {
   return {
@@ -48,6 +48,12 @@ function mapTranscription(row: Record<string, unknown>): Transcription {
     reviewedBy:     (row.reviewed_by as string | null) ?? undefined,
     createdAt:      row.created_at as string,
     updatedAt:      row.updated_at as string,
+    cleanedText:      (row.cleaned_text as string | null) ?? undefined,
+    correctionEvents: (row.correction_events as Transcription['correctionEvents']) ?? undefined,
+    structuredJson:   (row.structured_json as Transcription['structuredJson']) ?? undefined,
+    confidence:       (row.confidence as Transcription['confidence']) ?? undefined,
+    structuredAt:     (row.structured_at as string | null) ?? undefined,
+    structuredBy:     (row.structured_by as string | null) ?? undefined,
   }
 }
 

@@ -1,5 +1,8 @@
 // Feature 2 (audio ingestion) + Feature 6 (transcription) types.
 
+import type { StructuredReportData } from '@/types/report'
+import type { CorrectionEvent, SectionConfidence } from '@/types/structuring'
+
 /** How the audio entered the system. */
 export type IngestionMode = 'single' | 'batch' | 'long'
 
@@ -59,4 +62,11 @@ export interface Transcription {
   reviewedBy?:    string
   createdAt:      string
   updatedAt:      string
+  // Feature 7 — structuring layers.
+  cleanedText?:      string
+  correctionEvents?: CorrectionEvent[]
+  structuredJson?:   StructuredReportData | null
+  confidence?:       SectionConfidence[]
+  structuredAt?:     string
+  structuredBy?:     string
 }
