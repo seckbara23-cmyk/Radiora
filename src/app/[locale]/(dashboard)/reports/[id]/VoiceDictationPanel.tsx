@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useTransition } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { createVoiceTranscript, reviewVoiceTranscript, rejectVoiceTranscript, applyVoiceTranscript } from '@/lib/actions/voice'
+import { findMedicalCorrections, applyAllCorrections, applyCorrection, type DetectedCorrection } from '@/lib/ai/voice-corrections'
 import type { VoiceTranscript } from '@/lib/data/voice-transcripts'
 
 interface Props {
@@ -40,6 +41,7 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
   const [savedTranscript, setSavedTranscript] = useState<VoiceTranscript | null>(null)
   const [showRejectForm,  setShowRejectForm]  = useState(false)
   const [rejectReason,    setRejectReason]    = useState('')
+  const [corrections,     setCorrections]     = useState<DetectedCorrection[]>([])
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef  = useRef<any>(null)
@@ -118,6 +120,7 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
       stopTimer()
       const captured = finalTextRef.current.trim()
       setEditText(captured)
+      setCorrections(findMedicalCorrections(captured))
       setPhase('review')
     }
 
@@ -126,10 +129,12 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
 
   function stopRecording() {
     if (recognitionRef.current) {
-      recognitionRef.current.stop()
+      recognitionRef.current.stop()  // triggers recognition.onend → corrections computed there
     } else {
       stopTimer()
-      setEditText(liveText.trim())
+      const captured = liveText.trim()
+      setEditText(captured)
+      setCorrections(findMedicalCorrections(captured))
       setPhase('review')
     }
   }
@@ -141,6 +146,7 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
     finalTextRef.current = ''
     setLiveText('')
     setEditText('')
+    setCorrections([])
     setError(null)
     setPhase('idle')
   }
@@ -232,6 +238,7 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
     setRejectReason('')
     setEditText('')
     setLiveText('')
+    setCorrections([])
     setError(null)
     setPhase('idle')
   }
@@ -370,6 +377,52 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-gray-50 resize-y"
                 />
               </div>
+
+              {/* Intelligent term corrections (Dictée vocale intelligente) */}
+              {corrections.length > 0 && (
+                <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2.5 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] font-semibold text-blue-800 uppercase tracking-wide">
+                      {t('correctionsTitle')} ({corrections.length})
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditText(applyAllCorrections(editText, corrections))
+                        setCorrections([])
+                      }}
+                      className="text-[11px] font-medium text-blue-600 hover:text-blue-800 transition"
+                    >
+                      {t('correctionsApplyAll')}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {corrections.map((c, i) => (
+                      <div key={i} className="flex items-center gap-1 text-xs bg-white border border-blue-200 rounded-full px-2.5 py-0.5">
+                        <span className="text-red-400 line-through">{c.original}</span>
+                        <span className="text-gray-300 mx-0.5">→</span>
+                        <span className="text-blue-700 font-medium">{c.replacement}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = applyCorrection(editText, c)
+                            setEditText(updated)
+                            setCorrections(findMedicalCorrections(updated))
+                          }}
+                          className="ml-1 text-blue-500 hover:text-blue-800 font-bold"
+                          title={t('correctionsApply')}
+                        >✓</button>
+                        <button
+                          type="button"
+                          onClick={() => setCorrections((prev) => prev.filter((_, j) => j !== i))}
+                          className="text-gray-300 hover:text-gray-500"
+                          title={t('correctionsIgnore')}
+                        >×</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {error && <p className="text-xs text-red-600">{error}</p>}
 

@@ -402,7 +402,14 @@
     "finalizing": "Finalisation…",
     "saveDraft": "Enregistrer le brouillon",
     "finalizeReport": "Finaliser le compte rendu",
-    "disclaimer": "Les comptes rendus doivent toujours être examinés et finalisés par un clinicien agréé."
+    "disclaimer": "Les comptes rendus doivent toujours être examinés et finalisés par un clinicien agréé.",
+    "savePhrase": "Sauvegarder cette phrase comme préférence",
+    "savePhraseLabel": "Nom",
+    "savePhraseHint": "optionnel",
+    "savePhraseConfirm": "Sauvegarder",
+    "phraseSaved": "Préférence sauvegardée",
+    "deletePhrase": "Supprimer cette préférence",
+    "noPhrasesYet": "Aucune préférence enregistrée"
   },
   "voiceDictation": {
     "title": "Dictée vocale",
@@ -433,7 +440,11 @@
     "rejecting": "Rejet…",
     "confirmRejection": "Confirmer le rejet",
     "cancel": "Annuler",
-    "micError": "Erreur microphone : {error}. Vous pouvez toujours saisir vos notes ci-dessous."
+    "micError": "Erreur microphone : {error}. Vous pouvez toujours saisir vos notes ci-dessous.",
+    "correctionsTitle": "Corrections suggérées",
+    "correctionsApplyAll": "Tout appliquer",
+    "correctionsApply": "Appliquer",
+    "correctionsIgnore": "Ignorer"
   },
   "smartStructuring": {
     "title": "Structuration IA",

@@ -7,6 +7,7 @@ import { getStudy } from '@/lib/data/studies'
 import { getPatient } from '@/lib/data/patients'
 import { getTemplates } from '@/lib/data/templates'
 import { getReportVersions } from '@/lib/data/report-versions'
+import { getUserPhrases } from '@/lib/data/preferences'
 import {
   Badge,
   reportStatusVariant,
@@ -40,7 +41,10 @@ export default async function ReportPage({ params }: Props) {
     getReportVersions(id),
   ])
 
-  const templates = await getTemplates({ activeOnly: true, modality: study?.modality })
+  const [templates, initialPhrases] = await Promise.all([
+    getTemplates({ activeOnly: true, modality: study?.modality }),
+    getUserPhrases({ examType: report.examType ?? undefined }),
+  ])
 
   const canWrite  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
   const canAmend  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
@@ -114,6 +118,7 @@ export default async function ReportPage({ params }: Props) {
         templates={templates}
         modality={study?.modality ?? null}
         bodyPart={study?.bodyPart ?? null}
+        initialPhrases={initialPhrases}
       />
 
       <VersionHistory versions={versions} />

@@ -402,7 +402,14 @@
     "finalizing": "Finalizing…",
     "saveDraft": "Save Draft",
     "finalizeReport": "Finalize Report",
-    "disclaimer": "Reports must always be reviewed and finalized by a licensed clinician."
+    "disclaimer": "Reports must always be reviewed and finalized by a licensed clinician.",
+    "savePhrase": "Save this phrase as a preference",
+    "savePhraseLabel": "Name",
+    "savePhraseHint": "optional",
+    "savePhraseConfirm": "Save",
+    "phraseSaved": "Preference saved",
+    "deletePhrase": "Delete this preference",
+    "noPhrasesYet": "No saved preferences yet"
   },
   "voiceDictation": {
     "title": "Voice Dictation",
@@ -433,7 +440,11 @@
     "rejecting": "Rejecting…",
     "confirmRejection": "Confirm Rejection",
     "cancel": "Cancel",
-    "micError": "Microphone error: {error}. You can still type your notes below."
+    "micError": "Microphone error: {error}. You can still type your notes below.",
+    "correctionsTitle": "Suggested corrections",
+    "correctionsApplyAll": "Apply all",
+    "correctionsApply": "Apply",
+    "correctionsIgnore": "Ignore"
   },
   "smartStructuring": {
     "title": "AI Structuring",

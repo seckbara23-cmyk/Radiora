@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { Template } from '@/types/template'
 
 const SELECT_COLS =
-  'id, clinic_id, title, modality, body_part, findings_template, impression_template, recommendations_template, is_active, created_by, created_at, updated_at'
+  'id, clinic_id, title, modality, body_part, findings_template, impression_template, recommendations_template, is_active, created_by, is_personal, personal_author_id, created_at, updated_at'
 
 function toTemplate(row: Record<string, unknown>): Template {
   return {
@@ -16,6 +16,8 @@ function toTemplate(row: Record<string, unknown>): Template {
     recommendationsTemplate: row.recommendations_template as string,
     isActive:                row.is_active as boolean,
     createdBy:               (row.created_by as string | null) ?? null,
+    isPersonal:              (row.is_personal as boolean) ?? false,
+    personalAuthorId:        (row.personal_author_id as string | null) ?? null,
     createdAt:               row.created_at as string,
     updatedAt:               row.updated_at as string,
   }
@@ -30,6 +32,8 @@ export async function getTemplates(opts?: {
   let query = supabase
     .from('report_templates')
     .select(SELECT_COLS)
+    // Personal templates first, then alphabetical
+    .order('is_personal', { ascending: false })
     .order('title', { ascending: true })
 
   if (opts?.activeOnly) {

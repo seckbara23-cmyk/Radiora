@@ -1,13 +1,15 @@
 'use client'
 
-import { useState, useRef, useActionState } from 'react'
+import React, { useState, useRef, useActionState } from 'react'
 import { useTranslations } from 'next-intl'
 import { handleReportForm } from '@/lib/actions/reports'
 import { SmartStructuringPanel } from './SmartStructuringPanel'
 import { VoiceDictationPanel } from './VoiceDictationPanel'
 import { buildExamInfo, buildDefaultTechnique } from '@/lib/ai/hpd-engine'
+import { SectionSuggestions } from './SectionSuggestions'
 import type { Report, StructuredReportData } from '@/types/report'
 import type { Template } from '@/types/template'
+import type { UserPhrasePreference } from '@/types/preference'
 
 const textareaCls =
   'w-full rounded-lg border border-gray-200 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 resize-y'
@@ -16,18 +18,19 @@ const selectCls =
   'rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50'
 
 interface Props {
-  report:    Report
-  canWrite:  boolean
-  canAmend:  boolean
-  templates: Template[]
-  modality:  string | null
-  bodyPart:  string | null
+  report:         Report
+  canWrite:       boolean
+  canAmend:       boolean
+  templates:      Template[]
+  modality:       string | null
+  bodyPart:       string | null
+  initialPhrases: UserPhrasePreference[]
 }
 
 // ─── Section editor ───────────────────────────────────────────────────────────
 
 function HpdSectionRow({
-  label, value, onChange, disabled, placeholder, rows, required,
+  label, value, onChange, disabled, placeholder, rows, required, suggestions,
 }: {
   label: string
   value: string
@@ -36,6 +39,7 @@ function HpdSectionRow({
   placeholder: string
   rows: number
   required?: boolean
+  suggestions?: React.ReactNode
 }) {
   return (
     <div>
@@ -46,6 +50,7 @@ function HpdSectionRow({
         </span>
         <div className="flex-1 h-px bg-slate-200" />
       </div>
+      {suggestions}
       <textarea
         rows={rows}
         value={value}
@@ -59,13 +64,24 @@ function HpdSectionRow({
 }
 
 function StructuredEditor({
-  draft, disabled, onChange, t,
+  draft, disabled, onChange, t, phrases, reportId,
 }: {
-  draft: StructuredReportData
+  draft:    StructuredReportData
   disabled: boolean
   onChange: (key: keyof Pick<StructuredReportData, 'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'>, value: string) => void
-  t: ReturnType<typeof useTranslations>
+  t:        ReturnType<typeof useTranslations>
+  phrases:  UserPhrasePreference[]
+  reportId: string
 }) {
+  const phrasesBySection = React.useMemo(() => {
+    const map: Record<string, UserPhrasePreference[]> = {}
+    for (const p of phrases) {
+      if (!map[p.section]) map[p.section] = []
+      map[p.section].push(p)
+    }
+    return map
+  }, [phrases])
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       {/* Exam title header */}
@@ -86,6 +102,7 @@ function StructuredEditor({
       </div>
 
       <div className="p-6 space-y-5">
+        {/* INDICATION — phrase suggestions enabled (not diagnostic content) */}
         <HpdSectionRow
           label={t('indicationLabel')}
           value={draft.indication}
@@ -93,7 +110,19 @@ function StructuredEditor({
           disabled={disabled}
           placeholder={t('indicationPlaceholder')}
           rows={3}
+          suggestions={
+            <SectionSuggestions
+              section="indication"
+              examType={draft.examType}
+              reportId={reportId}
+              currentText={draft.indication}
+              phrases={phrasesBySection['indication'] ?? []}
+              onApply={(v) => onChange('indication', v)}
+              disabled={disabled}
+            />
+          }
         />
+        {/* TECHNIQUE — phrase suggestions enabled (pure protocol text, no diagnostics) */}
         <HpdSectionRow
           label={t('techniqueLabel')}
           value={draft.technique}
@@ -101,7 +130,19 @@ function StructuredEditor({
           disabled={disabled}
           placeholder={t('techniquePlaceholder')}
           rows={3}
+          suggestions={
+            <SectionSuggestions
+              section="technique"
+              examType={draft.examType}
+              reportId={reportId}
+              currentText={draft.technique}
+              phrases={phrasesBySection['technique'] ?? []}
+              onApply={(v) => onChange('technique', v)}
+              disabled={disabled}
+            />
+          }
         />
+        {/* RÉSULTATS — NO phrase suggestions. Diagnostic content must be typed by the physician. */}
         <HpdSectionRow
           label={t('resultsLabel')}
           value={draft.results}
@@ -111,6 +152,7 @@ function StructuredEditor({
           rows={9}
           required
         />
+        {/* EN CONCLUSION — phrase suggestions for phrasing/opener only */}
         <HpdSectionRow
           label={t('conclusionLabel')}
           value={draft.conclusion}
@@ -119,7 +161,19 @@ function StructuredEditor({
           placeholder={t('conclusionPlaceholder')}
           rows={4}
           required
+          suggestions={
+            <SectionSuggestions
+              section="conclusion"
+              examType={draft.examType}
+              reportId={reportId}
+              currentText={draft.conclusion}
+              phrases={phrasesBySection['conclusion'] ?? []}
+              onApply={(v) => onChange('conclusion', v)}
+              disabled={disabled}
+            />
+          }
         />
+        {/* RECOMMANDATIONS — phrase suggestions enabled */}
         <HpdSectionRow
           label={t('recommendationsLabel')}
           value={draft.recommendations ?? ''}
@@ -127,6 +181,17 @@ function StructuredEditor({
           disabled={disabled}
           placeholder={t('recommendationsPlaceholder')}
           rows={2}
+          suggestions={
+            <SectionSuggestions
+              section="recommendations"
+              examType={draft.examType}
+              reportId={reportId}
+              currentText={draft.recommendations ?? ''}
+              phrases={phrasesBySection['recommendations'] ?? []}
+              onApply={(v) => onChange('recommendations', v)}
+              disabled={disabled}
+            />
+          }
         />
       </div>
     </div>
@@ -187,7 +252,7 @@ function LegacyEditor({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReportEditor({ report, canWrite, canAmend, templates, modality, bodyPart }: Props) {
+export function ReportEditor({ report, canWrite, canAmend, templates, modality, bodyPart, initialPhrases }: Props) {
   const t = useTranslations('reportEditor')
 
   const isFinalized = report.status === 'finalized'
@@ -306,7 +371,7 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
             <option value="">{t('applyTemplatePlaceholder')}</option>
             {templates.map((tmpl) => (
               <option key={tmpl.id} value={tmpl.id}>
-                {tmpl.title}{tmpl.modality ? ` (${tmpl.modality})` : ''}
+                {tmpl.isPersonal ? '★ ' : ''}{tmpl.title}{tmpl.modality ? ` (${tmpl.modality})` : ''}
               </option>
             ))}
           </select>
@@ -343,6 +408,8 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
           disabled={isPending || !isEditable}
           onChange={updateSection}
           t={t}
+          phrases={initialPhrases}
+          reportId={report.id}
         />
       ) : (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
