@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
+import type { StructuredReportData } from '@/types/report'
 
 export type FormState = { error: string | null; saved?: boolean }
 
@@ -15,8 +16,6 @@ type WriteRole = typeof REPORT_WRITE_ROLES[number]
 type AmendRole = typeof AMEND_ROLES[number]
 
 // ─── Version snapshot helper ─────────────────────────────────────────────────
-// Creates an immutable version record. Failures are silently swallowed so they
-// never block the primary operation (save / finalize / amend).
 
 type SB = Awaited<ReturnType<typeof createClient>>
 
@@ -45,18 +44,29 @@ async function createVersion(
     const versionNumber = ((maxRow?.version_number as number | null) ?? 0) + 1
 
     await supabase.from('report_versions').insert({
-      report_id:      opts.reportId,
-      clinic_id:      opts.clinicId,
-      version_number: versionNumber,
-      findings:       opts.findings,
-      impression:     opts.impression,
+      report_id:       opts.reportId,
+      clinic_id:       opts.clinicId,
+      version_number:  versionNumber,
+      findings:        opts.findings,
+      impression:      opts.impression,
       recommendations: opts.recommendations,
-      status:         opts.status,
-      created_by:     opts.createdBy,
-      change_reason:  opts.changeReason ?? null,
+      status:          opts.status,
+      created_by:      opts.createdBy,
+      change_reason:   opts.changeReason ?? null,
     })
   } catch {
     // Version failures must never block the primary clinical operation.
+  }
+}
+
+// ─── Structured data helper ───────────────────────────────────────────────────
+
+function parseStructuredDataField(raw: string | null): StructuredReportData | null {
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as StructuredReportData
+  } catch {
+    return null
   }
 }
 
@@ -120,6 +130,7 @@ export async function saveDraftReport(
   const findings        = ((formData.get('findings')        as string) ?? '').trim()
   const impression      = ((formData.get('impression')      as string) ?? '').trim()
   const recommendations = ((formData.get('recommendations') as string) ?? '').trim() || null
+  const structuredData  = parseStructuredDataField(formData.get('structured_data') as string | null)
 
   if (!id) return { error: 'Missing report ID.' }
 
@@ -127,7 +138,7 @@ export async function saveDraftReport(
 
   const { data: existing } = await supabase
     .from('reports')
-    .select('status')
+    .select('status, clinic_id')
     .eq('id', id)
     .single()
 
@@ -136,9 +147,15 @@ export async function saveDraftReport(
     return { error: 'Finalized reports cannot be edited directly. Use "Amend Report" to re-open.' }
   }
 
+  const updatePayload: Record<string, unknown> = { findings, impression, recommendations }
+  if (structuredData) {
+    updatePayload.structured_data = structuredData
+    updatePayload.exam_type       = structuredData.examType
+  }
+
   const { error } = await supabase
     .from('reports')
-    .update({ findings, impression, recommendations })
+    .update(updatePayload)
     .eq('id', id)
 
   if (error) return { error: error.message }
@@ -156,6 +173,7 @@ export async function saveDraftReport(
   await logAudit({
     userId: user.id, clinicId: user.clinicId,
     action: 'report.saved', entityType: 'report', entityId: id,
+    metadata: { structured: !!structuredData },
   })
 
   revalidatePath(`/reports/${id}`)
@@ -179,10 +197,16 @@ export async function finalizeReport(
   const findings        = ((formData.get('findings')        as string) ?? '').trim()
   const impression      = ((formData.get('impression')      as string) ?? '').trim()
   const recommendations = ((formData.get('recommendations') as string) ?? '').trim() || null
+  const structuredData  = parseStructuredDataField(formData.get('structured_data') as string | null)
 
   if (!id || !studyId) return { error: 'Missing required fields.' }
-  if (!findings)        return { error: 'Findings are required before finalizing.' }
-  if (!impression)      return { error: 'Impression is required before finalizing.' }
+
+  // Validate required sections — structured mode maps results → findings, conclusion → impression
+  const effectiveFindings   = structuredData ? structuredData.results    : findings
+  const effectiveConclusion = structuredData ? structuredData.conclusion : impression
+
+  if (!effectiveFindings)   return { error: 'Résultats (Findings) are required before finalizing.' }
+  if (!effectiveConclusion) return { error: 'Conclusion is required before finalizing.' }
 
   const supabase = await createClient()
 
@@ -197,9 +221,20 @@ export async function finalizeReport(
     return { error: 'Report is already finalized.' }
   }
 
+  const updatePayload: Record<string, unknown> = {
+    findings,
+    impression,
+    recommendations,
+    status: 'finalized',
+  }
+  if (structuredData) {
+    updatePayload.structured_data = structuredData
+    updatePayload.exam_type       = structuredData.examType
+  }
+
   const { error } = await supabase
     .from('reports')
-    .update({ findings, impression, recommendations, status: 'finalized' })
+    .update(updatePayload)
     .eq('id', id)
 
   if (error) return { error: error.message }
@@ -220,7 +255,7 @@ export async function finalizeReport(
   await logAudit({
     userId: user.id, clinicId: user.clinicId,
     action: 'report.finalized', entityType: 'report', entityId: id,
-    metadata: { studyId },
+    metadata: { studyId, structured: !!structuredData },
   })
 
   revalidatePath(`/reports/${id}`)
@@ -230,8 +265,6 @@ export async function finalizeReport(
 }
 
 // ─── amendReport ─────────────────────────────────────────────────────────────
-// Requires a change_reason. Snapshots the finalized state before re-opening.
-// Accessible to radiologists, clinic_admin, and super_admin.
 
 export async function amendReport(
   _prev: FormState,
@@ -251,7 +284,6 @@ export async function amendReport(
 
   const supabase = await createClient()
 
-  // Must be currently finalized
   const { data: current } = await supabase
     .from('reports')
     .select('findings, impression, recommendations, status')
@@ -261,7 +293,6 @@ export async function amendReport(
 
   if (!current) return { error: 'Report not found or is not in a finalized state.' }
 
-  // Snapshot the finalized state along with the amendment reason
   await createVersion(supabase, {
     reportId:        id,
     clinicId:        user.clinicId,

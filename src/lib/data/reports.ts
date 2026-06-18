@@ -1,5 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Report, ReportStatus } from '@/types/report'
+import type { Report, ReportStatus, StructuredReportData } from '@/types/report'
+
+const REPORT_SELECT =
+  'id, clinic_id, study_id, patient_id, author_id, status, findings, impression, recommendations, ai_draft, signed_at, structured_data, exam_type, created_at, updated_at'
 
 function mapReport(row: Record<string, unknown>): Report {
   return {
@@ -9,13 +12,15 @@ function mapReport(row: Record<string, unknown>): Report {
     patientId:       row.patient_id as string,
     authorId:        row.author_id as string,
     status:          row.status as ReportStatus,
-    findings:        row.findings as string,
-    impression:      row.impression as string,
+    findings:        (row.findings as string) ?? '',
+    impression:      (row.impression as string) ?? '',
     recommendations: (row.recommendations as string | null) ?? undefined,
     aiDraft:         (row.ai_draft as string | null) ?? undefined,
     signedAt:        (row.signed_at as string | null) ?? undefined,
     createdAt:       row.created_at as string,
     updatedAt:       row.updated_at as string,
+    structuredData:  (row.structured_data as StructuredReportData | null) ?? undefined,
+    examType:        (row.exam_type as string | null) ?? undefined,
   }
 }
 
@@ -25,7 +30,7 @@ export async function getReports(opts?: {
   const supabase = await createClient()
   let query = supabase
     .from('reports')
-    .select('id, clinic_id, study_id, patient_id, author_id, status, findings, impression, recommendations, ai_draft, signed_at, created_at, updated_at')
+    .select(REPORT_SELECT)
     .order('created_at', { ascending: false })
   if (opts?.status) query = query.eq('status', opts.status)
   const { data } = await query
@@ -36,7 +41,7 @@ export async function getReport(id: string): Promise<Report | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('reports')
-    .select('id, clinic_id, study_id, patient_id, author_id, status, findings, impression, recommendations, ai_draft, signed_at, created_at, updated_at')
+    .select(REPORT_SELECT)
     .eq('id', id)
     .single()
   return data ? mapReport(data) : null
@@ -47,6 +52,7 @@ export interface ReportListItem {
   studyId: string
   patientId: string
   status: ReportStatus
+  examType?: string
   createdAt: string
   updatedAt: string
   study: { modality: string; bodyPart: string; accessionNumber: string } | null
@@ -60,7 +66,7 @@ export async function getReportsList(opts?: {
 
   let query = supabase
     .from('reports')
-    .select('id, study_id, patient_id, status, created_at, updated_at')
+    .select('id, study_id, patient_id, status, exam_type, created_at, updated_at')
     .order('updated_at', { ascending: false })
   if (opts?.status) query = query.eq('status', opts.status)
 
@@ -92,6 +98,7 @@ export async function getReportsList(opts?: {
       studyId:   r.study_id as string,
       patientId: r.patient_id as string,
       status:    r.status as ReportStatus,
+      examType:  (r.exam_type as string | null) ?? undefined,
       createdAt: r.created_at as string,
       updatedAt: r.updated_at as string,
       study:   s ? { modality: s.modality as string, bodyPart: s.body_part as string, accessionNumber: s.accession_number as string } : null,
@@ -104,7 +111,7 @@ export async function getReportByStudy(studyId: string): Promise<Report | null> 
   const supabase = await createClient()
   const { data } = await supabase
     .from('reports')
-    .select('id, clinic_id, study_id, patient_id, author_id, status, findings, impression, recommendations, ai_draft, signed_at, created_at, updated_at')
+    .select(REPORT_SELECT)
     .eq('study_id', studyId)
     .order('created_at', { ascending: false })
     .limit(1)
