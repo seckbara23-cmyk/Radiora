@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useTransition } from 'react'
-import { useTranslations } from 'next-intl'
+import { useTranslations, useLocale } from 'next-intl'
 import { createVoiceTranscript, reviewVoiceTranscript, rejectVoiceTranscript, applyVoiceTranscript } from '@/lib/actions/voice'
 import type { VoiceTranscript } from '@/lib/data/voice-transcripts'
 
@@ -18,8 +18,14 @@ function formatDuration(seconds: number) {
   return `${m}:${s}`
 }
 
+const SPEECH_LANG: Record<string, string> = {
+  fr: 'fr-FR',
+  en: 'en-US',
+}
+
 export function VoiceDictationPanel({ reportId, onApply }: Props) {
-  const t = useTranslations('voiceDictation')
+  const t      = useTranslations('voiceDictation')
+  const locale = useLocale()
   const [open, setOpen]       = useState(false)
   const [phase, setPhase]     = useState<Phase>('idle')
   const [supported, setSupported] = useState<boolean | null>(null)
@@ -81,7 +87,7 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
     const recognition = new SR()
     recognition.continuous       = true
     recognition.interimResults   = true
-    recognition.lang             = 'en-US'
+    recognition.lang             = SPEECH_LANG[locale] ?? 'fr-FR'
     recognitionRef.current       = recognition
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
