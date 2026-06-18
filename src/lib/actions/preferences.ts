@@ -101,9 +101,11 @@ export async function deleteUserPhrase(id: string): Promise<PrefResult> {
 
 export async function incrementPhraseUse(id: string): Promise<void> {
   try {
-    const user = await requireCurrentUser()
+    // Ensure there is an authenticated session; the RPC derives the owner from
+    // auth.uid() server-side and ignores any client-supplied identity.
+    await requireCurrentUser()
     const supabase = await createClient()
-    await supabase.rpc('increment_phrase_use', { phrase_id: id, uid: user.id })
+    await supabase.rpc('increment_phrase_use', { phrase_id: id })
   } catch {
     // Non-critical — never block the editor flow.
   }
