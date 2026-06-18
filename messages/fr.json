@@ -775,9 +775,20 @@
   },
   "queueReport": {
     "title": "Compte rendu",
-    "noReportHint": "Aucun compte rendu nest encore associé à cet examen.",
+    "noReportHint": "Aucun compte rendu n'est encore associé à cet examen.",
     "create": "Créer le compte rendu",
     "creating": "Création…",
-    "confirmPatient": "Confirmez dabord lidentité du patient (section ci-dessus) avant de créer le compte rendu."
+    "confirmPatient": "Confirmez d'abord l'identité du patient (section ci-dessus) avant de créer le compte rendu."
+  },
+  "reportExport": {
+    "pdf": "Exporter PDF",
+    "word": "Exporter Word",
+    "print": "Imprimer",
+    "opening": "Ouverture…",
+    "batchTitle": "Export groupé",
+    "batchHint": "Sélectionnez les comptes rendus à exporter en un fichier ZIP de PDF.",
+    "batchExport": "Exporter la sélection ({count})",
+    "selectAll": "Tout sélectionner",
+    "allStatuses": "Tous les statuts"
   }
 }

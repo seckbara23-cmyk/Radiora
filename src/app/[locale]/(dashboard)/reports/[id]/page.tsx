@@ -15,6 +15,7 @@ import {
   studyStatusVariant,
 } from '@/components/ui/badge'
 import { ReportEditor } from './ReportEditor'
+import { ReportExportActions } from './ReportExportActions'
 import { VersionHistory } from './VersionHistory'
 import { PatientExplanationPanel } from './PatientExplanationPanel'
 import { ReportTranslationPanel } from './ReportTranslationPanel'
@@ -103,10 +104,11 @@ export default async function ReportPage({ params }: Props) {
             </p>
           )}
         </div>
-        <div className="mt-6 shrink-0">
+        <div className="mt-6 flex shrink-0 flex-col items-end gap-2">
           <Badge variant={reportStatusVariant[report.status]}>
             {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
           </Badge>
+          <ReportExportActions reportId={id} />
         </div>
       </div>
 

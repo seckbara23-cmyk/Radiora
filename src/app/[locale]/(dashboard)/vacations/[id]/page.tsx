@@ -7,6 +7,7 @@ import { Badge, vacationWorkflowVariant } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ItemStatusControl } from '../ItemStatusControl'
 import { AddItemForm } from './AddItemForm'
+import { BatchExportControl, type BatchExportItem } from './BatchExportControl'
 import type { UserRole } from '@/types/user'
 
 const VIEW_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'technician', 'super_admin']
@@ -33,6 +34,16 @@ export default async function VacationDetailPage({ params }: Props) {
   const canManage   = MANAGE_ROLES.includes(user.role)
   const done = items.filter((i) => ['signed', 'printed', 'exported'].includes(i.workflowStatus)).length
 
+  // Report-bearing items, for the batch PDF/ZIP export (Feature 9).
+  const exportItems: BatchExportItem[] = items
+    .filter((i) => i.reportId)
+    .map((i) => ({
+      reportId: i.reportId as string,
+      label: i.patientName ?? i.patientLabel ?? '—',
+      examNumber: i.examNumber ?? '',
+      status: i.workflowStatus,
+    }))
+
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Header */}
@@ -52,6 +63,11 @@ export default async function VacationDetailPage({ params }: Props) {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <AddItemForm vacationId={vacation.id} />
         </div>
+      )}
+
+      {/* Batch export (Feature 9) */}
+      {canManage && exportItems.length > 0 && (
+        <BatchExportControl items={exportItems} vacationDate={vacation.vacationDate} />
       )}
 
       {/* Items board */}

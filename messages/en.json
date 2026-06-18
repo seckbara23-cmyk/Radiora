@@ -779,5 +779,16 @@
     "create": "Create report",
     "creating": "Creating…",
     "confirmPatient": "Confirm the patient identity (section above) before creating the report."
+  },
+  "reportExport": {
+    "pdf": "Export PDF",
+    "word": "Export Word",
+    "print": "Print",
+    "opening": "Opening…",
+    "batchTitle": "Batch export",
+    "batchHint": "Select the reports to export as a ZIP of PDFs.",
+    "batchExport": "Export selection ({count})",
+    "selectAll": "Select all",
+    "allStatuses": "All statuses"
   }
 }

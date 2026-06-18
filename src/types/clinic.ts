@@ -15,6 +15,12 @@ export interface Clinic {
   status: ClinicStatus
   plan: ClinicPlan
   userCount: number
+  // Optional report branding (Feature 9). Storage path in clinic-branding bucket
+  // or external https URL; null/empty → renderer falls back to plain text.
+  logoUrl?: string
+  departmentName?: string
+  website?: string
+  reportHeader?: string
   createdAt: string
   updatedAt: string
 }

@@ -31,6 +31,14 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // API route handlers (e.g. /api/reports/:id/pdf, /api/vacations/export) are not
+  // under [locale]. Letting createIntlMiddleware see them would redirect to
+  // /fr/api/... (no handler → 404). They enforce their own auth via
+  // requireCurrentUser(). Bypass i18n entirely.
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
   // Skip auth entirely when Supabase env vars are absent (CI, local no-env).
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return handleI18n(request)
