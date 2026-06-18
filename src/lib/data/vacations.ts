@@ -15,7 +15,7 @@ const VACATION_SELECT =
   'id, clinic_id, radiologist_id, title, modality, vacation_date, status, notes, created_by, created_at, updated_at'
 
 const ITEM_SELECT =
-  'id, clinic_id, vacation_id, patient_id, study_id, report_id, patient_label, exam_number, position, workflow_status, assigned_secretary_id, assigned_radiologist_id, created_by, created_at, updated_at'
+  'id, clinic_id, vacation_id, audio_asset_id, patient_id, study_id, report_id, patient_label, exam_number, position, workflow_status, assigned_secretary_id, assigned_radiologist_id, created_by, created_at, updated_at'
 
 function mapVacation(row: Record<string, unknown>): Vacation {
   return {
@@ -38,6 +38,7 @@ function mapItem(row: Record<string, unknown>): VacationItem {
     id:                    row.id as string,
     clinicId:              row.clinic_id as string,
     vacationId:            row.vacation_id as string,
+    audioAssetId:          (row.audio_asset_id as string | null) ?? undefined,
     patientId:             (row.patient_id as string | null) ?? undefined,
     studyId:               (row.study_id as string | null) ?? undefined,
     reportId:              (row.report_id as string | null) ?? undefined,
@@ -199,6 +200,40 @@ export async function getQueueItems(opts?: {
       reportStatus:     i.reportId ? reportStatus[i.reportId] : undefined,
     }
   })
+}
+
+// ─── Single queue item (for the secretary/radiologist workspace) ─────────────
+
+export async function getQueueItem(itemId: string): Promise<VacationQueueItem | null> {
+  const supabase = await createClient()
+
+  const { data: row } = await supabase
+    .from('vacation_items')
+    .select(ITEM_SELECT)
+    .eq('id', itemId)
+    .maybeSingle()
+  if (!row) return null
+
+  const item = mapItem(row)
+
+  const [vacRes, patRes, repRes] = await Promise.all([
+    supabase.from('vacations').select('title, modality, vacation_date').eq('id', item.vacationId).maybeSingle(),
+    item.patientId
+      ? supabase.from('patients').select('first_name, last_name').eq('id', item.patientId).maybeSingle()
+      : Promise.resolve({ data: null as Record<string, unknown> | null }),
+    item.reportId
+      ? supabase.from('reports').select('status').eq('id', item.reportId).maybeSingle()
+      : Promise.resolve({ data: null as Record<string, unknown> | null }),
+  ])
+
+  return {
+    ...item,
+    vacationTitle:    (vacRes.data?.title as string) ?? '',
+    vacationModality: (vacRes.data?.modality as Modality) ?? ('CT' as Modality),
+    vacationDate:     (vacRes.data?.vacation_date as string) ?? '',
+    patientName:      patRes.data ? `${patRes.data.last_name as string} ${patRes.data.first_name as string}` : undefined,
+    reportStatus:     (repRes.data?.status as string) ?? undefined,
+  }
 }
 
 // ─── Radiologists in the clinic (for the filter + session assignment) ─────────

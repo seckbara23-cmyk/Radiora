@@ -94,6 +94,13 @@ const icons: Record<IconName, React.ReactNode> = {
       />
     </svg>
   ),
+  secretary: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M9 17v-2a4 4 0 014-4h4M9 17H5a2 2 0 01-2-2V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v2"
+      />
+    </svg>
+  ),
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

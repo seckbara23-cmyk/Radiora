@@ -13,6 +13,7 @@ export type IconName =
   | 'analytics'
   | 'critical'
   | 'vacations'
+  | 'secretary'
 
 export interface NavItem {
   label: string
@@ -40,6 +41,12 @@ export const navigation: NavGroup[] = [
         href: '/vacations',
         icon: 'vacations',
         roles: ['clinic_admin', 'radiologist', 'secretary', 'technician', 'super_admin'],
+      },
+      {
+        label: 'Secretary Desk',
+        href: '/secretary',
+        icon: 'secretary',
+        roles: ['clinic_admin', 'secretary', 'super_admin'],
       },
       { label: 'Reports',   href: '/reports',   icon: 'reports'   },
       { label: 'Settings',  href: '/settings',  icon: 'settings'  },

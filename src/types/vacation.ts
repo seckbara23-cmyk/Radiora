@@ -49,6 +49,7 @@ export interface VacationItem {
   patientId?:             string
   studyId?:               string
   reportId?:              string
+  audioAssetId?:          string
   patientLabel?:          string
   examNumber?:            string
   position:               number

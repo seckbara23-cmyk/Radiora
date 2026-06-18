@@ -36,6 +36,7 @@
     "analytics": "Analytics",
     "critical": "Critical Queue",
     "vacations": "Vacation Queue",
+    "secretary": "Secretary Desk",
     "clinics": "Clinics",
     "adminSection": "Admin"
   },
@@ -369,6 +370,7 @@
     "session": "Session",
     "unmatched": "Unmatched",
     "openReport": "Open report",
+    "openWorkspace": "Open",
     "progress": "{done}/{total} signed",
     "safetyNote": "AI assists but never validates diagnoses. Validation and signature are the radiologist's exclusive responsibility; a report must be signed before it can be exported.",
     "status": {
@@ -381,6 +383,45 @@
       "printed": "Printed",
       "exported": "Exported"
     }
+  },
+  "audio": {
+    "dictationAudio": "Dictation audio",
+    "chooseFile": "Choose an audio file",
+    "upload": "Upload",
+    "uploading": "Uploading…",
+    "formatsHint": "Accepted formats: MP3, MP4, WAV, M4A — 100 MB max.",
+    "noAudioYet": "No audio yet.",
+    "audioUnsupported": "Your browser cannot play this audio file.",
+    "transcription": "Transcription",
+    "transcript": "Transcript",
+    "transcriptPlaceholder": "Listen to the audio and type the transcript. No automatic transcription is performed.",
+    "emptyTranscript": "Empty",
+    "charCount": "{count} characters",
+    "noTranscriptYet": "No transcript yet.",
+    "suggestions": "{count} terminology suggestion(s)",
+    "acceptAll": "Apply all",
+    "replaceWith": "Replace with \"{term}\"",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Saved",
+    "routeToRadiologist": "Send to radiologist",
+    "routing": "Sending…",
+    "routedAlready": "Sent to radiologist",
+    "matchPatient": "Match to patient",
+    "matchPatientHint": "Link this audio to the matching patient record.",
+    "selectPatient": "Select a patient…",
+    "safetyNote": "AI offers terminology corrections only; it never writes or validates a diagnosis. The radiologist validates the medical content."
+  },
+  "secretary": {
+    "title": "Secretary Desk",
+    "subtitle": "Upload audio, match patients, review transcripts, and route to the radiologist.",
+    "allTab": "All",
+    "empty": "Nothing to process",
+    "emptyDesc": "No items are waiting for transcription or review.",
+    "audio": "Audio",
+    "audioReady": "Ready",
+    "audioMissing": "Missing",
+    "open": "Open"
   },
   "actions": {
     "switchLanguage": "Français",

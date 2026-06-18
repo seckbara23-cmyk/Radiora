@@ -36,6 +36,7 @@
     "analytics": "Analytique",
     "critical": "File critique",
     "vacations": "File des vacations",
+    "secretary": "Bureau secrétariat",
     "clinics": "Cliniques",
     "adminSection": "Administration"
   },
@@ -369,6 +370,7 @@
     "session": "Séance",
     "unmatched": "Non rattaché",
     "openReport": "Ouvrir le compte rendu",
+    "openWorkspace": "Ouvrir",
     "progress": "{done}/{total} signés",
     "safetyNote": "L'IA assiste mais ne valide jamais les diagnostics. La validation et la signature relèvent exclusivement du radiologue ; un compte rendu doit être signé avant tout export.",
     "status": {
@@ -381,6 +383,45 @@
       "printed": "Imprimé",
       "exported": "Exporté"
     }
+  },
+  "audio": {
+    "dictationAudio": "Audio de dictée",
+    "chooseFile": "Choisir un fichier audio",
+    "upload": "Téléverser",
+    "uploading": "Téléversement…",
+    "formatsHint": "Formats acceptés : MP3, MP4, WAV, M4A — 100 Mo maximum.",
+    "noAudioYet": "Aucun audio pour le moment.",
+    "audioUnsupported": "Votre navigateur ne peut pas lire ce fichier audio.",
+    "transcription": "Transcription",
+    "transcript": "Transcription",
+    "transcriptPlaceholder": "Écoutez l'audio et saisissez la transcription. Aucune transcription automatique n'est effectuée.",
+    "emptyTranscript": "Vide",
+    "charCount": "{count} caractères",
+    "noTranscriptYet": "Aucune transcription pour le moment.",
+    "suggestions": "{count} suggestion(s) de terminologie",
+    "acceptAll": "Tout appliquer",
+    "replaceWith": "Remplacer par « {term} »",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "saved": "Enregistré",
+    "routeToRadiologist": "Envoyer au radiologue",
+    "routing": "Envoi…",
+    "routedAlready": "Envoyé au radiologue",
+    "matchPatient": "Rattacher au patient",
+    "matchPatientHint": "Associez cet audio au dossier patient correspondant.",
+    "selectPatient": "Sélectionner un patient…",
+    "safetyNote": "L'IA propose des corrections de terminologie uniquement ; elle ne rédige ni ne valide aucun diagnostic. Le radiologue valide le contenu médical."
+  },
+  "secretary": {
+    "title": "Bureau du secrétariat",
+    "subtitle": "Téléversez l'audio, rattachez les patients, relisez les transcriptions et transmettez au radiologue.",
+    "allTab": "Tout",
+    "empty": "Rien à traiter",
+    "emptyDesc": "Aucun élément n'attend de transcription ou de relecture.",
+    "audio": "Audio",
+    "audioReady": "Disponible",
+    "audioMissing": "Manquant",
+    "open": "Ouvrir"
   },
   "actions": {
     "switchLanguage": "English",

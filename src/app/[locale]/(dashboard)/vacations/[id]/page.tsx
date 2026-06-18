@@ -89,13 +89,16 @@ export default async function VacationDetailPage({ params }: Props) {
                       </div>
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {i.reportId ? (
-                        <Link href={`/reports/${i.reportId}`} className="text-xs font-medium text-blue-600 hover:text-blue-700">
-                          {t('openReport')} →
+                      <div className="flex items-center justify-end gap-3">
+                        <Link href={`/vacations/items/${i.id}`} className="text-xs font-medium text-gray-600 hover:text-gray-900">
+                          {t('openWorkspace')}
                         </Link>
-                      ) : (
-                        <span className="text-xs text-gray-300">—</span>
-                      )}
+                        {i.reportId && (
+                          <Link href={`/reports/${i.reportId}`} className="text-xs font-medium text-blue-600 hover:text-blue-700">
+                            {t('openReport')} →
+                          </Link>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
