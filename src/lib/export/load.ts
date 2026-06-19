@@ -10,8 +10,28 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getReport } from '@/lib/data/reports'
 import { getStudy } from '@/lib/data/studies'
 import { getPatient } from '@/lib/data/patients'
-import { buildReportExportModel, type ReportExportModel } from './model'
+import { getHospitalHeader } from '@/lib/data/hospital-headers'
+import { buildReportExportModel, type ReportExportModel, type ExportHeaderOverride } from './model'
 import type { ExportImages } from './pdf'
+
+/**
+ * How to render the letterhead (F12):
+ *  - omitted              → the clinic's default header
+ *  - { headerId }         → a chosen library header
+ *  - { includeHeader:false } → the "classic" model with no header
+ */
+export interface ExportHeaderChoice {
+  headerId?: string | null
+  includeHeader?: boolean
+}
+
+// Resolve a query-string ?header= value into a header choice.
+export function parseHeaderChoice(raw: string | null | undefined): ExportHeaderChoice {
+  const v = (raw ?? '').trim()
+  if (!v) return {}
+  if (v === 'none') return { includeHeader: false }
+  return { headerId: v }
+}
 
 const BRANDING_BUCKET = 'clinic-branding'
 
@@ -57,9 +77,32 @@ export interface AssembledExport {
 }
 
 // Returns null when the report does not exist or RLS hides it from this caller.
-export async function assembleReportExport(reportId: string): Promise<AssembledExport | null> {
+export async function assembleReportExport(
+  reportId: string,
+  headerChoice: ExportHeaderChoice = {},
+): Promise<AssembledExport | null> {
   const report = await getReport(reportId)
   if (!report) return null
+
+  // Resolve a chosen library header (RLS guards visibility) up-front so we can
+  // pass it to the model builder and load its own logo.
+  let headerOverride: ExportHeaderOverride | null = null
+  let overrideLogo: string | null = null
+  if (headerChoice.includeHeader !== false && headerChoice.headerId) {
+    const hdr = await getHospitalHeader(headerChoice.headerId)
+    if (hdr) {
+      headerOverride = {
+        name: hdr.name,
+        overline: hdr.overline,
+        department: hdr.department,
+        subtitle: hdr.subtitle,
+        address: hdr.address,
+        phone: hdr.phone,
+        email: hdr.email,
+      }
+      overrideLogo = hdr.logoUrl
+    }
+  }
 
   const supabase = await createClient()
   const [study, patient, clinicRes, radioRes] = await Promise.all([
@@ -126,10 +169,17 @@ export async function assembleReportExport(reportId: string): Promise<AssembledE
           signatureTitle: radioRow.signature_title ?? undefined,
         }
       : null,
+    headerOverride,
+    includeHeader: headerChoice.includeHeader,
   })
 
+  // A library header brings its own logo; otherwise use the clinic's. The classic
+  // (no-header) model carries no logo at all.
+  const logoRef =
+    headerChoice.includeHeader === false ? null : (overrideLogo ?? clinicRow?.logo_url)
+
   const [logo, signature, stamp] = await Promise.all([
-    loadImageRef(clinicRow?.logo_url),
+    loadImageRef(logoRef),
     loadImageRef(radioRow?.signature_url),
     loadImageRef(radioRow?.stamp_url),
   ])

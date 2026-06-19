@@ -155,38 +155,50 @@ export async function renderReportDocx(
 ): Promise<Uint8Array> {
   const headerChildren: Paragraph[] = []
 
-  // Letterhead.
-  const logo = safeImageRun(images.logo, 120, 46)
-  if (logo) headerChildren.push(new Paragraph({ children: [logo], spacing: { after: 40 } }))
+  // Letterhead — omitted entirely for the "classic" model (no header).
+  if (model.header.hospital) {
+    const logo = safeImageRun(images.logo, 120, 46)
+    if (logo) headerChildren.push(new Paragraph({ children: [logo], spacing: { after: 40 } }))
 
-  headerChildren.push(
-    new Paragraph({
-      children: [new TextRun({ text: model.header.hospital.toUpperCase(), bold: true, size: 26, color: INK })],
-    }),
-  )
-  if (model.header.department) {
+    if (model.header.overline) {
+      headerChildren.push(
+        new Paragraph({ children: [new TextRun({ text: model.header.overline, size: 16, color: GRAY })] }),
+      )
+    }
     headerChildren.push(
-      new Paragraph({ children: [new TextRun({ text: model.header.department, size: 19, color: GRAY })] }),
+      new Paragraph({
+        children: [new TextRun({ text: model.header.hospital.toUpperCase(), bold: true, size: 26, color: INK })],
+      }),
+    )
+    if (model.header.department) {
+      headerChildren.push(
+        new Paragraph({ children: [new TextRun({ text: model.header.department, size: 19, color: GRAY })] }),
+      )
+    }
+    if (model.header.subtitle) {
+      headerChildren.push(
+        new Paragraph({ children: [new TextRun({ text: model.header.subtitle, size: 16, color: GRAY })] }),
+      )
+    }
+    if (model.header.address) {
+      headerChildren.push(
+        new Paragraph({ children: [new TextRun({ text: model.header.address, size: 16, color: GRAY })] }),
+      )
+    }
+    if (model.header.contact) {
+      headerChildren.push(
+        new Paragraph({ children: [new TextRun({ text: model.header.contact, size: 16, color: GRAY })] }),
+      )
+    }
+    // Rule under the letterhead.
+    headerChildren.push(
+      new Paragraph({
+        spacing: { after: 160 },
+        border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: INK, space: 4 } },
+        children: [],
+      }),
     )
   }
-  if (model.header.address) {
-    headerChildren.push(
-      new Paragraph({ children: [new TextRun({ text: model.header.address, size: 16, color: GRAY })] }),
-    )
-  }
-  if (model.header.contact) {
-    headerChildren.push(
-      new Paragraph({ children: [new TextRun({ text: model.header.contact, size: 16, color: GRAY })] }),
-    )
-  }
-  // Rule under the letterhead.
-  headerChildren.push(
-    new Paragraph({
-      spacing: { after: 160 },
-      border: { bottom: { style: BorderStyle.SINGLE, size: 12, color: INK, space: 4 } },
-      children: [],
-    }),
-  )
 
   const titleParagraph = new Paragraph({
     alignment: AlignmentType.CENTER,

@@ -4,21 +4,31 @@ import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getReport } from '@/lib/data/reports'
 import { getStudy } from '@/lib/data/studies'
 import { getPatient } from '@/lib/data/patients'
+import { getHospitalHeader } from '@/lib/data/hospital-headers'
+import { parseHeaderChoice } from '@/lib/export/load'
+import type { HospitalHeader } from '@/types/hospital-header'
 
-type Props = { params: Promise<{ id: string; locale: string }> }
+type Props = {
+  params: Promise<{ id: string; locale: string }>
+  searchParams: Promise<{ header?: string }>
+}
 
-export default async function ReportPrintPage({ params }: Props) {
+export default async function ReportPrintPage({ params, searchParams }: Props) {
   const { id, locale } = await params
+  const { header: headerParam } = await searchParams
   setRequestLocale(locale)
   await requireCurrentUser()
 
   const report = await getReport(id)
   if (!report) notFound()
 
-  const [study, patient] = await Promise.all([
+  const choice = parseHeaderChoice(headerParam)
+  const [study, patient, libraryHeader] = await Promise.all([
     getStudy(report.studyId),
     getPatient(report.patientId),
+    choice.headerId ? getHospitalHeader(choice.headerId) : Promise.resolve<HospitalHeader | null>(null),
   ])
+  const showHeader = choice.includeHeader !== false
 
   const sd = report.structuredData
   const patientName = patient ? `${patient.lastName.toUpperCase()} ${patient.firstName}` : '—'
@@ -72,11 +82,33 @@ export default async function ReportPrintPage({ params }: Props) {
 
       <div className="page">
 
-        {/* ── Hospital header ── */}
-        <div className="header-bar">
-          <div className="clinic-name">Hôpital Principal de Dakar</div>
-          <div className="dept-name">Service de Radiologie et Imagerie Médicale</div>
-        </div>
+        {/* ── Hospital header ── (omitted for the classic model) */}
+        {showHeader && (
+          libraryHeader ? (
+            <div className="header-bar">
+              {libraryHeader.overline && (
+                <div className="dept-name" style={{ whiteSpace: 'pre-line', marginBottom: '2px' }}>
+                  {libraryHeader.overline}
+                </div>
+              )}
+              <div className="clinic-name">{libraryHeader.name}</div>
+              {libraryHeader.department && <div className="dept-name">{libraryHeader.department}</div>}
+              {libraryHeader.subtitle && <div className="dept-name">{libraryHeader.subtitle}</div>}
+              {(libraryHeader.phone || libraryHeader.email) && (
+                <div className="dept-name">
+                  {[libraryHeader.phone && `Tél : ${libraryHeader.phone}`, libraryHeader.email]
+                    .filter(Boolean)
+                    .join('   ·   ')}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="header-bar">
+              <div className="clinic-name">Hôpital Principal de Dakar</div>
+              <div className="dept-name">Service de Radiologie et Imagerie Médicale</div>
+            </div>
+          )
+        )}
 
         {/* ── Patient info box ── */}
         <div className="patient-box">

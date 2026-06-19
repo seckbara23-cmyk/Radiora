@@ -4,7 +4,7 @@
 
 import type { NextRequest } from 'next/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
-import { assembleReportExport } from '@/lib/export/load'
+import { assembleReportExport, parseHeaderChoice } from '@/lib/export/load'
 import { renderReportPdf } from '@/lib/export/pdf'
 import { fileResponse } from '@/lib/export/http'
 import { logAudit } from '@/lib/actions/audit'
@@ -12,11 +12,12 @@ import { logAudit } from '@/lib/actions/audit'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
   const user = await requireCurrentUser()
 
-  const assembled = await assembleReportExport(id)
+  const choice = parseHeaderChoice(req.nextUrl.searchParams.get('header'))
+  const assembled = await assembleReportExport(id, choice)
   if (!assembled) return new Response('Report not found', { status: 404 })
 
   const bytes = await renderReportPdf(assembled.model, assembled.images)
@@ -28,7 +29,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     action: 'pdf_exported',
     entityType: 'report',
     entityId: id,
-    metadata: { filename, draft: assembled.model.isDraft },
+    metadata: { filename, draft: assembled.model.isDraft, header: choice.includeHeader === false ? 'none' : (choice.headerId ?? 'default') },
   })
 
   return fileResponse(bytes, 'application/pdf', filename)

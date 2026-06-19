@@ -8,6 +8,7 @@ import { getPatient } from '@/lib/data/patients'
 import { getTemplates } from '@/lib/data/templates'
 import { getReportVersions } from '@/lib/data/report-versions'
 import { getUserPhrases } from '@/lib/data/preferences'
+import { getHospitalHeaders } from '@/lib/data/hospital-headers'
 import {
   Badge,
   reportStatusVariant,
@@ -63,10 +64,11 @@ export default async function ReportPage({ params }: Props) {
     getReportVersions(id),
   ])
 
-  const [templates, initialPhrases, safetyContext] = await Promise.all([
+  const [templates, initialPhrases, safetyContext, hospitalHeaders] = await Promise.all([
     getTemplates({ activeOnly: true, modality: study?.modality }),
     getUserPhrases({ examType: report.examType ?? undefined }),
     getReportSafetyContext(id),
+    getHospitalHeaders({ activeOnly: true }),
   ])
 
   const canWrite  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
@@ -111,7 +113,10 @@ export default async function ReportPage({ params }: Props) {
           <Badge variant={reportStatusVariant[report.status]}>
             {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
           </Badge>
-          <ReportExportActions reportId={id} />
+          <ReportExportActions
+            reportId={id}
+            headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
+          />
         </div>
       </div>
 

@@ -141,48 +141,58 @@ export async function renderReportPdf(
   const ctx: Ctx = { doc, page: doc.addPage([PAGE_W, PAGE_H]), y: PAGE_H - MARGIN, font, bold, model }
   paintWatermark(ctx)
 
-  // ── Header / letterhead ──
-  let headerTextX = MARGIN
-  if (images.logo) {
-    try {
-      const logo = await embedImage(doc, images.logo)
-      const h = 46
-      const w = (logo.width / logo.height) * h
-      ctx.page.drawImage(logo, { x: MARGIN, y: ctx.y - h + 6, width: w, height: h })
-      headerTextX = MARGIN + w + 14
-    } catch {
-      /* bad image bytes — fall back to text-only header */
+  // ── Header / letterhead ── (omitted entirely for the "classic" model)
+  if (model.header.hospital) {
+    let headerTextX = MARGIN
+    if (images.logo) {
+      try {
+        const logo = await embedImage(doc, images.logo)
+        const h = 46
+        const w = (logo.width / logo.height) * h
+        ctx.page.drawImage(logo, { x: MARGIN, y: ctx.y - h + 6, width: w, height: h })
+        headerTextX = MARGIN + w + 14
+      } catch {
+        /* bad image bytes — fall back to text-only header */
+      }
     }
-  }
 
-  ctx.page.drawText(model.header.hospital.toUpperCase(), {
-    x: headerTextX,
-    y: ctx.y - 4,
-    size: 13,
-    font: bold,
-    color: INK,
-  })
-  ctx.y -= 18
-  if (model.header.department) {
-    ctx.page.drawText(model.header.department, { x: headerTextX, y: ctx.y - 4, size: 9.5, font, color: GRAY })
-    ctx.y -= 13
+    if (model.header.overline) {
+      ctx.page.drawText(model.header.overline, { x: headerTextX, y: ctx.y - 4, size: 8, font, color: GRAY })
+      ctx.y -= 11
+    }
+    ctx.page.drawText(model.header.hospital.toUpperCase(), {
+      x: headerTextX,
+      y: ctx.y - 4,
+      size: 13,
+      font: bold,
+      color: INK,
+    })
+    ctx.y -= 18
+    if (model.header.department) {
+      ctx.page.drawText(model.header.department, { x: headerTextX, y: ctx.y - 4, size: 9.5, font, color: GRAY })
+      ctx.y -= 13
+    }
+    if (model.header.subtitle) {
+      ctx.page.drawText(model.header.subtitle, { x: headerTextX, y: ctx.y - 4, size: 8, font, color: GRAY })
+      ctx.y -= 11
+    }
+    if (model.header.address) {
+      ctx.page.drawText(model.header.address, { x: headerTextX, y: ctx.y - 4, size: 8, font, color: GRAY })
+      ctx.y -= 11
+    }
+    if (model.header.contact) {
+      ctx.page.drawText(model.header.contact, { x: headerTextX, y: ctx.y - 4, size: 8, font, color: GRAY })
+      ctx.y -= 11
+    }
+    ctx.y -= 6
+    ctx.page.drawLine({
+      start: { x: MARGIN, y: ctx.y },
+      end: { x: PAGE_W - MARGIN, y: ctx.y },
+      thickness: 1.5,
+      color: RULE,
+    })
+    ctx.y -= 18
   }
-  if (model.header.address) {
-    ctx.page.drawText(model.header.address, { x: headerTextX, y: ctx.y - 4, size: 8, font, color: GRAY })
-    ctx.y -= 11
-  }
-  if (model.header.contact) {
-    ctx.page.drawText(model.header.contact, { x: headerTextX, y: ctx.y - 4, size: 8, font, color: GRAY })
-    ctx.y -= 11
-  }
-  ctx.y -= 6
-  ctx.page.drawLine({
-    start: { x: MARGIN, y: ctx.y },
-    end: { x: PAGE_W - MARGIN, y: ctx.y },
-    thickness: 1.5,
-    color: RULE,
-  })
-  ctx.y -= 18
 
   // ── Patient identity box (two columns) ──
   const rows = Math.ceil(model.patientFields.length / 2)

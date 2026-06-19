@@ -19,10 +19,26 @@ export interface ExportPatientField {
 }
 
 export interface ExportHeader {
+  /** Text above the institution name (e.g. military command lines). */
+  overline: string
   hospital: string
   department: string
+  /** Line below the department (e.g. equipment list). */
+  subtitle: string
   address: string
   contact: string
+}
+
+// A header chosen from the hospital-header library (F12), overriding the
+// clinic's default letterhead. Null/undefined → use the clinic default.
+export interface ExportHeaderOverride {
+  name: string
+  overline?: string
+  department?: string
+  subtitle?: string
+  address?: string
+  phone?: string
+  email?: string
 }
 
 export interface ExportSignature {
@@ -90,6 +106,10 @@ export interface ReportExportInput {
   patient: ExportInputPatient | null
   clinic: ExportInputClinic | null
   radiologist: ExportInputRadiologist | null
+  /** Library header to use instead of the clinic default (F12). */
+  headerOverride?: ExportHeaderOverride | null
+  /** When false, emit the "classic" model with no letterhead at all (F12). */
+  includeHeader?: boolean
 }
 
 const SEX_FR: Record<string, string> = {
@@ -138,17 +158,43 @@ export function buildReportExportModel(input: ReportExportInput): ReportExportMo
   const isDraft = !finalized
 
   // ── Header / letterhead ──
-  const contactParts = [
-    clean(clinic?.phone) && `Tél : ${clean(clinic?.phone)}`,
-    clean(clinic?.email),
-    clean(clinic?.website),
-  ].filter(Boolean) as string[]
+  // Three modes (F12): explicit "no header" (classic), a library override, or the
+  // clinic's own default letterhead.
+  const EMPTY_HEADER: ExportHeader = {
+    overline: '', hospital: '', department: '', subtitle: '', address: '', contact: '',
+  }
 
-  const header: ExportHeader = {
-    hospital: clean(clinic?.reportHeader) || clean(clinic?.name) || DEFAULT_HOSPITAL,
-    department: clean(clinic?.departmentName) || DEFAULT_DEPARTMENT,
-    address: [clean(clinic?.address), clean(clinic?.city)].filter(Boolean).join(', '),
-    contact: contactParts.join('   ·   '),
+  let header: ExportHeader
+  if (input.includeHeader === false) {
+    header = EMPTY_HEADER
+  } else if (input.headerOverride) {
+    const o = input.headerOverride
+    const contact = [
+      clean(o.phone) && `Tél : ${clean(o.phone)}`,
+      clean(o.email),
+    ].filter(Boolean).join('   ·   ')
+    header = {
+      overline: clean(o.overline),
+      hospital: clean(o.name),
+      department: clean(o.department),
+      subtitle: clean(o.subtitle),
+      address: clean(o.address),
+      contact,
+    }
+  } else {
+    const contactParts = [
+      clean(clinic?.phone) && `Tél : ${clean(clinic?.phone)}`,
+      clean(clinic?.email),
+      clean(clinic?.website),
+    ].filter(Boolean) as string[]
+    header = {
+      overline: '',
+      hospital: clean(clinic?.reportHeader) || clean(clinic?.name) || DEFAULT_HOSPITAL,
+      department: clean(clinic?.departmentName) || DEFAULT_DEPARTMENT,
+      subtitle: '',
+      address: [clean(clinic?.address), clean(clinic?.city)].filter(Boolean).join(', '),
+      contact: contactParts.join('   ·   '),
+    }
   }
 
   // ── Patient identity block ──
