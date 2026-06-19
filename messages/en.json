@@ -1112,6 +1112,12 @@
         "card": "Bank card"
       }
     },
+    "upgrade": {
+      "heading": "Upgrade your plan",
+      "intro": "Move to a higher plan and pay with Wave or Orange Money. The upgrade applies as soon as the payment is confirmed.",
+      "targetPlan": "Target plan",
+      "cta": "Upgrade and pay"
+    },
     "state": {
       "active": "Active",
       "trialing": "Free trial",

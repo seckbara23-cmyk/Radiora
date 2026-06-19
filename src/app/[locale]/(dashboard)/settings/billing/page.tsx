@@ -4,7 +4,10 @@ import { getClinicAccess } from '@/lib/billing/access'
 import { getClinicSubscription, getPlans, getClinicInvoices } from '@/lib/data/billing'
 import type { AccessState } from '@/lib/billing/subscription'
 import { invoiceIsPayable } from '@/lib/billing/payments'
+import { PLAN_RANK, isPlanChangeTarget } from '@/lib/billing/tenant-admin'
+import type { PlanId } from '@/lib/billing/subscription'
 import { PayInvoice } from './PayInvoice'
+import { UpgradePlan, type UpgradeOption } from './UpgradePlan'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
@@ -44,6 +47,37 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
     : null
 
   const canPay = user.role === 'clinic_admin' || user.role === 'super_admin'
+
+  // Upgrade options: plans ranked above the current one that have a real price
+  // (Enterprise / "on request" is excluded — it needs a quote, not self-checkout).
+  const currentRank =
+    currentPlan && isPlanChangeTarget(currentPlan.id) ? PLAN_RANK[currentPlan.id as PlanId] : -1
+  const upgradeOptions: UpgradeOption[] =
+    canPay && currentPlan
+      ? plans
+          .filter(
+            (p) => isPlanChangeTarget(p.id) && PLAN_RANK[p.id as PlanId] > currentRank && p.priceXof > 0,
+          )
+          .map((p) => ({ id: p.id, name: p.name, price: formatXof(p.priceXof) }))
+      : []
+
+  const upgradeLabels = {
+    heading: t('upgrade.heading'),
+    intro: t('upgrade.intro'),
+    targetPlan: t('upgrade.targetPlan'),
+    chooseMethod: t('pay.chooseMethod'),
+    upgrade: t('upgrade.cta'),
+    pendingTitle: t('pay.pendingTitle'),
+    pendingBody: t('pay.pendingBody'),
+    reference: t('pay.reference'),
+    continueCheckout: t('pay.continueCheckout'),
+    methods: {
+      wave: t('pay.methods.wave'),
+      orange_money: t('pay.methods.orange_money'),
+      card: t('pay.methods.card'),
+    },
+  }
+
   const payLabels = {
     pay: t('pay.pay'),
     cancel: t('pay.cancel'),
@@ -150,6 +184,13 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
         </div>
         <p className="mt-3 text-xs text-gray-400">{t('changeHint')}</p>
       </section>
+
+      {/* Self-service upgrade (Wave / Orange Money) */}
+      {upgradeOptions.length > 0 && (
+        <section>
+          <UpgradePlan options={upgradeOptions} labels={upgradeLabels} />
+        </section>
+      )}
 
       {/* Invoices */}
       <section>

@@ -1112,6 +1112,12 @@
         "card": "Carte bancaire"
       }
     },
+    "upgrade": {
+      "heading": "Mettre à niveau votre forfait",
+      "intro": "Passez à un forfait supérieur et payez par Wave ou Orange Money. La mise à niveau est appliquée dès confirmation du paiement.",
+      "targetPlan": "Forfait souhaité",
+      "cta": "Mettre à niveau et payer"
+    },
     "state": {
       "active": "Actif",
       "trialing": "Essai gratuit",

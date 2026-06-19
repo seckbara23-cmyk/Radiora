@@ -31,6 +31,9 @@ import {
   type PaymentRow,
 } from '@/lib/billing/payment-transitions'
 import { buildCheckoutUrl } from '@/lib/billing/payment-webhook'
+import { classifyPlanChange, isPlanChangeTarget } from '@/lib/billing/tenant-admin'
+import { purposeForPlanChange, upgradeChargeXof } from '@/lib/billing/payment-intent'
+import type { PlanId } from '@/lib/billing/subscription'
 
 export type FormState = { error: string | null }
 export type PaymentState = {
@@ -188,6 +191,117 @@ export async function initiatePayment(_prev: PaymentState, formData: FormData): 
   return { error: null, providerRef: ref, method, checkoutUrl }
 }
 
+// ── Initiate a plan upgrade (clinic_admin or super_admin) ──────────────────────
+//
+// Upgrade = pay the new plan's price now via Wave / Orange Money; on webhook (or
+// manual) confirmation the subscription switches to the target plan and renews a
+// full period. Creates the upgrade invoice + payment in one step.
+
+export async function initiateUpgrade(_prev: PaymentState, formData: FormData): Promise<PaymentState> {
+  const user = await requireCurrentUser()
+  if (!['clinic_admin', 'super_admin'].includes(user.role)) {
+    return { error: 'Vous n’êtes pas autorisé à modifier l’abonnement.' }
+  }
+  const clinicId = user.clinicId
+  if (!clinicId) return { error: 'Aucune clinique associée à votre compte.' }
+
+  const targetPlan = ((formData.get('target_plan') as string) ?? '').trim()
+  const method = ((formData.get('method') as string) ?? '').trim()
+  if (!isPlanChangeTarget(targetPlan)) return { error: 'Forfait cible invalide.' }
+  if (!isPaymentMethod(method) || !CLINIC_PAYMENT_METHODS.includes(method)) {
+    return { error: 'Méthode de paiement invalide.' }
+  }
+
+  const db = createAdminClient()
+  const now = new Date().toISOString()
+
+  const { data: sub } = await db
+    .from('subscriptions')
+    .select('id, plan_id')
+    .eq('clinic_id', clinicId)
+    .maybeSingle()
+  if (!sub) return { error: 'Aucun abonnement à mettre à niveau.' }
+
+  const fromPlan = ((sub.plan_id as string) ?? 'starter') as PlanId
+  const kind = classifyPlanChange(fromPlan, targetPlan)
+  if (purposeForPlanChange(kind) !== 'upgrade') {
+    return { error: 'Ce forfait n’est pas une mise à niveau de votre forfait actuel.' }
+  }
+
+  const { data: plan } = await db
+    .from('plans')
+    .select('price_xof')
+    .eq('id', targetPlan)
+    .maybeSingle()
+  const amount = upgradeChargeXof(Number(plan?.price_xof ?? 0))
+  if (amount <= 0) {
+    return { error: 'Ce forfait nécessite un devis. Contactez l’équipe Radiora.' }
+  }
+
+  // Create the upgrade invoice.
+  const monthPrefix = now.slice(0, 7)
+  const { count } = await db
+    .from('invoices')
+    .select('id', { count: 'exact', head: true })
+    .gte('issued_at', `${monthPrefix}-01T00:00:00.000Z`)
+  const number = generateInvoiceNumber((count ?? 0) + 1, now)
+
+  const { data: invoice, error: invoiceError } = await db
+    .from('invoices')
+    .insert({
+      clinic_id: clinicId,
+      subscription_id: sub.id as string,
+      number,
+      amount_xof: amount,
+      currency: 'XOF',
+      status: 'open',
+      period_start: now,
+      period_end: addDaysISO(now, RENEWAL_DAYS),
+      due_date: addDaysISO(now, GRACE_DAYS),
+      issued_at: now,
+    })
+    .select('id')
+    .single()
+  if (invoiceError) return { error: invoiceError.message }
+  const invoiceId = invoice.id as string
+
+  const ref = providerRef(method)
+  const { error: attemptError } = await db.from('payment_attempts').insert({
+    clinic_id: clinicId,
+    invoice_id: invoiceId,
+    method,
+    status: 'pending',
+    provider_ref: ref,
+    purpose: 'upgrade',
+  })
+  if (attemptError) return { error: attemptError.message }
+
+  await db.from('payments').insert({
+    clinic_id: clinicId,
+    invoice_id: invoiceId,
+    amount_xof: amount,
+    currency: 'XOF',
+    method,
+    status: 'pending',
+    provider_ref: ref,
+    purpose: 'upgrade',
+    target_plan_id: targetPlan,
+  })
+
+  await logAudit({
+    userId: user.id, clinicId,
+    action: 'subscription.upgrade_initiated', entityType: 'subscription', entityId: sub.id as string,
+    metadata: { fromPlan, targetPlan, method, amountXof: amount, providerRef: ref },
+  })
+
+  const base = checkoutBase(method)
+  const checkoutUrl = base ? buildCheckoutUrl(base, ref) : undefined
+
+  revalidatePath('/settings/billing')
+  revalidatePath(`/admin/clinics/${clinicId}`)
+  return { error: null, providerRef: ref, method, checkoutUrl }
+}
+
 // ── Reconcile a payment (super_admin; manual stand-in for provider webhook) ─────
 
 export async function confirmPayment(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -200,7 +314,7 @@ export async function confirmPayment(_prev: FormState, formData: FormData): Prom
 
   const { data: payment } = await db
     .from('payments')
-    .select('id, clinic_id, invoice_id')
+    .select('id, clinic_id, invoice_id, purpose, target_plan_id')
     .eq('id', paymentId)
     .maybeSingle()
   if (!payment) return { error: 'Paiement introuvable.' }

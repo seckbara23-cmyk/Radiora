@@ -15,11 +15,21 @@ type AdminClient = ReturnType<typeof createAdminClient>
 export const RENEWAL_DAYS = 30
 export const GRACE_DAYS = 7
 
-export type PaymentRow = { id: string; clinic_id: string; invoice_id: string | null; status?: string }
+export type PaymentRow = {
+  id: string
+  clinic_id: string
+  invoice_id: string | null
+  status?: string
+  /** Phase 5D: why this payment was made. */
+  purpose?: string | null
+  /** Phase 5D: for an upgrade, the plan to switch to on success. */
+  target_plan_id?: string | null
+}
 
 // A payment succeeded: mark it paid, settle its invoice + attempt, then reactivate
-// and renew the subscription (Grace/Suspended → Active). Idempotent — re-running on
-// an already-succeeded payment produces the same end state.
+// and renew the subscription (Grace/Suspended → Active). For an upgrade payment the
+// subscription's plan is switched to the target. Idempotent — re-running on an
+// already-succeeded payment produces the same end state.
 export async function applyPaymentSuccess(db: AdminClient, payment: PaymentRow, nowISO: string): Promise<void> {
   const { id, clinic_id: clinicId, invoice_id: invoiceId } = payment
 
@@ -33,16 +43,22 @@ export async function applyPaymentSuccess(db: AdminClient, payment: PaymentRow, 
       .eq('status', 'pending')
   }
 
-  await db
-    .from('subscriptions')
-    .update({
-      status: 'active',
-      grace_ends_at: null,
-      current_period_start: nowISO,
-      current_period_end: addDaysISO(nowISO, RENEWAL_DAYS),
-    })
-    .eq('clinic_id', clinicId)
-  await db.from('clinics').update({ status: 'active' }).eq('id', clinicId)
+  // Base renewal: reactivate + extend the period by one cycle.
+  const subUpdate: Record<string, unknown> = {
+    status: 'active',
+    grace_ends_at: null,
+    current_period_start: nowISO,
+    current_period_end: addDaysISO(nowISO, RENEWAL_DAYS),
+  }
+  // An upgrade payment also moves the subscription (and clinic) onto the new plan.
+  const isUpgrade = payment.purpose === 'upgrade' && !!payment.target_plan_id
+  if (isUpgrade) subUpdate.plan_id = payment.target_plan_id
+
+  await db.from('subscriptions').update(subUpdate).eq('clinic_id', clinicId)
+
+  const clinicUpdate: Record<string, unknown> = { status: 'active' }
+  if (isUpgrade) clinicUpdate.plan = payment.target_plan_id
+  await db.from('clinics').update(clinicUpdate).eq('id', clinicId)
 }
 
 // A payment failed (declined / cancelled / timed out): mark it failed, fail its
