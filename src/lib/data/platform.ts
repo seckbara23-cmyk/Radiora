@@ -327,6 +327,46 @@ export async function getTenantBilling(clinicId: string): Promise<TenantBilling>
   }
 }
 
+// ── Notifications outbox (Phase 4E/4F) ─────────────────────────────────────────
+
+export interface NotificationRow {
+  id: string
+  clinicId: string
+  clinicName: string
+  type: string
+  channel: string
+  status: string
+  title: string | null
+  createdAt: string
+}
+
+export async function getRecentNotifications(limit = 15): Promise<NotificationRow[]> {
+  await requireSuperAdmin()
+  const db = createAdminClient()
+  const { data } = await db
+    .from('notifications')
+    .select('id, clinic_id, type, channel, status, title, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  const rows = (data as Record<string, unknown>[] | null) ?? []
+  const clinicIds = [...new Set(rows.map((r) => r.clinic_id as string))]
+  const nameByClinic = new Map<string, string>()
+  if (clinicIds.length > 0) {
+    const { data: clinics } = await db.from('clinics').select('id, name').in('id', clinicIds)
+    for (const c of (clinics as { id: string; name: string }[] | null) ?? []) nameByClinic.set(c.id, c.name)
+  }
+  return rows.map((r) => ({
+    id: r.id as string,
+    clinicId: r.clinic_id as string,
+    clinicName: nameByClinic.get(r.clinic_id as string) ?? (r.clinic_id as string),
+    type: r.type as string,
+    channel: r.channel as string,
+    status: r.status as string,
+    title: (r.title as string | null) ?? null,
+    createdAt: r.created_at as string,
+  }))
+}
+
 // ── Platform analytics ────────────────────────────────────────────────────────
 
 export interface PlatformAnalytics {

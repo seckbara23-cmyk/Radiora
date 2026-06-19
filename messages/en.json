@@ -922,7 +922,35 @@
       "noneExpiring": "Nothing expiring soon.",
       "failedPayments": "Failed payments",
       "noFailed": "No failed payments.",
+      "runCycle": "Run billing cycle",
+      "running": "Processing…",
+      "runHint": "Sends due-date reminders (7/3/0 days), issues renewal invoices, and advances subscriptions (trial/active → grace → suspended).",
+      "runDone": "Cycle complete",
+      "runReminders": "reminder(s)",
+      "runInvoices": "invoice(s)",
+      "runGraced": "graced",
+      "runSuspended": "suspended",
+      "notifications": "Recent notifications",
+      "noNotifications": "No notifications.",
       "privacyNote": "Billing data only — no clinical content."
+    },
+    "notificationTypes": {
+      "trial_ending": "Trial ending",
+      "renewal_reminder": "Renewal reminder",
+      "grace_warning": "Payment warning",
+      "invoice_issued": "Invoice issued",
+      "suspended": "Subscription suspended",
+      "payment_failed": "Payment failed",
+      "report_validated": "Report validated",
+      "report_delivered": "Report delivered",
+      "appointment_reminder": "Appointment reminder",
+      "critical_finding": "Critical finding"
+    },
+    "notificationStatus": {
+      "pending": "Pending",
+      "sent": "Sent",
+      "failed": "Failed",
+      "skipped": "Skipped"
     },
     "onboarding": {
       "title": "New clinic",

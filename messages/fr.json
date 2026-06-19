@@ -922,7 +922,35 @@
       "noneExpiring": "Aucune échéance proche.",
       "failedPayments": "Paiements échoués",
       "noFailed": "Aucun paiement échoué.",
+      "runCycle": "Lancer le cycle de facturation",
+      "running": "Traitement…",
+      "runHint": "Émet les rappels d’échéance (7/3/0 j), génère les factures de renouvellement et fait évoluer les abonnements (essai/actif → délai → suspendu).",
+      "runDone": "Cycle terminé",
+      "runReminders": "rappel(s)",
+      "runInvoices": "facture(s)",
+      "runGraced": "en délai",
+      "runSuspended": "suspendu(s)",
+      "notifications": "Notifications récentes",
+      "noNotifications": "Aucune notification.",
       "privacyNote": "Données de facturation uniquement — aucun contenu clinique."
+    },
+    "notificationTypes": {
+      "trial_ending": "Fin d’essai",
+      "renewal_reminder": "Rappel de renouvellement",
+      "grace_warning": "Avertissement de paiement",
+      "invoice_issued": "Facture émise",
+      "suspended": "Abonnement suspendu",
+      "payment_failed": "Paiement échoué",
+      "report_validated": "Compte rendu validé",
+      "report_delivered": "Compte rendu transmis",
+      "appointment_reminder": "Rappel de rendez-vous",
+      "critical_finding": "Résultat critique"
+    },
+    "notificationStatus": {
+      "pending": "En attente",
+      "sent": "Envoyée",
+      "failed": "Échec",
+      "skipped": "Ignorée"
     },
     "onboarding": {
       "title": "Nouvelle clinique",
