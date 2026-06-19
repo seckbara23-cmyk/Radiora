@@ -184,7 +184,8 @@
     "searchPlaceholder": "Search by study, author or status…",
     "viewReport": "View →",
     "editReport": "Edit →",
-    "pageTitle": "Radiology Report"
+    "pageTitle": "Radiology Report",
+    "batchDownload": "Download all (ZIP)"
   },
   "templates": {
     "title": "Templates",
@@ -886,6 +887,89 @@
     "modalityPlaceholder": "e.g. MRI, CT",
     "added": "Term added.",
     "add": "Add"
+  },
+  "delivery": {
+    "panelTitle": "Secure delivery",
+    "panelSubtitle": "Create a secure link to deliver this validated report. No data is sent to an external service; every access is logged.",
+    "channel": {
+      "patient": "Send to patient",
+      "physician": "Send to referring physician",
+      "link": "Create secure link"
+    },
+    "form": {
+      "recipientType": "Recipient",
+      "recipientLabel": "Recipient name (optional)",
+      "recipientPlaceholder": "e.g. Mr Diop / Dr Fall",
+      "header": "Header",
+      "headerDefault": "Default header",
+      "headerNone": "No header",
+      "expiry": "Expiry",
+      "expiry7": "7 days",
+      "expiry30": "30 days",
+      "expiryNever": "No expiry",
+      "password": "Password protection",
+      "passwordDob": "Patient date of birth",
+      "passwordCustom": "Custom password",
+      "passwordNone": "No password",
+      "customPassword": "Password",
+      "create": "Create secure link",
+      "creating": "Creating…"
+    },
+    "list": {
+      "title": "Existing links",
+      "opened": "Opens",
+      "downloaded": "Downloads",
+      "copyLink": "Copy secure link",
+      "copied": "Copied!",
+      "revoke": "Revoke"
+    },
+    "state": {
+      "active": "Active",
+      "expired": "Expired",
+      "revoked": "Revoked"
+    },
+    "passwordTag": {
+      "dob": "Date of birth",
+      "custom": "Password",
+      "none": ""
+    },
+    "errors": {
+      "forbidden": "Action not allowed.",
+      "invalid_channel": "Invalid recipient.",
+      "not_found": "Report not found.",
+      "not_validated": "The report must be validated before delivery.",
+      "no_dob": "Patient date of birth unavailable.",
+      "weak_password": "Password must be at least 4 characters.",
+      "render_failed": "Failed to generate the document.",
+      "storage_failed": "Failed to store the document.",
+      "insert_failed": "Failed to create the link."
+    },
+    "invalid": {
+      "title": "Invalid link",
+      "body": "This link does not exist or is no longer available."
+    },
+    "unavailable": {
+      "title": "Link unavailable",
+      "expired": "This link has expired.",
+      "revoked": "This link has been revoked."
+    },
+    "ready": {
+      "title": "Your report is available",
+      "body": "Securely download your document below."
+    },
+    "unlock": {
+      "passwordLabel": "Password",
+      "dobLabel": "Date of birth (DDMMYYYY)",
+      "dobPlaceholder": "e.g. 02071990",
+      "submit": "Unlock",
+      "checking": "Checking…",
+      "wrong": "Incorrect password."
+    },
+    "download": {
+      "pdf": "Download PDF",
+      "docx": "Download Word (DOCX)"
+    },
+    "confidentialNote": "Confidential document. For the intended recipient only."
   },
   "profileSettings": {
     "title": "Profile & signature",

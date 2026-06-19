@@ -184,7 +184,8 @@
     "searchPlaceholder": "Rechercher par examen, auteur ou statut…",
     "viewReport": "Voir →",
     "editReport": "Modifier →",
-    "pageTitle": "Compte rendu radiologique"
+    "pageTitle": "Compte rendu radiologique",
+    "batchDownload": "Tout télécharger (ZIP)"
   },
   "templates": {
     "title": "Modèles",
@@ -886,6 +887,89 @@
     "modalityPlaceholder": "ex. : IRM, Scanner",
     "added": "Terme ajouté.",
     "add": "Ajouter"
+  },
+  "delivery": {
+    "panelTitle": "Transmission sécurisée",
+    "panelSubtitle": "Créez un lien sécurisé pour transmettre ce compte rendu validé. Aucune donnée n’est envoyée à un service externe ; chaque accès est journalisé.",
+    "channel": {
+      "patient": "Envoyer au patient",
+      "physician": "Envoyer au médecin traitant",
+      "link": "Créer un lien sécurisé"
+    },
+    "form": {
+      "recipientType": "Destinataire",
+      "recipientLabel": "Nom du destinataire (facultatif)",
+      "recipientPlaceholder": "ex. : M. Diop / Dr Fall",
+      "header": "En-tête",
+      "headerDefault": "En-tête par défaut",
+      "headerNone": "Sans en-tête",
+      "expiry": "Expiration",
+      "expiry7": "7 jours",
+      "expiry30": "30 jours",
+      "expiryNever": "Sans expiration",
+      "password": "Protection par mot de passe",
+      "passwordDob": "Date de naissance du patient",
+      "passwordCustom": "Mot de passe personnalisé",
+      "passwordNone": "Aucun mot de passe",
+      "customPassword": "Mot de passe",
+      "create": "Créer le lien sécurisé",
+      "creating": "Création…"
+    },
+    "list": {
+      "title": "Liens existants",
+      "opened": "Ouvertures",
+      "downloaded": "Téléchargements",
+      "copyLink": "Copier lien sécurisé",
+      "copied": "Copié !",
+      "revoke": "Révoquer"
+    },
+    "state": {
+      "active": "Actif",
+      "expired": "Expiré",
+      "revoked": "Révoqué"
+    },
+    "passwordTag": {
+      "dob": "Date de naissance",
+      "custom": "Mot de passe",
+      "none": ""
+    },
+    "errors": {
+      "forbidden": "Action non autorisée.",
+      "invalid_channel": "Destinataire invalide.",
+      "not_found": "Compte rendu introuvable.",
+      "not_validated": "Le compte rendu doit être validé avant toute transmission.",
+      "no_dob": "Date de naissance du patient indisponible.",
+      "weak_password": "Le mot de passe doit comporter au moins 4 caractères.",
+      "render_failed": "Échec de la génération du document.",
+      "storage_failed": "Échec de l’enregistrement du document.",
+      "insert_failed": "Échec de la création du lien."
+    },
+    "invalid": {
+      "title": "Lien invalide",
+      "body": "Ce lien n’existe pas ou n’est plus disponible."
+    },
+    "unavailable": {
+      "title": "Lien indisponible",
+      "expired": "Ce lien a expiré.",
+      "revoked": "Ce lien a été révoqué."
+    },
+    "ready": {
+      "title": "Votre compte rendu est disponible",
+      "body": "Téléchargez votre document de manière sécurisée ci-dessous."
+    },
+    "unlock": {
+      "passwordLabel": "Mot de passe",
+      "dobLabel": "Date de naissance (JJMMAAAA)",
+      "dobPlaceholder": "ex. : 02071990",
+      "submit": "Déverrouiller",
+      "checking": "Vérification…",
+      "wrong": "Mot de passe incorrect."
+    },
+    "download": {
+      "pdf": "Télécharger le PDF",
+      "docx": "Télécharger le Word (DOCX)"
+    },
+    "confidentialNote": "Document confidentiel. Réservé au destinataire."
   },
   "profileSettings": {
     "title": "Profil & signature",

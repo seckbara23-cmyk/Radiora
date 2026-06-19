@@ -16,8 +16,10 @@ import {
   studyStatusVariant,
 } from '@/components/ui/badge'
 import { getReportSafetyContext } from '@/lib/data/safety'
+import { getReportDeliveries } from '@/lib/data/deliveries'
 import { ReportEditor } from './ReportEditor'
 import { ReportExportActions } from './ReportExportActions'
+import { SecureDeliveryPanel } from './SecureDeliveryPanel'
 import { SafetyReviewPanel } from './SafetyReviewPanel'
 import { VersionHistory } from './VersionHistory'
 import { PatientExplanationPanel } from './PatientExplanationPanel'
@@ -80,6 +82,9 @@ export default async function ReportPage({ params }: Props) {
   const explanation = canReview && isFinalized
     ? await getExplanationByReport(id)
     : null
+
+  const deliveries = canReview && isFinalized ? await getReportDeliveries(id) : []
+  const nowISO = new Date().toISOString()
 
   const [reportTranslation, explanationTranslation] = await Promise.all([
     canReview && isFinalized
@@ -161,6 +166,16 @@ export default async function ReportPage({ params }: Props) {
       )}
 
       <VersionHistory versions={versions} />
+
+      {canReview && isFinalized && (
+        <SecureDeliveryPanel
+          reportId={id}
+          locale={locale}
+          headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
+          deliveries={deliveries}
+          nowISO={nowISO}
+        />
+      )}
 
       {canReview && isFinalized && (
         <PatientExplanationPanel
