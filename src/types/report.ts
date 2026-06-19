@@ -1,3 +1,5 @@
+import type { SpecialLayout } from './exam'
+
 export type ReportStatus = 'draft' | 'in_review' | 'finalized' | 'amended'
 
 export interface StructuredPatient {
@@ -5,6 +7,18 @@ export interface StructuredPatient {
   age: string
   sex: string
   serviceOrWard?: string
+}
+
+/**
+ * F18 — filled state of a special structured exam form (Mammographie,
+ * Scannopelvimétrie, TAGT). `values` is a flat map keyed by `${rowKey}__${colKey}`
+ * (single-column forms use the column key 'valeur'). The schema that gives these
+ * keys meaning lives in src/config/special-forms.ts — only measurements typed by
+ * the radiologist are stored here; nothing is ever AI-generated.
+ */
+export interface SpecialFormState {
+  layout: SpecialLayout
+  values: Record<string, string>
 }
 
 /**
@@ -22,6 +36,7 @@ export interface StructuredReportData {
   results:     string        // RÉSULTATS section (replaces legacy "findings")
   conclusion:  string        // EN CONCLUSION section (replaces legacy "impression")
   recommendations?: string   // RECOMMANDATIONS section (optional)
+  specialForm?: SpecialFormState  // F18 — measurement table for special exams; RÉSULTATS rendered from it
   dictationTranscript?: string
   generatedAt?: string
 }

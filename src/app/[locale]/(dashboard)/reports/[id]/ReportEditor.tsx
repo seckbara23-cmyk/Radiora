@@ -7,7 +7,10 @@ import { SmartStructuringPanel } from './SmartStructuringPanel'
 import { VoiceDictationPanel } from './VoiceDictationPanel'
 import { buildExamInfo, buildDefaultTechnique } from '@/lib/ai/hpd-engine'
 import { SectionSuggestions } from './SectionSuggestions'
+import { getSpecialForm, SPECIAL_LAYOUTS, type SpecialFormSchema } from '@/config/special-forms'
+import { emptySpecialForm, renderSpecialFormText, missingRequiredRows, cellKey } from '@/lib/reports/special-forms'
 import type { Report, StructuredReportData } from '@/types/report'
+import type { SpecialLayout } from '@/types/exam'
 import type { Template } from '@/types/template'
 import type { UserPhrasePreference } from '@/types/preference'
 
@@ -112,17 +115,89 @@ function DocSection({
   )
 }
 
+// F18 — editable measurement table for a special exam form. The radiologist types
+// every value; nothing is computed or pre-filled. Reference values are read-only.
+function SpecialFormTableEditor({
+  schema, values, onCellChange, disabled, t,
+}: {
+  schema:      SpecialFormSchema
+  values:      Record<string, string>
+  onCellChange:(key: string, value: string) => void
+  disabled:    boolean
+  t:           ReturnType<typeof useTranslations>
+}) {
+  const missing = new Set(missingRequiredRows({ layout: schema.layout, values }).map((r) => r.key))
+  const th = 'border border-slate-300 bg-slate-50 px-2 py-1 text-left font-semibold text-slate-700'
+  return (
+    <section className="mb-5 font-sans">
+      <h3 className="text-[12px] font-bold tracking-[0.1em] text-slate-900 uppercase underline underline-offset-[5px] decoration-slate-400 mb-1.5 font-serif">
+        {t('resultsLabel')}
+        <span className="text-red-500 ml-0.5 no-underline">*</span>
+      </h3>
+      <p className="text-[11px] text-slate-500 mb-2">{schema.instructions}</p>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-[12px]">
+          <thead>
+            <tr>
+              <th className={th}>Paramètre</th>
+              {schema.valueColumns.map((c) => (
+                <th key={c.key} className={th}>{c.label}</th>
+              ))}
+              {schema.showReference && <th className={th}>Valeur usuelle</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {schema.rows.map((row) => {
+              const isMissing = missing.has(row.key)
+              return (
+                <tr key={row.key}>
+                  <td className="border border-slate-300 px-2 py-1 align-top text-slate-700">
+                    {row.label}{row.unit ? ` (${row.unit})` : ''}
+                    {row.required && <span className="text-red-500 ml-0.5">*</span>}
+                  </td>
+                  {schema.valueColumns.map((c) => (
+                    <td
+                      key={c.key}
+                      className={`border px-1 py-0.5 ${isMissing ? 'border-red-300 bg-red-50/40' : 'border-slate-300'}`}
+                    >
+                      <input
+                        type="text"
+                        value={values[cellKey(row.key, c.key)] ?? ''}
+                        onChange={(e) => onCellChange(cellKey(row.key, c.key), e.target.value)}
+                        disabled={disabled}
+                        aria-label={`${row.label} ${c.label}`}
+                        className="w-full bg-transparent outline-none px-1 py-0.5 text-slate-800 disabled:text-slate-600 focus:bg-blue-50/50 rounded"
+                      />
+                    </td>
+                  ))}
+                  {schema.showReference && (
+                    <td className="border border-slate-300 px-2 py-1 align-top text-slate-400">
+                      {row.reference ?? '—'}
+                    </td>
+                  )}
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )
+}
+
 function StructuredEditor({
-  draft, disabled, onChange, t, phrases, reportId, examDate,
+  draft, disabled, onChange, onSpecialCellChange, t, phrases, reportId, examDate,
 }: {
   draft:    StructuredReportData
   disabled: boolean
   onChange: (key: keyof Pick<StructuredReportData, 'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'>, value: string) => void
+  onSpecialCellChange: (key: string, value: string) => void
   t:        ReturnType<typeof useTranslations>
   phrases:  UserPhrasePreference[]
   reportId: string
   examDate: string
 }) {
+  const specialSchema = draft.specialForm ? getSpecialForm(draft.specialForm.layout) : null
   const phrasesBySection = React.useMemo(() => {
     const map: Record<string, UserPhrasePreference[]> = {}
     for (const p of phrases) {
@@ -199,16 +274,27 @@ function StructuredEditor({
             />
           }
         />
-        {/* RÉSULTATS — NO phrasing preferences. Diagnostic content typed by the physician. */}
-        <DocSection
-          label={t('resultsLabel')}
-          value={draft.results}
-          onChange={(v) => onChange('results', v)}
-          disabled={disabled}
-          placeholder={t('resultsPlaceholder')}
-          ariaLabel={t('resultsLabel')}
-          required
-        />
+        {/* RÉSULTATS — special exams use a structured measurement table (F18);
+            ordinary exams keep the free-text diagnostic field (no AI phrasing). */}
+        {draft.specialForm && specialSchema ? (
+          <SpecialFormTableEditor
+            schema={specialSchema}
+            values={draft.specialForm.values}
+            onCellChange={onSpecialCellChange}
+            disabled={disabled}
+            t={t}
+          />
+        ) : (
+          <DocSection
+            label={t('resultsLabel')}
+            value={draft.results}
+            onChange={(v) => onChange('results', v)}
+            disabled={disabled}
+            placeholder={t('resultsPlaceholder')}
+            ariaLabel={t('resultsLabel')}
+            required
+          />
+        )}
         {/* CONCLUSION — phrasing preferences for openers only */}
         <DocSection
           label={t('conclusionLabel')}
@@ -353,6 +439,9 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
   const [state, formAction, isPending] = useActionState(handleReportForm, { error: null })
 
   const isStructured = structuredDraft !== null
+  const specialForm = structuredDraft?.specialForm ?? null
+  const hasSpecialForm = Boolean(specialForm)
+  const specialIncomplete = specialForm ? missingRequiredRows(specialForm).length > 0 : false
 
   function updateSection(
     key: keyof Pick<StructuredReportData, 'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'>,
@@ -362,6 +451,43 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
     if (key === 'results')         setFindings(value)
     if (key === 'conclusion')      setImpression(value)
     if (key === 'recommendations') setRecommendations(value)
+  }
+
+  // F18 — switch a structured report to (or away from) a special measurement form.
+  function setSpecialLayout(layout: SpecialLayout | '') {
+    setStructuredDraft((prev) => {
+      if (!prev) return prev
+      if (!layout) {
+        const next = { ...prev }
+        delete next.specialForm
+        return next
+      }
+      const schema = getSpecialForm(layout)
+      const form =
+        prev.specialForm && prev.specialForm.layout === layout
+          ? prev.specialForm
+          : emptySpecialForm(layout)
+      const results = renderSpecialFormText(form)
+      setFindings(results)
+      return {
+        ...prev,
+        examType:  schema.examType,
+        examTitle: schema.title,
+        technique: prev.technique?.trim() ? prev.technique : schema.defaultTechnique,
+        specialForm: form,
+        results,
+      }
+    })
+  }
+
+  function updateSpecialCell(key: string, value: string) {
+    setStructuredDraft((prev) => {
+      if (!prev || !prev.specialForm) return prev
+      const form = { ...prev.specialForm, values: { ...prev.specialForm.values, [key]: value } }
+      const results = renderSpecialFormText(form)
+      setFindings(results)
+      return { ...prev, specialForm: form, results }
+    })
   }
 
   function handleAiAccept(structuredData: StructuredReportData) {
@@ -460,13 +586,34 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
         </div>
       )}
 
-      {/* ── Voice dictation ──────────────────────────────────────── */}
-      {isEditable && (
+      {/* ── Special structured exam selector (F18) ───────────────── */}
+      {isEditable && isStructured && (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2">
+          <span className="text-xs font-semibold text-violet-800">{t('specialExamLabel')}</span>
+          <select
+            value={specialForm?.layout ?? ''}
+            onChange={(e) => setSpecialLayout(e.target.value as SpecialLayout | '')}
+            disabled={isPending}
+            className={selectCls}
+          >
+            <option value="">{t('specialExamNone')}</option>
+            {SPECIAL_LAYOUTS.map((l) => (
+              <option key={l} value={l}>{getSpecialForm(l).title}</option>
+            ))}
+          </select>
+          {hasSpecialForm && (
+            <span className="text-[11px] text-violet-600">{t('specialExamHint')}</span>
+          )}
+        </div>
+      )}
+
+      {/* ── Voice dictation ──────── (free-text exams only) ──────── */}
+      {isEditable && !hasSpecialForm && (
         <VoiceDictationPanel reportId={report.id} onApply={handleVoiceApply} />
       )}
 
-      {/* ── AI structuring panel ─────────────────────────────────── */}
-      {isEditable && (
+      {/* ── AI structuring panel ── (free-text exams only) ──────── */}
+      {isEditable && !hasSpecialForm && (
         <SmartStructuringPanel
           reportId={report.id}
           modality={modality}
@@ -482,6 +629,7 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
           draft={structuredDraft}
           disabled={isPending || !isEditable}
           onChange={updateSection}
+          onSpecialCellChange={updateSpecialCell}
           t={t}
           phrases={initialPhrases}
           reportId={report.id}
@@ -582,6 +730,11 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
           {t('draftSaved')}
         </div>
       )}
+      {specialIncomplete && !isFinalized && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
+          {t('specialIncomplete')}
+        </div>
+      )}
 
       {/* ── Action buttons ───────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-gray-100">
@@ -605,7 +758,8 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
             </button>
             <button
               type="submit" name="_submit" value="finalize"
-              disabled={isPending || !canWrite}
+              disabled={isPending || !canWrite || specialIncomplete}
+              title={specialIncomplete ? t('specialIncomplete') : undefined}
               className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-semibold rounded-lg transition"
             >
               {isPending ? t('finalizing') : t('finalizeReport')}

@@ -8,10 +8,15 @@
 
 import type { StructuredReportData } from '@/types/report'
 import { buildSignatureName, coerceSignatureStyle } from '@/lib/profile/signature'
+import { buildSpecialFormTable, type SpecialFormTable } from '@/lib/reports/special-forms'
+
+export type { SpecialFormTable } from '@/lib/reports/special-forms'
 
 export interface ExportSection {
   label: string
   body: string
+  /** F18 — a measurement table rendered above the body (special exam forms). */
+  table?: SpecialFormTable
 }
 
 export interface ExportPatientField {
@@ -229,14 +234,20 @@ export function buildReportExportModel(input: ReportExportInput): ReportExportMo
 
   // ── Sections, ALWAYS in fixed clinical order (req. acceptance) ──
   const ordered: ExportSection[] = []
-  const push = (label: string, body: string) => {
+  const push = (label: string, body: string, table?: SpecialFormTable) => {
     const b = clean(body)
-    if (b) ordered.push({ label, body: b })
+    if (b || table) ordered.push({ label, body: b, ...(table ? { table } : {}) })
   }
   if (sd) {
     push('INDICATION', sd.indication)
     push('TECHNIQUE', sd.technique)
-    push('RÉSULTATS', sd.results)
+    // F18 — special exams render RÉSULTATS as a measurement table (the text in
+    // sd.results is the same data, kept for validation but not printed twice).
+    if (sd.specialForm) {
+      push('RÉSULTATS', '', buildSpecialFormTable(sd.specialForm))
+    } else {
+      push('RÉSULTATS', sd.results)
+    }
     push('CONCLUSION', sd.conclusion)
     push('RECOMMANDATIONS', sd.recommendations ?? '')
   } else {

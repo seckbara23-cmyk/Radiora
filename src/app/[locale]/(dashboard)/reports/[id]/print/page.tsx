@@ -7,6 +7,7 @@ import { getPatient } from '@/lib/data/patients'
 import { getHospitalHeader } from '@/lib/data/hospital-headers'
 import { getRadiologistSignature } from '@/lib/data/profile'
 import { parseHeaderChoice } from '@/lib/export/load'
+import { buildSpecialFormTable } from '@/lib/reports/special-forms'
 import type { HospitalHeader } from '@/types/hospital-header'
 
 type Props = {
@@ -68,6 +69,10 @@ export default async function ReportPrintPage({ params, searchParams }: Props) {
         .section { margin-bottom: 16px; }
         .section-label { font-weight: bold; text-decoration: underline; font-size: 11pt; margin-bottom: 6px; }
         .section-body  { font-size: 11pt; line-height: 1.65; white-space: pre-wrap; text-align: justify; }
+        .measure-table { width: 100%; border-collapse: collapse; font-size: 10.5pt; margin-top: 4px; }
+        .measure-table th, .measure-table td { border: 1px solid #888; padding: 4px 8px; text-align: left; vertical-align: top; }
+        .measure-table th { background: #ececec; font-weight: bold; }
+        .measure-table td:first-child, .measure-table th:first-child { width: 46%; }
         .signature-row { margin-top: 32px; text-align: right; font-size: 11pt; }
         .print-btn { display: block; margin: 0 auto 24px; padding: 10px 28px; background: #1d4ed8; color: white; border: none; border-radius: 8px; font-size: 13px; font-family: sans-serif; cursor: pointer; }
       `}</style>
@@ -164,11 +169,40 @@ export default async function ReportPrintPage({ params, searchParams }: Props) {
                 <div className="section-body">{sd.technique}</div>
               </div>
             )}
-            {sd.results && (
+            {sd.specialForm ? (
               <div className="section">
                 <div className="section-label">RÉSULTATS :</div>
-                <div className="section-body">{sd.results}</div>
+                {(() => {
+                  const tbl = buildSpecialFormTable(sd.specialForm)
+                  return (
+                    <table className="measure-table">
+                      <thead>
+                        <tr>
+                          {tbl.columns.map((c, i) => (
+                            <th key={i}>{c}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tbl.rows.map((row, ri) => (
+                          <tr key={ri}>
+                            {row.map((cell, ci) => (
+                              <td key={ci}>{cell}</td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )
+                })()}
               </div>
+            ) : (
+              sd.results && (
+                <div className="section">
+                  <div className="section-label">RÉSULTATS :</div>
+                  <div className="section-body">{sd.results}</div>
+                </div>
+              )
             )}
             {sd.conclusion && (
               <div className="section">

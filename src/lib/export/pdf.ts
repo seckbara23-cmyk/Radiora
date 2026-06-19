@@ -7,7 +7,7 @@
 // signature block. Draft reports carry a diagonal BROUILLON watermark.
 
 import { PDFDocument, StandardFonts, rgb, degrees, type PDFFont, type PDFPage, type PDFImage } from 'pdf-lib'
-import type { ReportExportModel } from './model'
+import type { ReportExportModel, SpecialFormTable } from './model'
 
 export interface ExportImages {
   logo?: { bytes: Uint8Array; mime: string }
@@ -26,6 +26,7 @@ const GRAY = rgb(0.33, 0.33, 0.33)
 const RULE = rgb(0.07, 0.07, 0.07)
 const BOX = rgb(0.55, 0.55, 0.55)
 const WATERMARK = rgb(0.85, 0.85, 0.85)
+const TABLEHEAD = rgb(0.92, 0.92, 0.92)
 
 interface Ctx {
   doc: PDFDocument
@@ -125,6 +126,59 @@ function drawBody(ctx: Ctx, text: string, size = 10.5, lineHeight = 16.5): void 
     })
     if (pIdx < paragraphs.length - 1) ctx.y -= 2
   })
+}
+
+// F18 — draw a measurement table (special exam forms). Columns: the first
+// (parameter) column is widest; the remaining value/reference columns share the
+// rest equally. Cells wrap and rows grow to fit; the table can break across pages.
+function drawTable(ctx: Ctx, table: SpecialFormTable): void {
+  const size = 9.5
+  const lineH = 12.5
+  const padX = 5
+  const padY = 5
+  const n = table.columns.length
+  if (n === 0) return
+
+  const firstW = CONTENT_W * (n <= 2 ? 0.6 : 0.46)
+  const restW = (CONTENT_W - firstW) / (n - 1)
+  const colW = [firstW, ...Array(n - 1).fill(restW)]
+  const colX: number[] = []
+  let cx = MARGIN
+  for (const w of colW) { colX.push(cx); cx += w }
+  const rightX = MARGIN + CONTENT_W
+
+  const drawRow = (cells: string[], bold: boolean, shade: boolean): void => {
+    const font = bold ? ctx.bold : ctx.font
+    const wrapped = cells.map((c, i) => {
+      const lines = wrapParagraph(c || '', font, size, colW[i] - padX * 2)
+      return lines.length ? lines : ['']
+    })
+    const lineCount = Math.max(...wrapped.map((w) => w.length))
+    const rowH = lineCount * lineH + padY * 2
+    ensureSpace(ctx, rowH)
+    const top = ctx.y
+    if (shade) {
+      ctx.page.drawRectangle({ x: MARGIN, y: top - rowH, width: CONTENT_W, height: rowH, color: TABLEHEAD })
+    }
+    wrapped.forEach((lines, i) => {
+      lines.forEach((ln, li) => {
+        ctx.page.drawText(ln, { x: colX[i] + padX, y: top - padY - size - lineH * li, size, font, color: INK })
+      })
+    })
+    // bottom + vertical borders
+    ctx.page.drawLine({ start: { x: MARGIN, y: top - rowH }, end: { x: rightX, y: top - rowH }, thickness: 0.5, color: BOX })
+    for (const x of colX) {
+      ctx.page.drawLine({ start: { x, y: top }, end: { x, y: top - rowH }, thickness: 0.5, color: BOX })
+    }
+    ctx.page.drawLine({ start: { x: rightX, y: top }, end: { x: rightX, y: top - rowH }, thickness: 0.5, color: BOX })
+    ctx.y = top - rowH
+  }
+
+  // top border, then header + body rows
+  ctx.page.drawLine({ start: { x: MARGIN, y: ctx.y }, end: { x: rightX, y: ctx.y }, thickness: 0.5, color: BOX })
+  drawRow(table.columns, true, true)
+  for (const row of table.rows) drawRow(row, false, false)
+  ctx.y -= 4
 }
 
 export async function renderReportPdf(
@@ -244,7 +298,8 @@ export async function renderReportPdf(
       color: INK,
     })
     ctx.y -= 17
-    drawBody(ctx, section.body)
+    if (section.table) drawTable(ctx, section.table)
+    if (section.body) drawBody(ctx, section.body)
     ctx.y -= 12
   }
 

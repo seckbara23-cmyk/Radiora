@@ -91,8 +91,38 @@ function patientTable(model: ReportExportModel): Table {
   })
 }
 
-function sectionParagraphs(model: ReportExportModel): Paragraph[] {
-  const out: Paragraph[] = []
+// F18 — render a special-exam measurement table. First row is the bold header.
+function measurementTable(table: { columns: string[]; rows: string[][] }): Table {
+  const border = { style: BorderStyle.SINGLE, size: 2, color: BOXGRAY }
+  const makeRow = (cells: string[], bold: boolean): TableRow =>
+    new TableRow({
+      tableHeader: bold,
+      children: cells.map(
+        (text, i) =>
+          new TableCell({
+            ...(i === 0
+              ? { width: { size: cells.length <= 2 ? 60 : 46, type: WidthType.PERCENTAGE } }
+              : {}),
+            shading: bold ? { fill: 'ECECEC' } : undefined,
+            margins: { top: 40, bottom: 40, left: 80, right: 80 },
+            children: [
+              new Paragraph({ children: [new TextRun({ text, bold, size: 18, color: INK })] }),
+            ],
+          }),
+      ),
+    })
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: border, bottom: border, left: border, right: border,
+      insideHorizontal: border, insideVertical: border,
+    },
+    rows: [makeRow(table.columns, true), ...table.rows.map((r) => makeRow(r, false))],
+  })
+}
+
+function sectionBlocks(model: ReportExportModel): (Paragraph | Table)[] {
+  const out: (Paragraph | Table)[] = []
   for (const section of model.sections) {
     out.push(
       new Paragraph({
@@ -102,14 +132,17 @@ function sectionParagraphs(model: ReportExportModel): Paragraph[] {
         ],
       }),
     )
-    for (const para of section.body.split('\n')) {
-      out.push(
-        new Paragraph({
-          alignment: AlignmentType.JUSTIFIED,
-          spacing: { after: 60, line: 300 },
-          children: [new TextRun({ text: para.trim(), size: 21, color: INK })],
-        }),
-      )
+    if (section.table) out.push(measurementTable(section.table))
+    if (section.body) {
+      for (const para of section.body.split('\n')) {
+        out.push(
+          new Paragraph({
+            alignment: AlignmentType.JUSTIFIED,
+            spacing: { after: 60, line: 300 },
+            children: [new TextRun({ text: para.trim(), size: 21, color: INK })],
+          }),
+        )
+      }
     }
   }
   return out
@@ -212,7 +245,7 @@ export async function renderReportDocx(
     ...headerChildren,
     patientTable(model),
     titleParagraph,
-    ...sectionParagraphs(model),
+    ...sectionBlocks(model),
     ...signatureParagraphs(model, images),
   ]
 

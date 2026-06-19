@@ -74,3 +74,77 @@ describe('buildReportExportModel — F12 header modes', () => {
     expect(m.header.contact).toBe('a@b.sn')
   })
 })
+
+describe('buildReportExportModel — F18 special exam tables', () => {
+  function withSpecialForm(): ReportExportInput {
+    return baseInput({
+      report: {
+        status: 'finalized',
+        signedAt: '2026-06-18T10:00:00Z',
+        findings: 'Diamètre promonto-rétro-pubien (PRP) (mm) : 110 (usuel ≥ 105 mm)',
+        impression: 'Bassin de dimensions normales.',
+        createdAt: '2026-06-18T09:00:00Z',
+        structuredData: {
+          language: 'fr',
+          examType: 'scannopelvimetrie',
+          examTitle: 'SCANNOPELVIMÉTRIE',
+          patient: { name: 'Awa Diop', age: '32 ans', sex: 'Féminin' },
+          indication: 'Pelvimétrie.',
+          technique: 'TDM basse dose.',
+          results: 'Diamètre promonto-rétro-pubien (PRP) (mm) : 110 (usuel ≥ 105 mm)',
+          conclusion: 'Bassin de dimensions normales.',
+          specialForm: {
+            layout: 'scannopelvimetrie',
+            values: { prp__valeur: '110', tm__valeur: '130' },
+          },
+        },
+      },
+    })
+  }
+
+  it('attaches a measurement table to the RÉSULTATS section', () => {
+    const m = buildReportExportModel(withSpecialForm())
+    const results = m.sections.find((s) => s.label === 'RÉSULTATS')
+    expect(results).toBeDefined()
+    expect(results!.table).toBeDefined()
+    expect(results!.table!.columns).toEqual(['Paramètre', 'Valeur', 'Valeur usuelle'])
+    expect(results!.table!.rows[0]).toEqual(['Diamètre promonto-rétro-pubien (PRP) (mm)', '110', '≥ 105 mm'])
+  })
+
+  it('does not duplicate the table data as RÉSULTATS body text', () => {
+    const m = buildReportExportModel(withSpecialForm())
+    const results = m.sections.find((s) => s.label === 'RÉSULTATS')
+    expect(results!.body).toBe('')
+  })
+
+  it('keeps the canonical section order with the table in place', () => {
+    const m = buildReportExportModel(withSpecialForm())
+    expect(m.sections.map((s) => s.label)).toEqual(['INDICATION', 'TECHNIQUE', 'RÉSULTATS', 'CONCLUSION'])
+  })
+
+  it('ordinary structured reports carry no table', () => {
+    const m = buildReportExportModel(
+      baseInput({
+        report: {
+          status: 'finalized',
+          findings: 'RAS.',
+          impression: 'Normal.',
+          createdAt: '2026-06-18T09:00:00Z',
+          structuredData: {
+            language: 'fr',
+            examType: 'scanner_cerebral',
+            examTitle: 'SCANNER CÉRÉBRAL',
+            patient: { name: 'X', age: '', sex: '' },
+            indication: 'Céphalées.',
+            technique: 'TDM.',
+            results: 'Pas d’anomalie.',
+            conclusion: 'Normal.',
+          },
+        },
+      }),
+    )
+    const results = m.sections.find((s) => s.label === 'RÉSULTATS')
+    expect(results!.table).toBeUndefined()
+    expect(results!.body).toBe('Pas d’anomalie.')
+  })
+})
