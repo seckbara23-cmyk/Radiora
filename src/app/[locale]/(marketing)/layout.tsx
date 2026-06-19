@@ -16,11 +16,13 @@ export default async function MarketingLayout({
   const { locale } = await params
   setRequestLocale(locale)
   const t = await getTranslations('marketing')
+  const tSupport = await getTranslations('support')
 
   const navLinks = [
     { href: '/features', label: t('nav.features') },
     { href: '/pricing', label: t('nav.pricing') },
     { href: '/security', label: t('nav.security') },
+    { href: '/support', label: tSupport('title') },
     { href: '/contact', label: t('nav.contact') },
   ]
 
@@ -89,6 +91,7 @@ export default async function MarketingLayout({
           <div>
             <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('footer.companyHeading')}</h4>
             <ul className="mt-3 space-y-2 text-sm text-gray-600">
+              <li><Link href="/support" className="transition hover:text-gray-900">{tSupport('title')}</Link></li>
               <li><Link href="/contact" className="transition hover:text-gray-900">{t('nav.contact')}</Link></li>
               <li><Link href="/login" className="transition hover:text-gray-900">{t('signIn')}</Link></li>
               <li><Link href="/signup" className="transition hover:text-gray-900">{t('ctaShort')}</Link></li>

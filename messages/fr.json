@@ -1466,5 +1466,86 @@
       "successBody": "Merci ! Notre équipe vous répondra dans les plus brefs délais.",
       "error": "Échec de l'envoi. Veuillez réessayer."
     }
+  },
+  "support": {
+    "title": "Centre d'aide",
+    "subtitle": "Guides, tutoriels et réponses pour tirer le meilleur de Radiora.",
+    "kbHeading": "Base de connaissances",
+    "kbSubtitle": "Guides pas à pas pour chaque fonctionnalité.",
+    "readArticle": "Lire l'article",
+    "backToSupport": "← Centre d'aide",
+    "articles": [
+      {
+        "slug": "demarrer",
+        "title": "Premiers pas avec Radiora",
+        "summary": "Créez votre compte, votre clinique et démarrez votre essai gratuit de 30 jours.",
+        "body": [
+          "Pour commencer, cliquez sur « Essayer gratuitement pendant 30 jours » et suivez les cinq étapes : créez votre compte, vérifiez votre e-mail puis votre téléphone, renseignez les informations de votre clinique et lancez l'essai. La mise en service est entièrement automatique — aucune intervention manuelle n'est nécessaire.",
+          "Une fois connecté, le tableau de bord regroupe vos examens, comptes rendus et notifications. Le premier administrateur de la clinique peut ensuite inviter son équipe depuis Paramètres → Utilisateurs.",
+          "Votre essai dure 30 jours. Vous recevrez des rappels 14, 7 et 3 jours avant son expiration, ainsi que le jour même, pour activer votre abonnement par Wave ou Orange Money."
+        ]
+      },
+      {
+        "slug": "comptes-rendus",
+        "title": "Créer et structurer un compte rendu",
+        "summary": "Utilisez les modèles structurés et la structuration assistée par IA.",
+        "body": [
+          "Depuis un examen, ouvrez l'éditeur de compte rendu. Choisissez un modèle adapté à la modalité et à la région anatomique : les champs structurés vous guident pour un compte rendu complet et cohérent.",
+          "La structuration assistée par IA peut transformer un texte libre en sections organisées. L'IA propose toujours une suggestion — c'est le radiologue qui valide. Aucune finalisation n'est automatique.",
+          "Seuls les radiologues peuvent valider et signer un compte rendu. Les secrétaires ne valident jamais un diagnostic."
+        ]
+      },
+      {
+        "slug": "dictee-vocale",
+        "title": "Utiliser la dictée vocale",
+        "summary": "Dictez vos comptes rendus sur ordinateur ou mobile.",
+        "body": [
+          "La dictée vocale est disponible sur ordinateur et sur mobile. Lancez l'enregistrement depuis l'éditeur de compte rendu ; la transcription apparaît dans le champ actif et reste entièrement sous votre contrôle.",
+          "Vous pouvez relire, corriger et structurer le texte avant validation. La transcription n'est jamais finalisée sans relecture du radiologue.",
+          "Sur mobile, ouvrez la vue de dictée mobile pour enregistrer rapidement vos commentaires et les associer à l'examen concerné."
+        ]
+      },
+      {
+        "slug": "facturation",
+        "title": "Gérer votre abonnement et vos paiements",
+        "summary": "Forfaits, paiements Wave et Orange Money, factures et reçus.",
+        "body": [
+          "Rendez-vous dans Paramètres → Facturation pour consulter votre forfait, vos factures et vos reçus. Vous pouvez payer une facture ou changer de forfait directement depuis cette page.",
+          "Les paiements s'effectuent par Wave ou Orange Money, en FCFA. Après confirmation du paiement, votre abonnement est activé automatiquement et un reçu est généré.",
+          "Un reçu est émis pour chaque paiement réussi — abonnement, renouvellement ou changement de forfait — et reste consultable dans l'historique de facturation."
+        ]
+      },
+      {
+        "slug": "equipe",
+        "title": "Gérer votre équipe et les rôles",
+        "summary": "Invitez des utilisateurs et attribuez les rôles adaptés.",
+        "body": [
+          "Depuis Paramètres → Utilisateurs, l'administrateur de la clinique peut inviter des radiologues, techniciens, secrétaires et autres membres de l'équipe.",
+          "Chaque rôle dispose de permissions strictes. Par exemple, seuls les radiologues valident et signent les comptes rendus, tandis que les secrétaires gèrent l'accueil et la transmission sans jamais valider de diagnostic.",
+          "L'isolation des données est garantie au niveau de la plateforme : aucun établissement ne peut voir les données d'un autre."
+        ]
+      }
+    ],
+    "tutorialsHeading": "Tutoriels vidéo",
+    "tutorialsSubtitle": "De courtes vidéos pour prendre Radiora en main.",
+    "tutorialBadge": "Bientôt disponible",
+    "tutorials": [
+      { "title": "Créer votre clinique", "duration": "3 min", "desc": "Inscription, vérification et démarrage de l'essai gratuit." },
+      { "title": "Votre premier compte rendu", "duration": "5 min", "desc": "Modèles structurés et structuration assistée par IA." },
+      { "title": "La dictée vocale", "duration": "4 min", "desc": "Dicter, relire et structurer un compte rendu." },
+      { "title": "Suivre votre activité", "duration": "6 min", "desc": "Analytique de clinique et productivité des radiologues." }
+    ],
+    "faqHeading": "Questions fréquentes",
+    "faqs": [
+      { "q": "Comment démarrer l'essai gratuit ?", "a": "Cliquez sur « Essayer gratuitement pendant 30 jours », créez votre compte et votre clinique. L'essai démarre immédiatement, sans carte bancaire." },
+      { "q": "Quels moyens de paiement sont acceptés ?", "a": "Les abonnements se règlent par Wave ou Orange Money, en FCFA. Le paiement active automatiquement votre abonnement et génère un reçu." },
+      { "q": "Mes données sont-elles sécurisées et isolées ?", "a": "Oui. La sécurité au niveau des lignes garantit qu'aucun établissement ne voit les données d'un autre, avec des protections de type HIPAA et une piste d'audit complète." },
+      { "q": "Puis-je gérer plusieurs cliniques ?", "a": "Oui. Radiora prend en charge plusieurs établissements depuis une seule plateforme, avec un accès basé sur les rôles et une isolation stricte des données." },
+      { "q": "Qui peut valider un compte rendu ?", "a": "Seuls les radiologues peuvent valider et signer un compte rendu. Les secrétaires ne valident jamais un diagnostic." },
+      { "q": "Comment contacter le support ?", "a": "Utilisez la page Contact ou écrivez-nous directement par e-mail. Notre équipe vous répond dans les plus brefs délais." }
+    ],
+    "contactHeading": "Besoin d'aide supplémentaire ?",
+    "contactDesc": "Notre équipe est là pour vous accompagner.",
+    "contactCta": "Contacter le support"
   }
 }

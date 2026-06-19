@@ -1466,5 +1466,86 @@
       "successBody": "Thank you! Our team will get back to you shortly.",
       "error": "Failed to send. Please try again."
     }
+  },
+  "support": {
+    "title": "Help center",
+    "subtitle": "Guides, tutorials and answers to get the most out of Radiora.",
+    "kbHeading": "Knowledge base",
+    "kbSubtitle": "Step-by-step guides for every feature.",
+    "readArticle": "Read article",
+    "backToSupport": "← Help center",
+    "articles": [
+      {
+        "slug": "demarrer",
+        "title": "Getting started with Radiora",
+        "summary": "Create your account, your clinic, and start your 30-day free trial.",
+        "body": [
+          "To begin, click \"Try free for 30 days\" and follow the five steps: create your account, verify your email then your phone, fill in your clinic details, and start the trial. Provisioning is fully automatic — no manual intervention required.",
+          "Once signed in, the dashboard brings together your exams, reports and notifications. The first clinic admin can then invite the team from Settings → Users.",
+          "Your trial lasts 30 days. You'll receive reminders 14, 7 and 3 days before it expires, and on the day itself, to activate your subscription via Wave or Orange Money."
+        ]
+      },
+      {
+        "slug": "comptes-rendus",
+        "title": "Creating and structuring a report",
+        "summary": "Use structured templates and AI-assisted structuring.",
+        "body": [
+          "From an exam, open the report editor. Choose a template matching the modality and body region: structured fields guide you toward a complete, consistent report.",
+          "AI-assisted structuring can turn free text into organized sections. The AI always proposes a suggestion — the radiologist validates it. No finalization is automatic.",
+          "Only radiologists can validate and sign a report. Secretaries never validate a diagnosis."
+        ]
+      },
+      {
+        "slug": "dictee-vocale",
+        "title": "Using voice dictation",
+        "summary": "Dictate your reports on desktop or mobile.",
+        "body": [
+          "Voice dictation is available on desktop and mobile. Start recording from the report editor; the transcript appears in the active field and stays fully under your control.",
+          "You can review, correct and structure the text before validation. The transcript is never finalized without the radiologist's review.",
+          "On mobile, open the mobile dictation view to quickly record your notes and attach them to the relevant exam."
+        ]
+      },
+      {
+        "slug": "facturation",
+        "title": "Managing your subscription and payments",
+        "summary": "Plans, Wave and Orange Money payments, invoices and receipts.",
+        "body": [
+          "Go to Settings → Billing to review your plan, invoices and receipts. You can pay an invoice or change plan directly from this page.",
+          "Payments are made via Wave or Orange Money, in FCFA. Once payment is confirmed, your subscription is activated automatically and a receipt is generated.",
+          "A receipt is issued for every successful payment — subscription, renewal or plan change — and remains available in your billing history."
+        ]
+      },
+      {
+        "slug": "equipe",
+        "title": "Managing your team and roles",
+        "summary": "Invite users and assign the right roles.",
+        "body": [
+          "From Settings → Users, the clinic admin can invite radiologists, technicians, secretaries and other team members.",
+          "Each role has strict permissions. For example, only radiologists validate and sign reports, while secretaries handle reception and routing without ever validating a diagnosis.",
+          "Data isolation is guaranteed at the platform level: no organization can see another's data."
+        ]
+      }
+    ],
+    "tutorialsHeading": "Video tutorials",
+    "tutorialsSubtitle": "Short videos to get you up and running with Radiora.",
+    "tutorialBadge": "Coming soon",
+    "tutorials": [
+      { "title": "Create your clinic", "duration": "3 min", "desc": "Sign-up, verification and starting the free trial." },
+      { "title": "Your first report", "duration": "5 min", "desc": "Structured templates and AI-assisted structuring." },
+      { "title": "Voice dictation", "duration": "4 min", "desc": "Dictate, review and structure a report." },
+      { "title": "Track your activity", "duration": "6 min", "desc": "Clinic analytics and radiologist productivity." }
+    ],
+    "faqHeading": "Frequently asked questions",
+    "faqs": [
+      { "q": "How do I start the free trial?", "a": "Click \"Try free for 30 days\", create your account and your clinic. The trial starts immediately, with no credit card." },
+      { "q": "Which payment methods are accepted?", "a": "Subscriptions are paid via Wave or Orange Money, in FCFA. Payment activates your subscription automatically and generates a receipt." },
+      { "q": "Is my data secure and isolated?", "a": "Yes. Row-level security ensures no organization sees another's data, with HIPAA-style safeguards and a full audit trail." },
+      { "q": "Can I manage multiple clinics?", "a": "Yes. Radiora supports multiple organizations from a single platform, with role-based access and strict data isolation." },
+      { "q": "Who can validate a report?", "a": "Only radiologists can validate and sign a report. Secretaries never validate a diagnosis." },
+      { "q": "How do I contact support?", "a": "Use the Contact page or email us directly. Our team will respond as soon as possible." }
+    ],
+    "contactHeading": "Need more help?",
+    "contactDesc": "Our team is here to support you.",
+    "contactCta": "Contact support"
   }
 }
