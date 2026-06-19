@@ -43,6 +43,27 @@ describe('deriveInviteStatus', () => {
     expect(deriveInviteStatus({ nowMs: NOW })).toBe('pending')
     expect(deriveInviteStatus({ invitedAt: 'not-a-date', nowMs: NOW })).toBe('pending')
   })
+
+  it('is active when the invite was accepted (lifecycle event)', () => {
+    expect(deriveInviteStatus({ hasAccepted: true, invitedAt: hoursAgo(2), nowMs: NOW })).toBe('active')
+  })
+
+  it('is opened when the invite was opened but not yet accepted', () => {
+    expect(deriveInviteStatus({ hasOpened: true, invitedAt: hoursAgo(2), nowMs: NOW })).toBe('opened')
+  })
+
+  it('prefers accepted over opened when both events exist', () => {
+    expect(deriveInviteStatus({ hasOpened: true, hasAccepted: true, invitedAt: hoursAgo(2), nowMs: NOW })).toBe('active')
+  })
+
+  it('treats an opened-but-not-accepted invite as opened even past the expiry window', () => {
+    // Once the invitee has engaged, "opened" is more informative than "expired".
+    expect(deriveInviteStatus({ hasOpened: true, invitedAt: hoursAgo(INVITE_EXPIRY_HOURS + 5), nowMs: NOW })).toBe('opened')
+  })
+
+  it('still reads as active from auth timestamps without lifecycle events (legacy)', () => {
+    expect(deriveInviteStatus({ emailConfirmedAt: hoursAgo(1), nowMs: NOW })).toBe('active')
+  })
 })
 
 describe('parseInviteTokens / hasInviteSession', () => {

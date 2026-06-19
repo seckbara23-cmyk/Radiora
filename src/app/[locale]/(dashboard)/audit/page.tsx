@@ -45,8 +45,11 @@ const EVENT_LABELS: Record<string, string> = {
   // Studies
   'study.created':         'Study uploaded',
   'study.status_updated':  'Study status changed',
-  // Users
-  'user.invited':          'User invited',
+  // Users — invitation lifecycle (FR labels per spec)
+  'user.invited':          'Invitation envoyée',
+  'user.invite_resent':    'Invitation renvoyée',
+  'user.invite_opened':    'Invitation ouverte',
+  'user.invite_accepted':  'Invitation acceptée',
   'user.deactivated':      'User deactivated',
   'user.reactivated':      'User reactivated',
   // Voice dictation
@@ -102,8 +105,11 @@ const BADGE_COLORS: Record<string, string> = {
   // Studies
   'study.created':         'bg-purple-50 text-purple-700 ring-purple-600/20',
   'study.status_updated':  'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
-  // Users
+  // Users — invitation lifecycle
   'user.invited':          'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+  'user.invite_resent':    'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
+  'user.invite_opened':    'bg-blue-50 text-blue-700 ring-blue-600/20',
+  'user.invite_accepted':  'bg-green-50 text-green-700 ring-green-600/20',
   'user.deactivated':      'bg-red-50 text-red-700 ring-red-600/20',
   'user.reactivated':      'bg-green-50 text-green-700 ring-green-600/20',
   // Voice dictation

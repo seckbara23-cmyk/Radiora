@@ -306,6 +306,7 @@
     "inviteSubtitle": "Un e-mail d'invitation sera envoyé.",
     "inviteSent": "Invitation envoyée à {email}",
     "statusPending": "Vérification en attente",
+    "statusOpened": "Invitation ouverte",
     "statusExpired": "Expiré",
     "resend": "Renvoyer l'invitation",
     "resending": "Envoi…",

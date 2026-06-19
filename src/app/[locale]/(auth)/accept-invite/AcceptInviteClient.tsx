@@ -5,6 +5,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { useTranslations } from 'next-intl'
 import { Link, useRouter } from '@/i18n/navigation'
 import { SenegalBar } from '@/components/ui/senegal-accents'
+import { recordInviteOpened, recordInviteAccepted } from '@/lib/actions/users'
 import {
   parseInviteTokens,
   hasInviteSession,
@@ -67,6 +68,9 @@ export function AcceptInviteClient() {
     if (typeof window !== 'undefined') {
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
     }
+    // Audit that the invitation was opened (best-effort, deduped server-side).
+    // The invited session cookie is now set, so this records as the invitee.
+    void recordInviteOpened()
     setStep('form')
   }
 
@@ -147,6 +151,8 @@ export function AcceptInviteClient() {
       setSubmitting(false)
       return
     }
+    // Audit account activation before navigating away (best-effort).
+    await recordInviteAccepted()
     setStep('done')
     router.push('/dashboard')
   }

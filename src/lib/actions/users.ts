@@ -200,6 +200,87 @@ export async function resendInvite(
   return { error: null, submitted: true }
 }
 
+// ── Invitation lifecycle audit events ─────────────────────────────────────────
+//
+// These run in the INVITED user's own session (the accept-invite client calls
+// them after it has set the invited session). The RLS policy
+// "audit_logs: users insert own" (with check user_id = auth.uid()) lets the
+// invitee append their own lifecycle rows; the dedupe lookup uses the admin
+// client because invitees cannot SELECT the audit trail (admin-only read).
+
+// Resolve the invited user's clinic for the audit row (best-effort).
+async function inviteeClinicId(userId: string): Promise<string | null> {
+  try {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from('profiles')
+      .select('clinic_id')
+      .eq('id', userId)
+      .single()
+    return (data?.clinic_id as string | null) ?? null
+  } catch {
+    return null
+  }
+}
+
+// Fired when an invited user reaches /accept-invite with a valid token and the
+// invited session has been adopted. Recorded once per invitation (deduped on the
+// existing user.invite_opened row for this user).
+export async function recordInviteOpened(): Promise<void> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    // Only record once per invitation. The invitee cannot read audit_logs, so
+    // the existence check goes through the service-role client.
+    const admin = createAdminClient()
+    const { data: existing } = await admin
+      .from('audit_logs')
+      .select('id')
+      .eq('entity_id', user.id)
+      .eq('action', 'user.invite_opened')
+      .limit(1)
+    if (existing && existing.length > 0) return
+
+    await logAudit({
+      userId: user.id,
+      clinicId: await inviteeClinicId(user.id),
+      action: 'user.invite_opened',
+      entityType: 'profile',
+      entityId: user.id,
+      metadata: { email: user.email ?? null },
+    })
+  } catch {
+    // Lifecycle audit is best-effort and must never block invite acceptance.
+  }
+}
+
+// Fired immediately after the invitee sets their password / activates the
+// account. Logged in their own session (user_id = auth.uid()).
+export async function recordInviteAccepted(): Promise<void> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return
+
+    await logAudit({
+      userId: user.id,
+      clinicId: await inviteeClinicId(user.id),
+      action: 'user.invite_accepted',
+      entityType: 'profile',
+      entityId: user.id,
+      metadata: { email: user.email ?? null },
+    })
+  } catch {
+    // Best-effort — never block account activation on an audit write.
+  }
+}
+
 // ── Activate / deactivate ─────────────────────────────────────────────────────
 
 export async function setUserStatus(

@@ -120,7 +120,8 @@ export default async function UsersPage({
                     `${u.firstName[0] ?? ''}${u.lastName[0] ?? ''}`.toUpperCase()
                   const isSelf = u.id === currentUser.id
                   const invite = inviteStatuses[u.id]
-                  const awaitingAcceptance = invite === 'pending' || invite === 'expired'
+                  const awaitingAcceptance =
+                    invite === 'pending' || invite === 'opened' || invite === 'expired'
 
                   return (
                     <tr key={u.id} className={`hover:bg-gray-50 transition ${!u.isActive ? 'opacity-60' : ''}`}>
@@ -171,6 +172,8 @@ export default async function UsersPage({
                           <Badge variant="neutral">{t('inactive')}</Badge>
                         ) : invite === 'pending' ? (
                           <Badge variant="warning">{t('statusPending')}</Badge>
+                        ) : invite === 'opened' ? (
+                          <Badge variant="info">{t('statusOpened')}</Badge>
                         ) : invite === 'expired' ? (
                           <Badge variant="danger">{t('statusExpired')}</Badge>
                         ) : (
