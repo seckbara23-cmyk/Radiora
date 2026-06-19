@@ -19,6 +19,7 @@ export default async function MarketingLayout({
   const tSupport = await getTranslations('support')
 
   const navLinks = [
+    { href: '/demo', label: t('nav.demo') },
     { href: '/features', label: t('nav.features') },
     { href: '/pricing', label: t('nav.pricing') },
     { href: '/security', label: t('nav.security') },

@@ -1,6 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { SenegalStar } from '@/components/ui/senegal-accents'
+import { RadioraDemo } from '@/components/marketing/radiora-demo'
 
 interface Highlight {
   title: string
@@ -70,6 +71,13 @@ export default async function MarketingHome({
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Interactive AI demo */}
+      <section className="border-t border-gray-100 bg-gradient-to-br from-slate-50 via-white to-blue-50">
+        <div className="mx-auto max-w-6xl px-6 py-20">
+          <RadioraDemo />
         </div>
       </section>
 
