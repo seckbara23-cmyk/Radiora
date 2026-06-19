@@ -1,10 +1,24 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState, Suspense, type FormEvent } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslations } from 'next-intl'
-import { useRouter } from '@/i18n/navigation'
+import { Link, useRouter } from '@/i18n/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { SenegalBar } from '@/components/ui/senegal-accents'
+
+// Reads ?onboarded=1 (set by the signup flow). Isolated so the search-params
+// read sits behind its own Suspense boundary (required for static prerender).
+function OnboardedBanner() {
+  const t = useTranslations('auth')
+  const justOnboarded = useSearchParams().get('onboarded') === '1'
+  if (!justOnboarded) return null
+  return (
+    <div className="px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
+      <p className="text-sm text-green-700">{t('onboardedNotice')}</p>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const t = useTranslations('auth')
@@ -54,6 +68,12 @@ export default function LoginPage() {
         {/* Card */}
         <div className="bg-white rounded-b-2xl shadow-sm border border-t-0 border-gray-200 p-8">
           <form className="space-y-5" onSubmit={handleSubmit}>
+
+            {!error && (
+              <Suspense fallback={null}>
+                <OnboardedBanner />
+              </Suspense>
+            )}
 
             {error && (
               <div className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg">
@@ -121,7 +141,14 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-xs text-gray-400">
+        <p className="mt-6 text-center text-sm text-gray-500">
+          {t('noAccount')}{' '}
+          <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-700">
+            {t('createAccount')}
+          </Link>
+        </p>
+
+        <p className="mt-3 text-center text-xs text-gray-400">
           {t('footer', { year: new Date().getFullYear() })}
         </p>
 
