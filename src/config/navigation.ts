@@ -83,11 +83,12 @@ export const navigation: NavGroup[] = [
     ],
   },
   {
-    title: 'Admin',
+    title: 'Platform',
     roles: ['super_admin'],
     items: [
-      { label: 'Clinics', href: '/admin/clinics', icon: 'clinics' },
-      { label: 'Users',   href: '/admin/users',   icon: 'users'   },
+      { label: 'Overview', href: '/admin',         icon: 'dashboard' },
+      { label: 'Clinics',  href: '/admin/clinics',  icon: 'clinics'   },
+      { label: 'Billing',  href: '/admin/billing',  icon: 'analytics' },
     ],
   },
 ]

@@ -99,3 +99,17 @@ export async function requireCurrentUser(): Promise<CurrentUser> {
 
   return result.user
 }
+
+// Gate for the Super Admin (platform) portal. Only super_admin may enter; any
+// other authenticated user is bounced to their dashboard. Platform admins
+// manage tenants/billing only — clinical RLS still hides PHI from them.
+export async function requireSuperAdmin(): Promise<CurrentUser> {
+  const user = await requireCurrentUser()
+  const locale = await getLocale().catch(() => 'fr')
+
+  if (user.role !== 'super_admin') {
+    redirect(`/${locale}/dashboard`)
+  }
+
+  return user
+}
