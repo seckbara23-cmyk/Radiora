@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# temp parsing/generator scripts (discovery tooling, not shipped)
+_*.mjs
+_*.sql

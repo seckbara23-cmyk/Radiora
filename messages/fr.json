@@ -812,5 +812,31 @@
       "heavy_cleanup_drift": "Nettoyage important du transcript ({detail} supprimé) — vérifier le sens"
     },
     "columnFinal": "Compte rendu actuel"
+  },
+  "exams": {
+    "title": "Catalogue des examens",
+    "subtitle": "{count} examens disponibles · {special} formulaires structurés",
+    "description": "Catalogue normalisé des examens d'imagerie. Chaque examen porte sa modalité, son libellé, une technique par défaut et, le cas échéant, une mise en page structurée.",
+    "search": "Rechercher un examen…",
+    "noResults": "Aucun examen ne correspond à votre recherche.",
+    "colTitle": "Examen",
+    "colTechnique": "Technique par défaut",
+    "colStatus": "Statut",
+    "colActions": "Actions",
+    "custom": "Personnalisé",
+    "special": "Formulaire structuré",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "deactivate": "Désactiver",
+    "reactivate": "Réactiver",
+    "addTitle": "Ajouter un examen personnalisé",
+    "addHint": "Ajoute un examen propre à votre établissement. Les examens du catalogue global ne sont pas modifiables.",
+    "fieldLabel": "Libellé de l'examen",
+    "fieldModality": "Modalité",
+    "fieldTechnique": "Technique par défaut (optionnel)",
+    "add": "Ajouter au catalogue",
+    "added": "Examen ajouté au catalogue.",
+    "adminOnly": "Seuls les administrateurs peuvent ajouter des examens.",
+    "backToSettings": "← Paramètres"
   }
 }

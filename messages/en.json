@@ -812,5 +812,31 @@
       "heavy_cleanup_drift": "Heavy transcript cleanup ({detail} removed) — verify meaning"
     },
     "columnFinal": "Current report"
+  },
+  "exams": {
+    "title": "Exam catalog",
+    "subtitle": "{count} exams available · {special} structured forms",
+    "description": "Normalized catalog of imaging exams. Each exam carries its modality, title, a default technique and, where relevant, a structured layout.",
+    "search": "Search an exam…",
+    "noResults": "No exam matches your search.",
+    "colTitle": "Exam",
+    "colTechnique": "Default technique",
+    "colStatus": "Status",
+    "colActions": "Actions",
+    "custom": "Custom",
+    "special": "Structured form",
+    "active": "Active",
+    "inactive": "Inactive",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate",
+    "addTitle": "Add a custom exam",
+    "addHint": "Add an exam specific to your institution. The global catalog exams cannot be edited.",
+    "fieldLabel": "Exam title",
+    "fieldModality": "Modality",
+    "fieldTechnique": "Default technique (optional)",
+    "add": "Add to catalog",
+    "added": "Exam added to the catalog.",
+    "adminOnly": "Only administrators can add exams.",
+    "backToSettings": "← Settings"
   }
 }
