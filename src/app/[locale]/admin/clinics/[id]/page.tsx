@@ -5,6 +5,7 @@ import { getTenantDetail, getTenantBilling } from '@/lib/data/platform'
 import type { AccessState } from '@/lib/billing/subscription'
 import { formatXof } from '@/lib/billing/format'
 import { TenantActions } from '../TenantActions'
+import { TenantPlanControls } from './TenantPlanControls'
 import { IssueInvoiceButton, PaymentReconcile } from './BillingControls'
 
 const STATE_STYLES: Record<AccessState, string> = {
@@ -114,6 +115,25 @@ export default async function TenantDetailPage({
           </div>
         </section>
       </div>
+
+      {/* Tenant lifecycle management — extend trial, upgrade / downgrade plan */}
+      <TenantPlanControls
+        clinicId={tenant.id}
+        currentPlan={tenant.planId}
+        labels={{
+          heading: t('manage.heading'),
+          extendTrial: t('manage.extendTrial'),
+          days: t('manage.days'),
+          extend: t('manage.extend'),
+          changePlan: t('manage.changePlan'),
+          plan: t('manage.plan'),
+          apply: t('manage.apply'),
+          starter: t('manage.plans.starter'),
+          professional: t('manage.plans.professional'),
+          enterprise: t('manage.plans.enterprise'),
+          note: t('manage.note'),
+        }}
+      />
 
       {/* Billing — invoices & payment reconciliation (metadata only) */}
       <section className="rounded-xl border border-gray-200 bg-white p-5">

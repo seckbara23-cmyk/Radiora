@@ -873,6 +873,10 @@
       "totalRadiologists": "Radiologists",
       "totalReports": "Reports",
       "totalDictations": "Dictations",
+      "activeSubscriptions": "Active subscriptions",
+      "trialSubscriptions": "Trials in progress",
+      "suspendedSubscriptions": "Suspended subscriptions",
+      "monthlyRevenue": "Monthly revenue",
       "clinicGrowth": "New clinics (6 months)",
       "reportGrowth": "Reports created (6 months)",
       "privacyNote": "Platform admins see aggregate metrics only — never clinical content."
@@ -910,6 +914,21 @@
       "location": "Location",
       "created": "Created",
       "privacyNote": "No patient data or report content is accessible from this page."
+    },
+    "manage": {
+      "heading": "Subscription management",
+      "extendTrial": "Extend trial",
+      "days": "days",
+      "extend": "Extend",
+      "changePlan": "Change plan",
+      "plan": "Plan",
+      "apply": "Apply",
+      "plans": {
+        "starter": "Starter",
+        "professional": "Professional",
+        "enterprise": "Enterprise"
+      },
+      "note": "Plan changes apply on the next invoice (no proration). Extending a trial restores write access if the subscription had expired."
     },
     "billing": {
       "title": "Billing dashboard",

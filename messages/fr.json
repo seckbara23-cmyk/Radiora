@@ -873,6 +873,10 @@
       "totalRadiologists": "Radiologues",
       "totalReports": "Comptes rendus",
       "totalDictations": "Dictées",
+      "activeSubscriptions": "Abonnements actifs",
+      "trialSubscriptions": "Essais en cours",
+      "suspendedSubscriptions": "Abonnements suspendus",
+      "monthlyRevenue": "Revenu mensuel",
       "clinicGrowth": "Nouvelles cliniques (6 mois)",
       "reportGrowth": "Comptes rendus créés (6 mois)",
       "privacyNote": "Les administrateurs de la plateforme ne voient que des métriques agrégées — jamais le contenu clinique."
@@ -910,6 +914,21 @@
       "location": "Localisation",
       "created": "Créée le",
       "privacyNote": "Aucune donnée patient ni contenu de compte rendu n’est accessible depuis cette page."
+    },
+    "manage": {
+      "heading": "Gestion de l’abonnement",
+      "extendTrial": "Prolonger l’essai",
+      "days": "jours",
+      "extend": "Prolonger",
+      "changePlan": "Changer de forfait",
+      "plan": "Forfait",
+      "apply": "Appliquer",
+      "plans": {
+        "starter": "Starter",
+        "professional": "Professional",
+        "enterprise": "Enterprise"
+      },
+      "note": "Le changement de forfait s’applique à la prochaine facture (sans proratisation). La prolongation d’essai rétablit l’accès en écriture si l’abonnement avait expiré."
     },
     "billing": {
       "title": "Tableau de bord de facturation",

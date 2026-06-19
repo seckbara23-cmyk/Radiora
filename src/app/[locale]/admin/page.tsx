@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
-import { getPlatformAnalytics } from '@/lib/data/platform'
+import { getPlatformAnalytics, getBillingOverview } from '@/lib/data/platform'
+import { formatXof } from '@/lib/billing/format'
 import type { MonthlyPoint } from '@/lib/billing/metrics'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
@@ -47,7 +48,10 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
   setRequestLocale(locale)
 
   const t = await getTranslations('admin')
-  const a = await getPlatformAnalytics()
+  const [a, billing] = await Promise.all([getPlatformAnalytics(), getBillingOverview()])
+  const activeSubs = billing.statusCounts.active
+  const trialSubs = billing.statusCounts.trial
+  const suspendedSubs = billing.statusCounts.suspended
 
   return (
     <div className="space-y-8">
@@ -56,6 +60,15 @@ export default async function AdminOverviewPage({ params }: { params: Promise<{ 
         <p className="mt-1 text-sm text-gray-500">{t('overview.subtitle')}</p>
       </div>
 
+      {/* Subscription health + revenue */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label={t('overview.activeSubscriptions')} value={activeSubs} />
+        <StatCard label={t('overview.trialSubscriptions')} value={trialSubs} />
+        <StatCard label={t('overview.suspendedSubscriptions')} value={suspendedSubs} />
+        <StatCard label={t('overview.monthlyRevenue')} value={formatXof(billing.mrrXof)} />
+      </div>
+
+      {/* Platform usage totals */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label={t('overview.totalClinics')} value={a.totals.clinics} delta={a.clinicGrowthRate} />
         <StatCard label={t('overview.totalRadiologists')} value={a.totals.radiologists} />

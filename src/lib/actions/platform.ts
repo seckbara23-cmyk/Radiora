@@ -11,6 +11,12 @@ import { revalidatePath } from 'next/cache'
 import { requireSuperAdmin } from '@/lib/auth/get-current-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { logAudit } from '@/lib/actions/audit'
+import { isPlanId, type PlanId } from '@/lib/billing/subscription'
+import {
+  classifyPlanChange,
+  isPlanChangeTarget,
+  extendTrialEnd,
+} from '@/lib/billing/tenant-admin'
 
 export type FormState = { error: string | null }
 export type CreateTenantState = { error: string | null; clinicId?: string }
@@ -204,6 +210,91 @@ export async function reactivateClinic(_prev: FormState, formData: FormData): Pr
   await logAudit({
     userId: admin.id, clinicId,
     action: 'tenant.reactivated', entityType: 'clinic', entityId: clinicId,
+  })
+
+  revalidatePath('/admin/clinics')
+  revalidatePath(`/admin/clinics/${clinicId}`)
+  return { error: null }
+}
+
+// ── Extend trial ──────────────────────────────────────────────────────────────
+
+export async function extendTrial(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireSuperAdmin()
+  const clinicId = ((formData.get('clinic_id') as string) ?? '').trim()
+  const days = Number((formData.get('days') as string) ?? '')
+  if (!clinicId) return { error: 'Identifiant de clinique manquant.' }
+  if (!Number.isFinite(days) || days <= 0) return { error: 'Nombre de jours invalide.' }
+
+  const db = createAdminClient()
+  const now = new Date().toISOString()
+
+  const { data: sub } = await db
+    .from('subscriptions')
+    .select('trial_ends_at')
+    .eq('clinic_id', clinicId)
+    .maybeSingle()
+
+  const newEnd = extendTrialEnd((sub?.trial_ends_at as string | null) ?? null, days, now)
+
+  const { error } = await db
+    .from('subscriptions')
+    .update({ status: 'trial', trial_ends_at: newEnd, grace_ends_at: null })
+    .eq('clinic_id', clinicId)
+  if (error) return { error: error.message }
+
+  // Keep the clinic row in step so write-access is restored if it had lapsed.
+  await db.from('clinics').update({ status: 'trial' }).eq('id', clinicId)
+
+  await logAudit({
+    userId: admin.id, clinicId,
+    action: 'tenant.trial_extended', entityType: 'clinic', entityId: clinicId,
+    metadata: { days, newTrialEndsAt: newEnd },
+  })
+
+  revalidatePath('/admin/clinics')
+  revalidatePath(`/admin/clinics/${clinicId}`)
+  return { error: null }
+}
+
+// ── Upgrade / downgrade plan ──────────────────────────────────────────────────
+
+export async function changePlan(_prev: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireSuperAdmin()
+  const clinicId = ((formData.get('clinic_id') as string) ?? '').trim()
+  const targetPlan = ((formData.get('plan_id') as string) ?? '').trim()
+  if (!clinicId) return { error: 'Identifiant de clinique manquant.' }
+  if (!isPlanChangeTarget(targetPlan)) return { error: 'Forfait cible invalide.' }
+  const newPlan: PlanId = targetPlan
+
+  const db = createAdminClient()
+
+  const { data: sub } = await db
+    .from('subscriptions')
+    .select('plan_id')
+    .eq('clinic_id', clinicId)
+    .maybeSingle()
+
+  const currentPlan = (sub?.plan_id as string | null) ?? null
+  const fromPlan: PlanId = currentPlan && isPlanId(currentPlan) ? currentPlan : 'starter'
+  const kind = classifyPlanChange(fromPlan, newPlan)
+  if (kind === 'unchanged') return { error: 'La clinique est déjà sur ce forfait.' }
+
+  // Update both the subscription plan and the denormalised clinic.plan column so
+  // feature-gating (which reads clinic.plan) stays consistent. Pricing for the
+  // new plan takes effect on the next invoice — no proration here.
+  const { error: subErr } = await db
+    .from('subscriptions')
+    .update({ plan_id: newPlan })
+    .eq('clinic_id', clinicId)
+  if (subErr) return { error: subErr.message }
+  await db.from('clinics').update({ plan: newPlan }).eq('id', clinicId)
+
+  await logAudit({
+    userId: admin.id, clinicId,
+    action: kind === 'upgrade' ? 'tenant.plan_upgraded' : 'tenant.plan_downgraded',
+    entityType: 'clinic', entityId: clinicId,
+    metadata: { fromPlan, toPlan: newPlan, kind },
   })
 
   revalidatePath('/admin/clinics')
