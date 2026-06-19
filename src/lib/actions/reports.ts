@@ -9,6 +9,7 @@ import { clinicCanWrite, READ_ONLY_MESSAGE } from '@/lib/billing/access'
 import { canSignReports } from '@/lib/safety/authority'
 import { evaluateSigningReadiness, describeBlockers } from '@/lib/safety/signing-gate'
 import { getReportSafetyContext } from '@/lib/data/safety'
+import { enqueueWhatsAppNotification } from '@/lib/notifications/enqueue'
 import type { StructuredReportData } from '@/types/report'
 
 export type FormState = { error: string | null; saved?: boolean }
@@ -303,6 +304,10 @@ export async function finalizeReport(
     action: 'report.finalized', entityType: 'report', entityId: id,
     metadata: { studyId, structured: !!structuredData, signed: true, signedBy: user.id },
   })
+
+  // Phase 4F — notify if the clinic enabled WhatsApp for validated reports.
+  // PHI-free by construction; best-effort (never blocks finalization).
+  await enqueueWhatsAppNotification(user.clinicId, 'report_validated')
 
   revalidatePath(`/reports/${id}`)
   revalidatePath(`/studies/${studyId}`)

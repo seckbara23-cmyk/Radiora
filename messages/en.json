@@ -1071,6 +1071,24 @@
       "cta": "Manage subscription"
     }
   },
+  "notificationSettings": {
+    "title": "WhatsApp notifications",
+    "subtitle": "Choose which events trigger a WhatsApp notification for your clinic.",
+    "planNotice": "WhatsApp notifications are included in the Professional and Enterprise plans.",
+    "enable": "Enable WhatsApp notifications",
+    "enableHint": "No message is sent while this is turned off.",
+    "number": "Clinic WhatsApp number",
+    "numberPlaceholder": "+221 …",
+    "events": "Events",
+    "reportValidated": "Report validated by radiologist",
+    "reportDelivered": "Report delivered",
+    "appointmentReminder": "Appointment reminder",
+    "criticalFinding": "Critical finding alert",
+    "save": "Save",
+    "saving": "Saving…",
+    "saved": "Settings saved.",
+    "phiNote": "WhatsApp messages never contain clinical content (findings, diagnoses) — only a notice that a document is available."
+  },
   "vocabulary": {
     "title": "Vocabulary memory",
     "subtitle": "Radiora learns your vocabulary and dictation style from the corrections you make to your transcripts, then suggests them next time — never applying them automatically.",

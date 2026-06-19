@@ -18,6 +18,7 @@ import { assembleReportExport, parseHeaderChoice } from '@/lib/export/load'
 import { renderReportPdf } from '@/lib/export/pdf'
 import { renderReportDocx } from '@/lib/export/docx'
 import { logAudit } from '@/lib/actions/audit'
+import { enqueueWhatsAppNotification } from '@/lib/notifications/enqueue'
 import {
   isReportDeliverable,
   isDeliveryChannel,
@@ -159,6 +160,10 @@ export async function createDelivery(input: CreateDeliveryInput): Promise<Delive
       hasExpiry: Boolean(expiresAt),
     },
   })
+
+  // Phase 4F — notify if the clinic enabled WhatsApp for delivered reports.
+  // PHI-free by construction; best-effort (never blocks delivery).
+  await enqueueWhatsAppNotification(user.clinicId, 'report_delivered')
 
   revalidatePath(`/reports/${input.reportId}`)
   return { ok: true, token }

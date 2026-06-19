@@ -19,7 +19,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
   const tp = await getTranslations('profileSettings')
   const tv = await getTranslations('vocabulary')
   const tb = await getTranslations('billing')
-  await requireCurrentUser()
+  const tn = await getTranslations('notificationSettings')
+  const user = await requireCurrentUser()
+  const isClinicAdmin = user.role === 'clinic_admin' || user.role === 'super_admin'
 
   // Real, navigable settings areas (built out as features land).
   const links = [
@@ -27,6 +29,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
     { href: '/settings/exams', title: te('title'), desc: te('description') },
     { href: '/settings/headers', title: th('title'), desc: th('subtitle') },
     { href: '/settings/vocabulary', title: tv('title'), desc: tv('subtitle') },
+    ...(isClinicAdmin
+      ? [{ href: '/settings/notifications', title: tn('title'), desc: tn('subtitle') }]
+      : []),
     { href: '/settings/billing', title: tb('title'), desc: tb('subtitle') },
   ]
 
