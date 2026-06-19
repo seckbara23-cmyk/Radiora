@@ -71,6 +71,31 @@ export function TemplateForm({ initialData }: Props) {
           </div>
         </div>
 
+        {/* Carry the catalog link through edits untouched */}
+        <input type="hidden" name="exam_type" value={initialData?.examType ?? ''} />
+
+        {/* Indication Template */}
+        <div>
+          <label className={labelCls} htmlFor="indication_template">Indication Template</label>
+          <textarea
+            id="indication_template" name="indication_template" rows={2}
+            defaultValue={initialData?.indicationTemplate ?? ''}
+            placeholder="Default indication / clinical context (optional)…"
+            disabled={isPending} className={textareaCls}
+          />
+        </div>
+
+        {/* Technique Template */}
+        <div>
+          <label className={labelCls} htmlFor="technique_template">Technique Template</label>
+          <textarea
+            id="technique_template" name="technique_template" rows={2}
+            defaultValue={initialData?.techniqueTemplate ?? ''}
+            placeholder="Default acquisition technique (optional)…"
+            disabled={isPending} className={textareaCls}
+          />
+        </div>
+
         {/* Findings Template */}
         <div>
           <label className={labelCls} htmlFor="findings_template">Findings Template *</label>

@@ -25,6 +25,9 @@ export async function saveTemplate(
   const title                   = ((formData.get('title')                   as string) ?? '').trim()
   const modality                = ((formData.get('modality')                as string) ?? '').trim() || null
   const bodyPart                = ((formData.get('body_part')               as string) ?? '').trim() || null
+  const indicationTemplate      = ((formData.get('indication_template')     as string) ?? '').trim()
+  const techniqueTemplate       = ((formData.get('technique_template')      as string) ?? '').trim()
+  const examType                = ((formData.get('exam_type')               as string) ?? '').trim() || null
   const findingsTemplate        = ((formData.get('findings_template')       as string) ?? '').trim()
   const impressionTemplate      = ((formData.get('impression_template')     as string) ?? '').trim()
   const recommendationsTemplate = ((formData.get('recommendations_template') as string) ?? '').trim()
@@ -42,6 +45,9 @@ export async function saveTemplate(
         title,
         modality,
         body_part:               bodyPart,
+        indication_template:     indicationTemplate,
+        technique_template:      techniqueTemplate,
+        exam_type:               examType,
         findings_template:       findingsTemplate,
         impression_template:     impressionTemplate,
         recommendations_template: recommendationsTemplate,
@@ -63,9 +69,13 @@ export async function saveTemplate(
         title,
         modality,
         body_part:               bodyPart,
+        indication_template:     indicationTemplate,
+        technique_template:      techniqueTemplate,
+        exam_type:               examType,
         findings_template:       findingsTemplate,
         impression_template:     impressionTemplate,
         recommendations_template: recommendationsTemplate,
+        source:                  'manual',
         created_by:              user.id,
       })
       .select('id')

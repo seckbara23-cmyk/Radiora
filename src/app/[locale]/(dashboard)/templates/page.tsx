@@ -31,12 +31,20 @@ export default async function TemplatesPage() {
             {inactive.length > 0 && ` · ${inactive.length} inactive`}
           </p>
         </div>
-        <Link
-          href="/templates/new"
-          className="flex-shrink-0 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition"
-        >
-          + New Template
-        </Link>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <Link
+            href="/templates/import"
+            className="px-4 py-2 border border-gray-300 hover:border-gray-400 text-gray-700 text-sm font-semibold rounded-lg transition"
+          >
+            Import / Library
+          </Link>
+          <Link
+            href="/templates/new"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition"
+          >
+            + New Template
+          </Link>
+        </div>
       </div>
 
       {templates.length === 0 ? (
