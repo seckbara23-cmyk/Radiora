@@ -1353,5 +1353,118 @@
     "added": "Exam added to the catalog.",
     "adminOnly": "Only administrators can add exams.",
     "backToSettings": "← Settings"
+  },
+  "marketing": {
+    "cta": "Try free for 30 days",
+    "ctaShort": "Free trial",
+    "signIn": "Sign in",
+    "nav": {
+      "features": "Features",
+      "pricing": "Pricing",
+      "security": "Security",
+      "contact": "Contact"
+    },
+    "footer": {
+      "tagline": "The radiology reporting platform for Senegal and West Africa.",
+      "productHeading": "Product",
+      "companyHeading": "Company",
+      "rights": "© {year} Radiora Medical. All rights reserved."
+    },
+    "home": {
+      "badge": "AI-assisted radiology platform",
+      "hero": "Modern radiology for",
+      "heroHighlight": "Senegal and West Africa",
+      "heroDesc": "Radiora helps radiologists, imaging centers, clinics and hospitals produce structured reports faster — with voice dictation, AI-assisted structuring and secure delivery, in a platform built for the local context.",
+      "secondary": "Explore features",
+      "trust": "Built for independent radiologists, imaging centers, clinics and hospitals.",
+      "highlightsHeading": "Why Radiora",
+      "highlights": [
+        { "title": "Faster reports", "desc": "Structured templates and voice dictation cut reporting time." },
+        { "title": "AI assistance", "desc": "Structuring and drafting help, always validated by the radiologist." },
+        { "title": "Multi-facility", "desc": "Run multiple clinics with role-based access." },
+        { "title": "Local payments", "desc": "Subscriptions via Wave and Orange Money, in FCFA." }
+      ],
+      "bandTitle": "Ready to try Radiora?",
+      "bandDesc": "Start your 30-day free trial. No credit card required."
+    },
+    "features": {
+      "title": "Everything your radiology service needs",
+      "subtitle": "From taking on the exam to delivering the signed report.",
+      "items": [
+        { "title": "Structured reports", "desc": "Templates by modality and body region for consistent, complete reports." },
+        { "title": "Voice dictation", "desc": "Dictate reports on desktop or mobile; the transcript stays under the radiologist's control." },
+        { "title": "AI-assisted structuring", "desc": "Turn free text into structured sections — the AI proposes, the radiologist decides." },
+        { "title": "Validation and signature", "desc": "Only radiologists validate and sign. Secretaries never validate a diagnosis." },
+        { "title": "Secure delivery", "desc": "Share signed reports through secure channels, with a full audit trail." },
+        { "title": "Activity analytics", "desc": "Track volume, turnaround times and your team's productivity." },
+        { "title": "Critical queue", "desc": "Surface and track critical findings for fast follow-up." },
+        { "title": "Multi-facility", "desc": "One platform for several sites, with strict data isolation." }
+      ]
+    },
+    "pricing": {
+      "title": "Simple pricing, in FCFA",
+      "subtitle": "Choose the plan that fits your practice. Change anytime.",
+      "perMonth": "/ month",
+      "popular": "Most chosen",
+      "cta": "Start free trial",
+      "contactCta": "Contact us",
+      "note": "All plans include a 30-day free trial. Pay with Wave or Orange Money.",
+      "plans": [
+        {
+          "name": "Starter",
+          "price": "25,000 FCFA",
+          "desc": "Independent radiologists and small imaging centers.",
+          "features": ["1 radiologist", "2 secretaries", "Unlimited reports", "Mobile dictation", "AI structuring", "PDF/DOCX exports", "Secure delivery"]
+        },
+        {
+          "name": "Professional",
+          "price": "75,000 FCFA",
+          "desc": "Imaging centers and multi-radiologist practices.",
+          "features": ["Up to 10 radiologists", "Unlimited secretaries", "Analytics", "Vocabulary memory", "Branding", "WhatsApp notifications"]
+        },
+        {
+          "name": "Enterprise",
+          "price": "On request",
+          "desc": "Hospitals and large imaging departments.",
+          "features": ["Unlimited users", "Multi-site support", "PACS integration (coming)", "Custom SLA"]
+        }
+      ]
+    },
+    "security": {
+      "title": "Security and privacy at the core",
+      "subtitle": "Radiora protects patient data and strictly isolates every facility.",
+      "items": [
+        { "title": "Per-facility data isolation", "desc": "Row-level security (RLS) guarantees no clinic can see another's data." },
+        { "title": "HIPAA-style safeguards", "desc": "Access controls, encryption in transit and controlled data retention." },
+        { "title": "Full audit trail", "desc": "Every sensitive action is logged and reviewable by administrators." },
+        { "title": "Role-based access", "desc": "Seven roles, from radiologist to secretary, with strict permissions." },
+        { "title": "No clinical access for the platform", "desc": "The Radiora team only accesses subscription and usage data, never reports." },
+        { "title": "Validation reserved for radiologists", "desc": "Only radiologists validate and sign a report." }
+      ],
+      "note": "No patient data is sent to external providers without your explicit configuration."
+    },
+    "contact": {
+      "title": "Contact us",
+      "subtitle": "A question, a demo or a quote? Get in touch.",
+      "channelsHeading": "Contact details",
+      "ownersHeading": "Radiora team",
+      "owners": "Bara Seck · Dr Abibou BA",
+      "emailLabel": "Email",
+      "email": "contact@radioramedical.com",
+      "phoneLabel": "Phone",
+      "phone": "+221 33 800 00 00",
+      "locationLabel": "Location",
+      "location": "Dakar, Senegal",
+      "formHeading": "Send a message",
+      "name": "Full name",
+      "emailField": "Email",
+      "clinic": "Facility (optional)",
+      "message": "Your message",
+      "submit": "Send message",
+      "sending": "Sending…",
+      "successTitle": "Message sent",
+      "successBody": "Thank you! Our team will get back to you shortly.",
+      "error": "Failed to send. Please try again."
+    }
   }
 }

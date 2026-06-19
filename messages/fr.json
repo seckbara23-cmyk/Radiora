@@ -1353,5 +1353,118 @@
     "added": "Examen ajouté au catalogue.",
     "adminOnly": "Seuls les administrateurs peuvent ajouter des examens.",
     "backToSettings": "← Paramètres"
+  },
+  "marketing": {
+    "cta": "Essayer gratuitement pendant 30 jours",
+    "ctaShort": "Essai gratuit",
+    "signIn": "Se connecter",
+    "nav": {
+      "features": "Fonctionnalités",
+      "pricing": "Tarifs",
+      "security": "Sécurité",
+      "contact": "Contact"
+    },
+    "footer": {
+      "tagline": "La plateforme de comptes rendus radiologiques pour le Sénégal et l'Afrique de l'Ouest.",
+      "productHeading": "Produit",
+      "companyHeading": "Entreprise",
+      "rights": "© {year} Radiora Medical. Tous droits réservés."
+    },
+    "home": {
+      "badge": "Plateforme de radiologie assistée par IA",
+      "hero": "La radiologie moderne pour",
+      "heroHighlight": "le Sénégal et l'Afrique de l'Ouest",
+      "heroDesc": "Radiora aide les radiologues, centres d'imagerie, cliniques et hôpitaux à produire des comptes rendus structurés plus vite — avec dictée vocale, structuration assistée par IA et transmission sécurisée, dans une plateforme conçue pour le contexte local.",
+      "secondary": "Découvrir les fonctionnalités",
+      "trust": "Conçu pour les radiologues indépendants, les centres d'imagerie, les cliniques et les hôpitaux.",
+      "highlightsHeading": "Pourquoi Radiora",
+      "highlights": [
+        { "title": "Comptes rendus plus rapides", "desc": "Modèles structurés et dictée vocale pour réduire le temps de rédaction." },
+        { "title": "Assistance IA", "desc": "Structuration et aide à la rédaction, toujours validées par le radiologue." },
+        { "title": "Multi-établissements", "desc": "Gérez plusieurs cliniques avec un accès basé sur les rôles." },
+        { "title": "Paiement local", "desc": "Abonnements via Wave et Orange Money, en FCFA." }
+      ],
+      "bandTitle": "Prêt à essayer Radiora ?",
+      "bandDesc": "Lancez votre essai gratuit de 30 jours. Aucune carte bancaire requise."
+    },
+    "features": {
+      "title": "Tout ce dont votre service de radiologie a besoin",
+      "subtitle": "De la prise en charge de l'examen à la transmission du compte rendu signé.",
+      "items": [
+        { "title": "Comptes rendus structurés", "desc": "Modèles par modalité et région anatomique pour des comptes rendus cohérents et complets." },
+        { "title": "Dictée vocale", "desc": "Dictez vos comptes rendus sur ordinateur ou mobile ; la transcription reste sous contrôle du radiologue." },
+        { "title": "Structuration assistée par IA", "desc": "Transformez un texte libre en sections structurées — l'IA propose, le radiologue dispose." },
+        { "title": "Validation et signature", "desc": "Seuls les radiologues valident et signent. Les secrétaires ne valident jamais un diagnostic." },
+        { "title": "Transmission sécurisée", "desc": "Partagez les comptes rendus signés par des canaux sécurisés, avec piste d'audit complète." },
+        { "title": "Analytique d'activité", "desc": "Suivez le volume, les délais de restitution et la productivité de votre équipe." },
+        { "title": "File d'attente critique", "desc": "Repérez et suivez les résultats critiques pour une prise en charge rapide." },
+        { "title": "Multi-établissements", "desc": "Une seule plateforme pour plusieurs sites, avec isolation stricte des données." }
+      ]
+    },
+    "pricing": {
+      "title": "Une tarification simple, en FCFA",
+      "subtitle": "Choisissez le forfait adapté à votre structure. Changez à tout moment.",
+      "perMonth": "/ mois",
+      "popular": "Le plus choisi",
+      "cta": "Commencer l'essai gratuit",
+      "contactCta": "Nous contacter",
+      "note": "Tous les forfaits incluent un essai gratuit de 30 jours. Paiement par Wave ou Orange Money.",
+      "plans": [
+        {
+          "name": "Starter",
+          "price": "25 000 FCFA",
+          "desc": "Radiologues indépendants et petits centres d'imagerie.",
+          "features": ["1 radiologue", "2 secrétaires", "Comptes rendus illimités", "Dictée mobile", "Structuration IA", "Exports PDF/DOCX", "Transmission sécurisée"]
+        },
+        {
+          "name": "Professional",
+          "price": "75 000 FCFA",
+          "desc": "Centres d'imagerie et cabinets multi-radiologues.",
+          "features": ["Jusqu'à 10 radiologues", "Secrétaires illimités", "Analytique", "Mémoire de vocabulaire", "Image de marque", "Notifications WhatsApp"]
+        },
+        {
+          "name": "Enterprise",
+          "price": "Sur devis",
+          "desc": "Hôpitaux et grands départements d'imagerie.",
+          "features": ["Utilisateurs illimités", "Support multi-sites", "Intégration PACS (à venir)", "SLA personnalisé"]
+        }
+      ]
+    },
+    "security": {
+      "title": "La sécurité et la confidentialité au cœur",
+      "subtitle": "Radiora protège les données des patients et isole strictement chaque établissement.",
+      "items": [
+        { "title": "Isolation des données par établissement", "desc": "La sécurité au niveau des lignes (RLS) garantit qu'aucune clinique ne voit les données d'une autre." },
+        { "title": "Protections de type HIPAA", "desc": "Contrôles d'accès, chiffrement en transit et conservation maîtrisée des données." },
+        { "title": "Piste d'audit complète", "desc": "Chaque action sensible est journalisée et consultable par les administrateurs." },
+        { "title": "Accès basé sur les rôles", "desc": "Sept rôles, du radiologue au secrétaire, avec des permissions strictes." },
+        { "title": "Aucun accès clinique pour la plateforme", "desc": "L'équipe Radiora accède uniquement aux données d'abonnement et d'usage, jamais aux comptes rendus." },
+        { "title": "Validation réservée aux radiologues", "desc": "Seuls les radiologues valident et signent un compte rendu." }
+      ],
+      "note": "Aucune donnée patient n'est transmise à des prestataires externes sans votre configuration explicite."
+    },
+    "contact": {
+      "title": "Contactez-nous",
+      "subtitle": "Une question, une démonstration ou un devis ? Écrivez-nous.",
+      "channelsHeading": "Coordonnées",
+      "ownersHeading": "Équipe Radiora",
+      "owners": "Bara Seck · Dr Abibou BA",
+      "emailLabel": "E-mail",
+      "email": "contact@radioramedical.com",
+      "phoneLabel": "Téléphone",
+      "phone": "+221 33 800 00 00",
+      "locationLabel": "Localisation",
+      "location": "Dakar, Sénégal",
+      "formHeading": "Envoyer un message",
+      "name": "Nom complet",
+      "emailField": "E-mail",
+      "clinic": "Établissement (facultatif)",
+      "message": "Votre message",
+      "submit": "Envoyer le message",
+      "sending": "Envoi…",
+      "successTitle": "Message envoyé",
+      "successBody": "Merci ! Notre équipe vous répondra dans les plus brefs délais.",
+      "error": "Échec de l'envoi. Veuillez réessayer."
+    }
   }
 }
