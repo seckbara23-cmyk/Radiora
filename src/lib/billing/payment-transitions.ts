@@ -8,7 +8,7 @@
 // server-only (no 'use server'): plain async helpers, not server actions.
 import 'server-only'
 import type { createAdminClient } from '@/lib/supabase/admin'
-import { addDaysISO } from '@/lib/billing/payments'
+import { addDaysISO, generateReceiptNumber } from '@/lib/billing/payments'
 
 type AdminClient = ReturnType<typeof createAdminClient>
 
@@ -20,6 +20,7 @@ export type PaymentRow = {
   clinic_id: string
   invoice_id: string | null
   status?: string
+  amount_xof?: number | null
   /** Phase 5D: why this payment was made. */
   purpose?: string | null
   /** Phase 5D: for an upgrade, the plan to switch to on success. */
@@ -59,6 +60,55 @@ export async function applyPaymentSuccess(db: AdminClient, payment: PaymentRow, 
   const clinicUpdate: Record<string, unknown> = { status: 'active' }
   if (isUpgrade) clinicUpdate.plan = payment.target_plan_id
   await db.from('clinics').update(clinicUpdate).eq('id', clinicId)
+
+  // Phase 5E: issue a receipt for the settled payment (idempotent — one per
+  // payment, guarded by an existence check + a unique index).
+  await issueReceipt(db, payment, nowISO)
+}
+
+// Create a receipt for a succeeded payment and notify the clinic. Receipts carry
+// billing data only (no PHI). Best-effort: a failure here never unwinds the
+// already-applied payment.
+async function issueReceipt(db: AdminClient, payment: PaymentRow, nowISO: string): Promise<void> {
+  if (!payment.invoice_id && payment.amount_xof == null) return
+  try {
+    const { data: existing } = await db
+      .from('receipts')
+      .select('id')
+      .eq('payment_id', payment.id)
+      .maybeSingle()
+    if (existing) return
+
+    const amount = Number(payment.amount_xof ?? 0)
+    const monthPrefix = nowISO.slice(0, 7)
+    const { count } = await db
+      .from('receipts')
+      .select('id', { count: 'exact', head: true })
+      .gte('issued_at', `${monthPrefix}-01T00:00:00.000Z`)
+    const number = generateReceiptNumber((count ?? 0) + 1, nowISO)
+
+    await db.from('receipts').insert({
+      clinic_id: payment.clinic_id,
+      payment_id: payment.id,
+      invoice_id: payment.invoice_id,
+      number,
+      amount_xof: amount,
+      currency: 'XOF',
+      issued_at: nowISO,
+    })
+
+    await db.from('notifications').insert({
+      clinic_id: payment.clinic_id,
+      type: 'receipt_issued',
+      channel: 'in_app',
+      status: 'pending',
+      title: 'Reçu de paiement',
+      body: `Votre reçu ${number} (${amount} FCFA) est disponible.`,
+      payload: { number, amountXof: amount },
+    })
+  } catch {
+    /* receipt issuance must never unwind a confirmed payment */
+  }
 }
 
 // A payment failed (declined / cancelled / timed out): mark it failed, fail its

@@ -3,6 +3,7 @@ import {
   isPaymentMethod,
   methodRequiresPhone,
   generateInvoiceNumber,
+  generateReceiptNumber,
   invoiceIsPayable,
   addDaysISO,
   CLINIC_PAYMENT_METHODS,
@@ -35,6 +36,13 @@ describe('generateInvoiceNumber', () => {
 
   it('never produces a sub-1 sequence', () => {
     expect(generateInvoiceNumber(0, '2026-06-18T00:00:00.000Z')).toBe('INV-202606-0001')
+  })
+})
+
+describe('generateReceiptNumber', () => {
+  it('formats REC-YYYYMM-#### with zero-padded sequence', () => {
+    expect(generateReceiptNumber(1, '2026-06-18T00:00:00.000Z')).toBe('REC-202606-0001')
+    expect(generateReceiptNumber(7, '2026-12-01T00:00:00.000Z')).toBe('REC-202612-0007')
   })
 })
 

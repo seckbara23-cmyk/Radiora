@@ -314,7 +314,7 @@ export async function confirmPayment(_prev: FormState, formData: FormData): Prom
 
   const { data: payment } = await db
     .from('payments')
-    .select('id, clinic_id, invoice_id, purpose, target_plan_id')
+    .select('id, clinic_id, invoice_id, amount_xof, purpose, target_plan_id')
     .eq('id', paymentId)
     .maybeSingle()
   if (!payment) return { error: 'Paiement introuvable.' }

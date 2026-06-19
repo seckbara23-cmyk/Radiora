@@ -1084,6 +1084,8 @@
     "month": "month",
     "changeHint": "To change plan, contact the Radiora team.",
     "invoicesHeading": "Invoices",
+    "receiptsHeading": "Receipts",
+    "receiptNumber": "Receipt no.",
     "noInvoices": "No invoices yet.",
     "invoiceNumber": "Invoice no.",
     "invoiceDate": "Date",

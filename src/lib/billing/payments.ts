@@ -30,6 +30,12 @@ export function generateInvoiceNumber(sequence: number, nowISO: string): string 
   return `INV-${ym}-${String(Math.max(1, sequence)).padStart(4, '0')}`
 }
 
+// Human-facing receipt number: REC-YYYYMM-#### (issued when a payment succeeds).
+export function generateReceiptNumber(sequence: number, nowISO: string): string {
+  const ym = nowISO.slice(0, 7).replace('-', '')
+  return `REC-${ym}-${String(Math.max(1, sequence)).padStart(4, '0')}`
+}
+
 // An invoice can receive a payment only while it is open (or draft about to be
 // sent). Paid / void / uncollectible invoices are terminal.
 export function invoiceIsPayable(status: string): boolean {

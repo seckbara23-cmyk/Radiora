@@ -126,3 +126,28 @@ export async function getClinicPayments(clinicId: string): Promise<Payment[]> {
   if (error || !data) return []
   return (data as unknown as Record<string, unknown>[]).map(mapPayment)
 }
+
+export type Receipt = {
+  id: string
+  number: string
+  amountXof: number
+  issuedAt: string
+}
+
+const RECEIPT_COLS = 'id, number, amount_xof, issued_at'
+
+export async function getClinicReceipts(clinicId: string): Promise<Receipt[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('receipts')
+    .select(RECEIPT_COLS)
+    .eq('clinic_id', clinicId)
+    .order('issued_at', { ascending: false })
+  if (error || !data) return []
+  return (data as unknown as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    number: r.number as string,
+    amountXof: Number(r.amount_xof ?? 0),
+    issuedAt: r.issued_at as string,
+  }))
+}

@@ -11,8 +11,8 @@ import { daysUntil, type PlanId, type SubscriptionStatus } from './subscription'
 import { addDaysISO } from './payments'
 
 // Reminder milestones (days before the relevant end date), per the spec:
-// notify 7 days, 3 days, and on the expiration day.
-export const REMINDER_DAYS = [7, 3, 0] as const
+// notify 14 days, 7 days, 3 days, and on the expiration day.
+export const REMINDER_DAYS = [14, 7, 3, 0] as const
 
 // Grace window granted once a paid period or trial lapses before suspension.
 export const GRACE_DAYS = 7

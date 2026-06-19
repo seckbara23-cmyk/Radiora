@@ -1084,6 +1084,8 @@
     "month": "mois",
     "changeHint": "Pour changer de forfait, contactez l’équipe Radiora.",
     "invoicesHeading": "Factures",
+    "receiptsHeading": "Reçus",
+    "receiptNumber": "N° de reçu",
     "noInvoices": "Aucune facture pour le moment.",
     "invoiceNumber": "N° de facture",
     "invoiceDate": "Date",

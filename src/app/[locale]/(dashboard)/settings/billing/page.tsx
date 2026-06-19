@@ -1,7 +1,7 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getClinicAccess } from '@/lib/billing/access'
-import { getClinicSubscription, getPlans, getClinicInvoices } from '@/lib/data/billing'
+import { getClinicSubscription, getPlans, getClinicInvoices, getClinicReceipts } from '@/lib/data/billing'
 import type { AccessState } from '@/lib/billing/subscription'
 import { invoiceIsPayable } from '@/lib/billing/payments'
 import { PLAN_RANK, isPlanChangeTarget } from '@/lib/billing/tenant-admin'
@@ -35,11 +35,12 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
   const t = await getTranslations('billing')
   const user = await requireCurrentUser()
 
-  const [access, subscription, plans, invoices] = await Promise.all([
+  const [access, subscription, plans, invoices, receipts] = await Promise.all([
     getClinicAccess(user.clinicId),
     user.clinicId ? getClinicSubscription(user.clinicId) : Promise.resolve(null),
     getPlans(),
     user.clinicId ? getClinicInvoices(user.clinicId) : Promise.resolve([]),
+    user.clinicId ? getClinicReceipts(user.clinicId) : Promise.resolve([]),
   ])
 
   const currentPlan = subscription
@@ -238,6 +239,33 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
           </div>
         )}
       </section>
+
+      {/* Receipts (issued automatically when a payment succeeds) */}
+      {receipts.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-gray-900">{t('receiptsHeading')}</h2>
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-400">
+                <tr>
+                  <th className="px-4 py-3 font-medium">{t('receiptNumber')}</th>
+                  <th className="px-4 py-3 font-medium">{t('invoiceDate')}</th>
+                  <th className="px-4 py-3 font-medium">{t('invoiceAmount')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {receipts.map((r) => (
+                  <tr key={r.id}>
+                    <td className="px-4 py-3 font-mono text-xs text-gray-700">{r.number}</td>
+                    <td className="px-4 py-3 text-gray-600">{r.issuedAt.slice(0, 10)}</td>
+                    <td className="px-4 py-3 text-gray-900">{formatXof(r.amountXof)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   )
 }

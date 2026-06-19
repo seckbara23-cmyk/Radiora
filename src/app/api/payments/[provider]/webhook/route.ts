@@ -101,7 +101,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ provider: 
   // Match the event to our pending payment by reference.
   const { data: paymentData } = await db
     .from('payments')
-    .select('id, clinic_id, invoice_id, status, purpose, target_plan_id')
+    .select('id, clinic_id, invoice_id, status, amount_xof, purpose, target_plan_id')
     .eq('provider_ref', event.reference)
     .maybeSingle()
   const payment = paymentData as PaymentRow | null

@@ -37,17 +37,19 @@ function sub(partial: Partial<BillingSubscription>): BillingSubscription {
 }
 
 describe('planBillingRun — reminders', () => {
-  it('emits trial-ending reminders at 7/3/0 days', () => {
-    for (const day of [7, 3, 0]) {
+  it('emits trial-ending reminders at 14/7/3/0 days', () => {
+    for (const day of [14, 7, 3, 0]) {
       const actions = planBillingRun([sub({ status: 'trial', trialEndsAt: daysFromNow(day) })], ctx())
       const reminder = actions.find((a) => a.kind === 'reminder')
       expect(reminder).toMatchObject({ kind: 'reminder', type: 'trial_ending', day })
     }
   })
 
-  it('emits renewal reminders at 7/3/0 days for active subs', () => {
-    const actions = planBillingRun([sub({ status: 'active', currentPeriodEnd: daysFromNow(3) })], ctx())
-    expect(actions.find((a) => a.kind === 'reminder')).toMatchObject({ type: 'renewal_reminder', day: 3 })
+  it('emits renewal reminders at 14/7/3/0 days for active subs', () => {
+    for (const day of [14, 7, 3, 0]) {
+      const actions = planBillingRun([sub({ status: 'active', currentPeriodEnd: daysFromNow(day) })], ctx())
+      expect(actions.find((a) => a.kind === 'reminder')).toMatchObject({ type: 'renewal_reminder', day })
+    }
   })
 
   it('does not remind at non-milestone days (e.g. 5)', () => {
