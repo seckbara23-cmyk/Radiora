@@ -850,6 +850,47 @@
     "added": "Letterhead added.",
     "add": "Add"
   },
+  "billing": {
+    "title": "Subscription & billing",
+    "subtitle": "Manage your clinic's subscription, view your current plan and invoices.",
+    "currentPlan": "Current plan",
+    "noPlan": "No active subscription",
+    "perMonth": "{amount} / month",
+    "customPricing": "Custom pricing",
+    "plansHeading": "Available plans",
+    "current": "Current",
+    "onRequest": "On request",
+    "month": "month",
+    "changeHint": "To change plan, contact the Radiora team.",
+    "invoicesHeading": "Invoices",
+    "noInvoices": "No invoices yet.",
+    "invoiceNumber": "Invoice no.",
+    "invoiceDate": "Date",
+    "invoiceAmount": "Amount",
+    "invoiceStatus": "Status",
+    "invoiceStates": {
+      "draft": "Draft",
+      "open": "Due",
+      "paid": "Paid",
+      "void": "Void",
+      "uncollectible": "Uncollectible"
+    },
+    "state": {
+      "active": "Active",
+      "trialing": "Free trial",
+      "grace": "Grace period",
+      "expired": "Expired",
+      "suspended": "Suspended",
+      "cancelled": "Cancelled"
+    },
+    "banner": {
+      "readOnlyTitle": "Subscription read-only",
+      "readOnlyBody": "Your subscription is no longer active. Your reports remain viewable, but you can no longer create or edit them. Settle your payment to reactivate your clinic.",
+      "trialEnding": "Your free trial ends in {days} day(s).",
+      "graceEnding": "Payment pending: your access will be suspended in {days} day(s).",
+      "cta": "Manage subscription"
+    }
+  },
   "vocabulary": {
     "title": "Vocabulary memory",
     "subtitle": "Radiora learns your vocabulary and dictation style from the corrections you make to your transcripts, then suggests them next time — never applying them automatically.",

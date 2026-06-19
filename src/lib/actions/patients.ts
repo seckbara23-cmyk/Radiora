@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
+import { clinicCanWrite, READ_ONLY_MESSAGE } from '@/lib/billing/access'
 
 export type FormState = { error: string | null }
 
@@ -21,6 +22,9 @@ export async function createPatient(
   }
   if (!user.clinicId) {
     return { error: 'Super-admin accounts must be linked to a clinic before creating patients.' }
+  }
+  if (!(await clinicCanWrite(user.clinicId))) {
+    return { error: READ_ONLY_MESSAGE }
   }
 
   const firstName = (formData.get('first_name') as string).trim()

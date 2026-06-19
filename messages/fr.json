@@ -850,6 +850,47 @@
     "added": "En-tête ajouté.",
     "add": "Ajouter"
   },
+  "billing": {
+    "title": "Abonnement et facturation",
+    "subtitle": "Gérez l’abonnement de votre clinique, consultez votre forfait actuel et vos factures.",
+    "currentPlan": "Forfait actuel",
+    "noPlan": "Aucun abonnement actif",
+    "perMonth": "{amount} / mois",
+    "customPricing": "Tarification personnalisée",
+    "plansHeading": "Forfaits disponibles",
+    "current": "Actuel",
+    "onRequest": "Sur devis",
+    "month": "mois",
+    "changeHint": "Pour changer de forfait, contactez l’équipe Radiora.",
+    "invoicesHeading": "Factures",
+    "noInvoices": "Aucune facture pour le moment.",
+    "invoiceNumber": "N° de facture",
+    "invoiceDate": "Date",
+    "invoiceAmount": "Montant",
+    "invoiceStatus": "Statut",
+    "invoiceStates": {
+      "draft": "Brouillon",
+      "open": "À payer",
+      "paid": "Payée",
+      "void": "Annulée",
+      "uncollectible": "Irrécouvrable"
+    },
+    "state": {
+      "active": "Actif",
+      "trialing": "Essai gratuit",
+      "grace": "Délai de paiement",
+      "expired": "Expiré",
+      "suspended": "Suspendu",
+      "cancelled": "Résilié"
+    },
+    "banner": {
+      "readOnlyTitle": "Abonnement en lecture seule",
+      "readOnlyBody": "Votre abonnement n’est plus actif. Vos comptes rendus restent consultables, mais vous ne pouvez plus en créer ni en modifier. Régularisez votre paiement pour réactiver votre clinique.",
+      "trialEnding": "Votre essai gratuit se termine dans {days} jour(s).",
+      "graceEnding": "Paiement en attente : votre accès sera suspendu dans {days} jour(s).",
+      "cta": "Gérer l’abonnement"
+    }
+  },
   "vocabulary": {
     "title": "Mémoire de vocabulaire",
     "subtitle": "Radiora apprend votre vocabulaire et votre style de dictée à partir des corrections que vous apportez à vos transcriptions, puis vous les propose la prochaine fois — sans jamais les appliquer automatiquement.",

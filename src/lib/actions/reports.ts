@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
+import { clinicCanWrite, READ_ONLY_MESSAGE } from '@/lib/billing/access'
 import { canSignReports } from '@/lib/safety/authority'
 import { evaluateSigningReadiness, describeBlockers } from '@/lib/safety/signing-gate'
 import { getReportSafetyContext } from '@/lib/data/safety'
@@ -97,6 +98,11 @@ export async function createReport(
     return { error: 'You do not have permission to create reports.' }
   }
 
+  // Subscription gate: a lapsed clinic is read-only — no new reports.
+  if (!(await clinicCanWrite(user.clinicId))) {
+    return { error: READ_ONLY_MESSAGE }
+  }
+
   const studyId   = ((formData.get('study_id')   as string) ?? '').trim()
   const patientId = ((formData.get('patient_id') as string) ?? '').trim()
 
@@ -139,6 +145,10 @@ export async function saveDraftReport(
 
   if (!REPORT_WRITE_ROLES.includes(user.role as WriteRole)) {
     return { error: 'You do not have permission to edit reports.' }
+  }
+
+  if (!(await clinicCanWrite(user.clinicId))) {
+    return { error: READ_ONLY_MESSAGE }
   }
 
   const id              = ((formData.get('id')              as string) ?? '').trim()
@@ -208,6 +218,10 @@ export async function finalizeReport(
   // clinical signing authority by default — see canSignReports().
   if (!canSignReports(user.role)) {
     return { error: 'Only a radiologist can validate and sign reports.' }
+  }
+
+  if (!(await clinicCanWrite(user.clinicId))) {
+    return { error: READ_ONLY_MESSAGE }
   }
 
   const id              = ((formData.get('id')              as string) ?? '').trim()
@@ -306,6 +320,10 @@ export async function amendReport(
 
   if (!AMEND_ROLES.includes(user.role as AmendRole)) {
     return { error: 'You do not have permission to amend reports.' }
+  }
+
+  if (!(await clinicCanWrite(user.clinicId))) {
+    return { error: READ_ONLY_MESSAGE }
   }
 
   const id           = ((formData.get('id')            as string) ?? '').trim()
