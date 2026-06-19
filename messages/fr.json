@@ -58,6 +58,29 @@
     "createAccount": "Démarrer l’essai gratuit",
     "onboardedNotice": "Votre clinique est prête ! Connectez-vous pour démarrer votre essai gratuit de 30 jours."
   },
+  "acceptInvite": {
+    "title": "Accepter l'invitation",
+    "loading": "Vérification de votre invitation…",
+    "subtitlePassword": "Définissez votre mot de passe pour activer votre compte.",
+    "invitedAs": "Invitation pour {invited}",
+    "conflictTitle": "Vous êtes déjà connecté",
+    "conflictBody": "Vous êtes connecté en tant que {current}. Pour accepter cette invitation en tant que {invited}, déconnectez-vous de la session actuelle.",
+    "conflictBodyUnknown": "Une autre session est déjà active ({current}). Déconnectez-vous pour accepter cette invitation.",
+    "continueAs": "Se déconnecter et continuer",
+    "cancel": "Annuler",
+    "passwordLabel": "Nouveau mot de passe",
+    "confirmLabel": "Confirmer le mot de passe",
+    "passwordPlaceholder": "••••••••",
+    "submit": "Activer mon compte",
+    "submitting": "Activation…",
+    "passwordTooShort": "Le mot de passe doit comporter au moins 8 caractères.",
+    "passwordMismatch": "Les mots de passe ne correspondent pas.",
+    "invalidLink": "Ce lien d'invitation est invalide ou a expiré. Demandez à votre administrateur de vous renvoyer une invitation.",
+    "errorTitle": "Invitation invalide",
+    "backToLogin": "Aller à la connexion",
+    "successTitle": "Compte activé",
+    "successBody": "Redirection vers votre tableau de bord…"
+  },
   "signup": {
     "title": "Essayer Radiora gratuitement",
     "subtitle": "30 jours d’essai · sans carte bancaire · toutes les fonctionnalités Professional",
@@ -280,7 +303,13 @@
     "deactivate": "Désactiver",
     "reactivate": "Réactiver",
     "inviteTitle": "Inviter un utilisateur",
-    "inviteSubtitle": "Un e-mail d'invitation sera envoyé."
+    "inviteSubtitle": "Un e-mail d'invitation sera envoyé.",
+    "inviteSent": "Invitation envoyée à {email}",
+    "statusPending": "Vérification en attente",
+    "statusExpired": "Expiré",
+    "resend": "Renvoyer l'invitation",
+    "resending": "Envoi…",
+    "resent": "Invitation renvoyée"
   },
   "audit": {
     "title": "Historique d'audit",

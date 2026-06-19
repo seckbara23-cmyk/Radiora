@@ -58,6 +58,29 @@
     "createAccount": "Start free trial",
     "onboardedNotice": "Your clinic is ready! Sign in to start your 30-day free trial."
   },
+  "acceptInvite": {
+    "title": "Accept invitation",
+    "loading": "Verifying your invitation…",
+    "subtitlePassword": "Set your password to activate your account.",
+    "invitedAs": "Invitation for {invited}",
+    "conflictTitle": "You are already signed in",
+    "conflictBody": "You are signed in as {current}. To accept this invitation as {invited}, sign out of the current session.",
+    "conflictBodyUnknown": "Another session is already active ({current}). Sign out to accept this invitation.",
+    "continueAs": "Sign out and continue",
+    "cancel": "Cancel",
+    "passwordLabel": "New password",
+    "confirmLabel": "Confirm password",
+    "passwordPlaceholder": "••••••••",
+    "submit": "Activate my account",
+    "submitting": "Activating…",
+    "passwordTooShort": "Password must be at least 8 characters.",
+    "passwordMismatch": "Passwords do not match.",
+    "invalidLink": "This invitation link is invalid or has expired. Ask your administrator to resend an invitation.",
+    "errorTitle": "Invalid invitation",
+    "backToLogin": "Go to sign in",
+    "successTitle": "Account activated",
+    "successBody": "Redirecting to your dashboard…"
+  },
   "signup": {
     "title": "Try Radiora free",
     "subtitle": "30-day trial · no credit card · all Professional features",
@@ -280,7 +303,13 @@
     "deactivate": "Deactivate",
     "reactivate": "Reactivate",
     "inviteTitle": "Invite User",
-    "inviteSubtitle": "An invitation email will be sent."
+    "inviteSubtitle": "An invitation email will be sent.",
+    "inviteSent": "Invitation sent to {email}",
+    "statusPending": "Pending verification",
+    "statusExpired": "Expired",
+    "resend": "Resend invitation",
+    "resending": "Sending…",
+    "resent": "Invitation resent"
   },
   "audit": {
     "title": "Audit History",

@@ -2,16 +2,30 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getLocale } from 'next-intl/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/actions/audit'
 import type { UserRole } from '@/types/user'
 
-export type FormState = { error: string | null }
+export type FormState = { error: string | null; submitted?: boolean }
 
 // Roles a clinic_admin is permitted to assign — super_admin is excluded
 const ASSIGNABLE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'technician', 'viewer']
+
+// Where Supabase should send the invitee after they click the email link. This
+// MUST be the dedicated invite-acceptance route (NOT /login): /login bounces an
+// already-authenticated visitor straight to their dashboard, so an admin who
+// opens the link in their own browser would silently land in their own session
+// instead of accepting the invite. The accept-invite route processes the invited
+// tokens, warns on a session conflict, and sets the new password.
+// (The URL must be whitelisted in Supabase Auth → URL Configuration.)
+function inviteRedirectUrl(locale: string): string | undefined {
+  const base = process.env.NEXT_PUBLIC_SITE_URL
+  if (!base) return undefined
+  return `${base.replace(/\/$/, '')}/${locale}/accept-invite`
+}
 
 // ── Invite user ───────────────────────────────────────────────────────────────
 
@@ -52,6 +66,8 @@ export async function inviteUser(
     return { error: 'You cannot assign the Super Admin role.' }
   }
 
+  const locale = await getLocale().catch(() => 'fr')
+  const redirectTo = inviteRedirectUrl(locale)
   const adminClient = createAdminClient()
 
   // inviteUserByEmail creates an auth.users row (INVITED state) and fires the
@@ -59,9 +75,7 @@ export async function inviteUser(
   const { data: inviteData, error: inviteError } =
     await adminClient.auth.admin.inviteUserByEmail(email, {
       data: { first_name: firstName, last_name: lastName },
-      ...(process.env.NEXT_PUBLIC_SITE_URL
-        ? { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/login` }
-        : {}),
+      ...(redirectTo ? { redirectTo } : {}),
     })
 
   if (inviteError) {
@@ -107,8 +121,83 @@ export async function inviteUser(
     metadata: { email, role, name: `${firstName} ${lastName}` },
   })
 
-  revalidatePath('/users')
-  redirect('/users')
+  // Keep the inviter authenticated and return them to the Users list (NOT the
+  // public landing page). Redirect to the locale-prefixed path so middleware /
+  // next-intl resolve it to the dashboard route, with a success flag the page
+  // turns into "Invitation envoyée à <email>".
+  revalidatePath(`/${locale}/users`)
+  redirect(`/${locale}/users?invited=${encodeURIComponent(email)}`)
+}
+
+// ── Resend invitation ─────────────────────────────────────────────────────────
+
+export async function resendInvite(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const currentUser = await requireCurrentUser()
+
+  if (!['clinic_admin', 'super_admin'].includes(currentUser.role)) {
+    return { error: 'You do not have permission to resend invitations.' }
+  }
+
+  const userId = ((formData.get('user_id') as string) ?? '').trim()
+  if (!userId) return { error: 'Missing user ID.' }
+
+  const adminClient = createAdminClient()
+
+  // Look up the target profile (service role) and enforce tenant isolation:
+  // a clinic_admin may only resend within their own clinic.
+  const { data: profile, error: profileError } = await adminClient
+    .from('profiles')
+    .select('email, clinic_id, first_name, last_name')
+    .eq('id', userId)
+    .single()
+
+  if (profileError || !profile?.email) {
+    return { error: 'User not found.' }
+  }
+  if (currentUser.role === 'clinic_admin' && profile.clinic_id !== currentUser.clinicId) {
+    return { error: 'You can only resend invitations within your own clinic.' }
+  }
+
+  const locale = await getLocale().catch(() => 'fr')
+  const redirectTo = inviteRedirectUrl(locale)
+  const email = profile.email as string
+
+  // Re-issue the invitation. inviteUserByEmail refuses an already-registered
+  // address, so for an existing (still-unconfirmed) invitee we regenerate the
+  // invite link instead — this mints a fresh token and resets the 24h expiry.
+  const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(email, {
+    data: { first_name: profile.first_name, last_name: profile.last_name },
+    ...(redirectTo ? { redirectTo } : {}),
+  })
+
+  if (inviteError) {
+    const msg = inviteError.message
+    if (msg.includes('already been registered') || msg.includes('already registered')) {
+      const { error: genError } = await adminClient.auth.admin.generateLink({
+        type: 'invite',
+        email,
+        ...(redirectTo ? { options: { redirectTo } } : {}),
+      })
+      if (genError) return { error: genError.message }
+    } else {
+      return { error: msg }
+    }
+  }
+
+  await logAudit({
+    userId: currentUser.id,
+    clinicId: currentUser.role === 'super_admin' ? (profile.clinic_id as string | null) : currentUser.clinicId,
+    action: 'user.invite_resent',
+    entityType: 'profile',
+    entityId: userId,
+    metadata: { email },
+  })
+
+  revalidatePath(`/${locale}/users`)
+  return { error: null, submitted: true }
 }
 
 // ── Activate / deactivate ─────────────────────────────────────────────────────

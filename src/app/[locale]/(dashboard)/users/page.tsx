@@ -1,27 +1,53 @@
 import { Link } from '@/i18n/navigation'
 import { redirect } from 'next/navigation'
+import { getTranslations } from 'next-intl/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getClinicUsers } from '@/lib/data/users'
+import { getInviteStatuses } from '@/lib/data/user-invites'
 import { Badge, userRoleVariant, userRoleLabel } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { UserActions } from './UserActions'
+import { ResendInvite } from './ResendInvite'
 
 export const metadata = { title: 'Users' }
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ invited?: string }>
+}) {
   const currentUser = await requireCurrentUser()
 
   if (!['clinic_admin', 'super_admin'].includes(currentUser.role)) {
     redirect('/dashboard')
   }
 
+  const t = await getTranslations('users')
+  const { invited } = await searchParams
   const users = await getClinicUsers()
+  const inviteStatuses = await getInviteStatuses(users.map((u) => u.id))
+
+  const resendLabels = {
+    resend: t('resend'),
+    resending: t('resending'),
+    resent: t('resent'),
+  }
 
   const activeCount   = users.filter((u) => u.isActive).length
   const inactiveCount = users.length - activeCount
 
   return (
     <div className="space-y-6">
+
+      {/* Invitation sent — keeps the inviter in the Users area (Bug B) */}
+      {invited && (
+        <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+          <svg className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          <p className="text-sm font-medium text-emerald-800">{t('inviteSent', { email: invited })}</p>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -93,6 +119,8 @@ export default async function UsersPage() {
                   const initials =
                     `${u.firstName[0] ?? ''}${u.lastName[0] ?? ''}`.toUpperCase()
                   const isSelf = u.id === currentUser.id
+                  const invite = inviteStatuses[u.id]
+                  const awaitingAcceptance = invite === 'pending' || invite === 'expired'
 
                   return (
                     <tr key={u.id} className={`hover:bg-gray-50 transition ${!u.isActive ? 'opacity-60' : ''}`}>
@@ -139,18 +167,29 @@ export default async function UsersPage() {
 
                       {/* Status */}
                       <td className="px-6 py-3.5">
-                        <Badge variant={u.isActive ? 'success' : 'neutral'}>
-                          {u.isActive ? 'Active' : 'Inactive'}
-                        </Badge>
+                        {!u.isActive ? (
+                          <Badge variant="neutral">{t('inactive')}</Badge>
+                        ) : invite === 'pending' ? (
+                          <Badge variant="warning">{t('statusPending')}</Badge>
+                        ) : invite === 'expired' ? (
+                          <Badge variant="danger">{t('statusExpired')}</Badge>
+                        ) : (
+                          <Badge variant="success">{t('active')}</Badge>
+                        )}
                       </td>
 
                       {/* Actions */}
                       <td className="px-6 py-3.5 text-right">
-                        <UserActions
-                          userId={u.id}
-                          isActive={u.isActive}
-                          isSelf={isSelf}
-                        />
+                        <div className="flex flex-col items-end gap-1.5">
+                          <UserActions
+                            userId={u.id}
+                            isActive={u.isActive}
+                            isSelf={isSelf}
+                          />
+                          {!isSelf && u.isActive && awaitingAcceptance && (
+                            <ResendInvite userId={u.id} labels={resendLabels} />
+                          )}
+                        </div>
                       </td>
 
                     </tr>
