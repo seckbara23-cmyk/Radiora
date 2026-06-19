@@ -1,5 +1,16 @@
 import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
+import {
+  reportsPerDay,
+  countInMonth,
+  averageSpanMinutes,
+  summariseDictation,
+  secretaryProductivity,
+  type DayCount,
+  type Span,
+  type DictationVolume,
+  type SecretaryRow,
+} from '@/lib/analytics/clinic-metrics'
 
 // ── SLA targets (minutes) by priority ────────────────────────────────────────
 const SLA_TARGETS: Record<string, number> = {
@@ -362,3 +373,110 @@ export async function getCriticalQueueItems(): Promise<CriticalItem[]> {
 
   return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
+
+// ── Clinic Analytics (Phase 5F) ───────────────────────────────────────────────
+//
+// Commercial, clinic-level operational metrics for the imaging centre owner:
+// report throughput, turnaround, validation latency, dictation volume and
+// secretary productivity. All reads go through the user-session client so RLS
+// confines a clinic_admin to their own clinic. Secretary productivity reads the
+// audit log, which RLS exposes only to clinic_admin / super_admin — for any
+// other role it simply comes back empty.
+
+export interface ClinicAnalytics {
+  dayRange:           number
+  reportsPerDay:      DayCount[]
+  reportsThisMonth:   number
+  reportsInRange:     number
+  turnaround:         { avgMinutes: number; count: number } // study created → finalized
+  validationDelay:    { avgMinutes: number; count: number } // report drafted → finalized
+  dictation:          DictationVolume
+  secretaries:        SecretaryRow[]
+}
+
+export async function getClinicAnalytics(dayRange = 30): Promise<ClinicAnalytics> {
+  await requireCurrentUser() // enforce auth; RLS scopes every read below to the clinic
+  const supabase = await createClient()
+
+  const since = new Date(Date.now() - dayRange * 86_400_000).toISOString()
+  const nowISO = new Date().toISOString()
+
+  // Finalized reports in range — drives throughput, turnaround and validation latency.
+  const { data: reports } = await supabase
+    .from('reports')
+    .select('id, study_id, signed_at, created_at')
+    .eq('status', 'finalized')
+    .not('signed_at', 'is', null)
+    .gte('signed_at', since)
+    .limit(2000)
+
+  const reportRows = reports ?? []
+  const signedAts  = reportRows.map((r) => r.signed_at as string).filter(Boolean)
+
+  // Validation latency: how long a report sits between being drafted and signed
+  // off (finalized). This is the radiologist's validation turnaround.
+  const validationSpans: Span[] = reportRows
+    .filter((r) => r.created_at && r.signed_at)
+    .map((r) => ({ start: r.created_at as string, end: r.signed_at as string }))
+
+  // Turnaround: study acquisition (created) → report finalized.
+  const studyIds = [...new Set(reportRows.map((r) => r.study_id as string).filter(Boolean))]
+  const studyCreatedMap: Record<string, string> = {}
+  if (studyIds.length > 0) {
+    const { data: studies } = await supabase
+      .from('studies')
+      .select('id, created_at')
+      .in('id', studyIds)
+    for (const s of studies ?? []) studyCreatedMap[s.id as string] = s.created_at as string
+  }
+  const turnaroundSpans: Span[] = reportRows
+    .filter((r) => r.signed_at && studyCreatedMap[r.study_id as string])
+    .map((r) => ({ start: studyCreatedMap[r.study_id as string], end: r.signed_at as string }))
+
+  // Audio dictation volume in range.
+  const { data: transcripts } = await supabase
+    .from('voice_transcripts')
+    .select('audio_duration_seconds')
+    .gte('created_at', since)
+    .limit(5000)
+  const dictation = summariseDictation(
+    (transcripts ?? []).map((t) => t.audio_duration_seconds as number | null),
+  )
+
+  // Secretary productivity — roster × audit activity. RLS gates audit reads to
+  // clinic_admin / super_admin; other roles get an empty roster of events.
+  let secretaries: SecretaryRow[] = []
+  const { data: secProfiles } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .eq('role', 'secretary')
+  const roster = (secProfiles ?? []).map((p) => ({
+    userId:    p.id as string,
+    firstName: (p.first_name as string) ?? '',
+    lastName:  (p.last_name as string) ?? '',
+  }))
+  if (roster.length > 0) {
+    const { data: events } = await supabase
+      .from('audit_logs')
+      .select('user_id')
+      .in('user_id', roster.map((r) => r.userId))
+      .gte('created_at', since)
+      .limit(10000)
+    secretaries = secretaryProductivity(
+      roster,
+      (events ?? []).map((e) => ({ userId: (e.user_id as string | null) ?? null })),
+    )
+  }
+
+  return {
+    dayRange,
+    reportsPerDay:    reportsPerDay(signedAts, nowISO, dayRange),
+    reportsThisMonth: countInMonth(signedAts, nowISO),
+    reportsInRange:   signedAts.length,
+    turnaround:       averageSpanMinutes(turnaroundSpans),
+    validationDelay:  averageSpanMinutes(validationSpans),
+    dictation,
+    secretaries,
+  }
+}
+

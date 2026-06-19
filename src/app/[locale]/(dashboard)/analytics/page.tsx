@@ -6,8 +6,10 @@ import {
   getTatMetrics,
   getSlaStats,
   getRadiologistProductivity,
+  getClinicAnalytics,
 } from '@/lib/data/analytics'
 import { TatChart } from './TatChart'
+import { ReportsTrend } from './ReportsTrend'
 import { logAudit } from '@/lib/actions/audit'
 
 export const metadata = { title: 'Analytics' }
@@ -57,11 +59,16 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
   const params  = await searchParams
   const dayRange = Math.min(Math.max(parseInt(params.days ?? '30', 10) || 30, 7), 90)
 
-  const [workload, tat, sla, productivity] = await Promise.all([
+  // Clinic-wide commercial analytics are for the centre owner/manager, not an
+  // individual radiologist (who sees their own metrics below).
+  const showClinicAnalytics = user.role === 'clinic_admin' || user.role === 'super_admin'
+
+  const [workload, tat, sla, productivity, clinic] = await Promise.all([
     getWorkloadStats(),
     getTatMetrics(dayRange),
     getSlaStats(),
     getRadiologistProductivity(dayRange),
+    showClinicAnalytics ? getClinicAnalytics(dayRange) : Promise.resolve(null),
   ])
 
   // Log page view (fire-and-forget — audit failure never blocks the page)
@@ -216,6 +223,95 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
         </div>
 
       </div>
+
+      {/* ── Clinic Analytics (Phase 5F) ─────────────────────────────────────── */}
+      {clinic && (
+        <section className="space-y-4">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Clinic Analytics — last {dayRange} days
+          </h2>
+
+          {/* Headline metrics */}
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
+            <StatCard
+              label="Reports This Month"
+              value={clinic.reportsThisMonth}
+              color="text-blue-600"
+              sub="finalized, calendar month"
+            />
+            <StatCard
+              label="Reports / Range"
+              value={clinic.reportsInRange}
+              color="text-blue-600"
+              sub={`last ${dayRange} days`}
+            />
+            <StatCard
+              label="Avg Turnaround"
+              value={minutesToLabel(clinic.turnaround.avgMinutes)}
+              color="text-emerald-600"
+              sub={`study → finalized · n=${clinic.turnaround.count}`}
+            />
+            <StatCard
+              label="Avg Validation Delay"
+              value={minutesToLabel(clinic.validationDelay.avgMinutes)}
+              color="text-amber-600"
+              sub={`drafted → signed · n=${clinic.validationDelay.count}`}
+            />
+            <StatCard
+              label="Dictation Volume"
+              value={clinic.dictation.sessions}
+              color="text-violet-600"
+              sub={
+                clinic.dictation.totalSeconds > 0
+                  ? `${Math.round(clinic.dictation.totalSeconds / 60)}m total · avg ${clinic.dictation.avgSeconds}s`
+                  : 'sessions in range'
+              }
+            />
+          </div>
+
+          {/* Reports-per-day trend */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="mb-4">
+              <h3 className="text-sm font-semibold text-gray-900">Reports per Day</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Finalized reports · last {dayRange} days
+              </p>
+            </div>
+            <ReportsTrend data={clinic.reportsPerDay} />
+          </div>
+
+          {/* Secretary productivity */}
+          {clinic.secretaries.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div className="px-5 py-3 border-b border-gray-100 bg-gray-50">
+                <h3 className="text-sm font-semibold text-gray-900">Secretary Productivity</h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Recorded actions per secretary · last {dayRange} days
+                </p>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500">Secretary</th>
+                    <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {clinic.secretaries.map((s) => (
+                    <tr key={s.userId} className="hover:bg-gray-50 transition">
+                      <td className="px-5 py-3.5">
+                        <p className="font-medium text-gray-900">{s.firstName} {s.lastName}</p>
+                        <p className="text-xs text-gray-400 font-mono">{s.userId.slice(0, 8)}…</p>
+                      </td>
+                      <td className="px-5 py-3.5 text-right font-semibold text-gray-900">{s.actions}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* ── Radiologist Productivity Table ─────────────────────────────────── */}
       {productivity.length > 0 && (
