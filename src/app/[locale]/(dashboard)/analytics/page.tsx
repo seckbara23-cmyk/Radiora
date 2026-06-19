@@ -316,9 +316,23 @@ export default async function AnalyticsPage({ searchParams }: PageProps) {
       {/* ── Radiologist Productivity Table ─────────────────────────────────── */}
       {productivity.length > 0 && (
         <section>
-          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            {user.role === 'radiologist' ? 'Your Metrics' : 'Radiologist Productivity'} — last {dayRange} days
-          </h2>
+          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+            <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              {user.role === 'radiologist' ? 'Your Metrics' : 'Radiologist Productivity'} — last {dayRange} days
+            </h2>
+            {/* Plain anchor: the API route is not locale-prefixed and triggers a download. */}
+            <a
+              href={`/api/analytics/productivity/pdf?days=${dayRange}`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m-9 8h12a2 2 0 002-2V7a2 2 0 00-2-2h-5l-2-2H5a2 2 0 00-2 2v13a2 2 0 002 2z"
+                />
+              </svg>
+              Export PDF
+            </a>
+          </div>
           <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
             <table className="w-full text-sm">
               <thead>

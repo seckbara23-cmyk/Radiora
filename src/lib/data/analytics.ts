@@ -480,3 +480,131 @@ export async function getClinicAnalytics(dayRange = 30): Promise<ClinicAnalytics
   }
 }
 
+// ── Radiologist Productivity Report (Phase 5G) ────────────────────────────────
+//
+// Per-radiologist commercial metrics for an exportable report: report volume,
+// exams interpreted, validation time and dictation time. A clinic_admin /
+// super_admin sees every radiologist; a radiologist sees only their own row.
+// Reads go through the session client, so RLS enforces clinic isolation.
+
+export interface RadiologistReportRow {
+  userId:               string
+  firstName:            string
+  lastName:             string
+  reportVolume:         number // reports authored in range (any status)
+  examsInterpreted:     number // distinct studies with a finalized report
+  finalizedCount:       number
+  avgValidationMinutes: number // report drafted → finalized, average
+  dictationSessions:    number
+  dictationSeconds:     number // total recorded audio
+}
+
+export interface RadiologistProductivityReport {
+  dayRange:    number
+  generatedAt: string
+  clinicName:  string | null
+  scope:       'self' | 'clinic'
+  rows:        RadiologistReportRow[]
+}
+
+export async function getRadiologistProductivityReport(
+  dayRange = 30,
+): Promise<RadiologistProductivityReport> {
+  const user     = await requireCurrentUser()
+  const supabase = await createClient()
+
+  const since   = new Date(Date.now() - dayRange * 86_400_000).toISOString()
+  const nowISO  = new Date().toISOString()
+  const selfOnly = user.role === 'radiologist'
+
+  let reportQuery = supabase
+    .from('reports')
+    .select('id, author_id, status, signed_at, created_at, study_id')
+    .gte('updated_at', since)
+  if (selfOnly) reportQuery = reportQuery.eq('author_id', user.id)
+  const { data: reports } = await reportQuery.limit(5000)
+  const reportRows = reports ?? []
+
+  // Group reports by author.
+  const byAuthor = new Map<string, typeof reportRows>()
+  for (const r of reportRows) {
+    const aid = r.author_id as string
+    if (!aid) continue
+    if (!byAuthor.has(aid)) byAuthor.set(aid, [])
+    byAuthor.get(aid)!.push(r)
+  }
+  const authorIds = [...byAuthor.keys()]
+
+  // Names.
+  const profileMap: Record<string, { firstName: string; lastName: string }> = {}
+  if (authorIds.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, first_name, last_name')
+      .in('id', authorIds)
+    for (const p of profiles ?? []) {
+      profileMap[p.id as string] = {
+        firstName: (p.first_name as string) ?? '',
+        lastName:  (p.last_name as string) ?? '',
+      }
+    }
+  }
+
+  // Dictation time per author from voice_transcripts.
+  const dictByAuthor = new Map<string, Array<number | null>>()
+  if (authorIds.length > 0) {
+    const { data: transcripts } = await supabase
+      .from('voice_transcripts')
+      .select('created_by, audio_duration_seconds')
+      .in('created_by', authorIds)
+      .gte('created_at', since)
+      .limit(20000)
+    for (const t of transcripts ?? []) {
+      const cb = t.created_by as string
+      if (!dictByAuthor.has(cb)) dictByAuthor.set(cb, [])
+      dictByAuthor.get(cb)!.push(t.audio_duration_seconds as number | null)
+    }
+  }
+
+  const rows: RadiologistReportRow[] = authorIds.map((uid) => {
+    const authored  = byAuthor.get(uid) ?? []
+    const finalized = authored.filter((r) => r.status === 'finalized' && r.signed_at)
+    const validationSpans: Span[] = finalized
+      .filter((r) => r.created_at && r.signed_at)
+      .map((r) => ({ start: r.created_at as string, end: r.signed_at as string }))
+    const dict = summariseDictation(dictByAuthor.get(uid) ?? [])
+    const profile = profileMap[uid]
+
+    return {
+      userId:               uid,
+      firstName:            profile?.firstName ?? 'Unknown',
+      lastName:             profile?.lastName ?? '',
+      reportVolume:         authored.length,
+      examsInterpreted:     new Set(finalized.map((r) => r.study_id as string).filter(Boolean)).size,
+      finalizedCount:       finalized.length,
+      avgValidationMinutes: averageSpanMinutes(validationSpans).avgMinutes,
+      dictationSessions:    dict.sessions,
+      dictationSeconds:     dict.totalSeconds,
+    }
+  }).sort((a, b) => b.finalizedCount - a.finalizedCount)
+
+  // Clinic name for the report header.
+  let clinicName: string | null = null
+  if (user.clinicId) {
+    const { data: clinic } = await supabase
+      .from('clinics')
+      .select('name')
+      .eq('id', user.clinicId)
+      .maybeSingle()
+    clinicName = (clinic?.name as string | undefined) ?? null
+  }
+
+  return {
+    dayRange,
+    generatedAt: nowISO,
+    clinicName,
+    scope:       selfOnly ? 'self' : 'clinic',
+    rows,
+  }
+}
+
