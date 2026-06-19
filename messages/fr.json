@@ -952,6 +952,39 @@
       "next": "Suivant",
       "creating": "Création…",
       "activate": "Créer et activer l’essai"
+    },
+    "billingTenant": {
+      "heading": "Facturation",
+      "issueInvoice": "+ Émettre une facture",
+      "noInvoices": "Aucune facture émise.",
+      "invoice": "Facture",
+      "date": "Date",
+      "amount": "Montant",
+      "status": "Statut",
+      "action": "Action",
+      "payments": "Paiements",
+      "method": "Méthode",
+      "confirm": "Confirmer",
+      "fail": "Échec",
+      "invoiceStates": {
+        "draft": "Brouillon",
+        "open": "À payer",
+        "paid": "Payée",
+        "void": "Annulée",
+        "uncollectible": "Irrécouvrable"
+      },
+      "paymentStates": {
+        "pending": "En attente",
+        "succeeded": "Réussi",
+        "failed": "Échoué",
+        "refunded": "Remboursé"
+      },
+      "methods": {
+        "wave": "Wave",
+        "orange_money": "Orange Money",
+        "card": "Carte bancaire",
+        "manual": "Manuel"
+      }
     }
   },
   "billing": {
@@ -978,6 +1011,21 @@
       "paid": "Payée",
       "void": "Annulée",
       "uncollectible": "Irrécouvrable"
+    },
+    "pay": {
+      "action": "Paiement",
+      "pay": "Payer",
+      "cancel": "Annuler",
+      "chooseMethod": "Méthode de paiement",
+      "confirm": "Valider le paiement",
+      "pendingTitle": "Paiement enregistré",
+      "pendingBody": "Votre paiement est en attente de confirmation par l’équipe Radiora.",
+      "reference": "Référence",
+      "methods": {
+        "wave": "Wave",
+        "orange_money": "Orange Money",
+        "card": "Carte bancaire"
+      }
     },
     "state": {
       "active": "Actif",

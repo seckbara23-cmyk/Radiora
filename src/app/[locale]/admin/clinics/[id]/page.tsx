@@ -1,9 +1,11 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { notFound } from 'next/navigation'
 import { Link } from '@/i18n/navigation'
-import { getTenantDetail } from '@/lib/data/platform'
+import { getTenantDetail, getTenantBilling } from '@/lib/data/platform'
 import type { AccessState } from '@/lib/billing/subscription'
+import { formatXof } from '@/lib/billing/format'
 import { TenantActions } from '../TenantActions'
+import { IssueInvoiceButton, PaymentReconcile } from './BillingControls'
 
 const STATE_STYLES: Record<AccessState, string> = {
   active:    'bg-green-100 text-green-800',
@@ -43,6 +45,8 @@ export default async function TenantDetailPage({
   const t = await getTranslations('admin')
   const tenant = await getTenantDetail(id)
   if (!tenant) notFound()
+
+  const billing = await getTenantBilling(id)
 
   const sub = tenant.subscription
   const endLabel =
@@ -110,6 +114,76 @@ export default async function TenantDetailPage({
           </div>
         </section>
       </div>
+
+      {/* Billing — invoices & payment reconciliation (metadata only) */}
+      <section className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">{t('billingTenant.heading')}</h2>
+          <IssueInvoiceButton clinicId={tenant.id} label={t('billingTenant.issueInvoice')} />
+        </div>
+
+        {billing.invoices.length === 0 ? (
+          <p className="text-sm text-gray-500">{t('billingTenant.noInvoices')}</p>
+        ) : (
+          <table className="min-w-full divide-y divide-gray-200 text-sm">
+            <thead className="text-left text-xs uppercase tracking-wide text-gray-400">
+              <tr>
+                <th className="py-2 font-medium">{t('billingTenant.invoice')}</th>
+                <th className="py-2 font-medium">{t('billingTenant.date')}</th>
+                <th className="py-2 font-medium">{t('billingTenant.amount')}</th>
+                <th className="py-2 font-medium">{t('billingTenant.status')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {billing.invoices.map((inv) => (
+                <tr key={inv.id}>
+                  <td className="py-2 font-mono text-xs text-gray-700">{inv.number}</td>
+                  <td className="py-2 text-gray-600">{inv.issuedAt.slice(0, 10)}</td>
+                  <td className="py-2 text-gray-900">{formatXof(inv.amountXof)}</td>
+                  <td className="py-2 text-gray-600">{t(`billingTenant.invoiceStates.${inv.status}`)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {billing.payments.length > 0 && (
+          <div className="mt-5">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+              {t('billingTenant.payments')}
+            </h3>
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="text-left text-xs uppercase tracking-wide text-gray-400">
+                <tr>
+                  <th className="py-2 font-medium">{t('billingTenant.method')}</th>
+                  <th className="py-2 font-medium">{t('billingTenant.amount')}</th>
+                  <th className="py-2 font-medium">{t('billingTenant.status')}</th>
+                  <th className="py-2 font-medium text-right">{t('billingTenant.action')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {billing.payments.map((pay) => (
+                  <tr key={pay.id}>
+                    <td className="py-2 text-gray-700">{t(`billingTenant.methods.${pay.method}`)}</td>
+                    <td className="py-2 text-gray-900">{formatXof(pay.amountXof)}</td>
+                    <td className="py-2 text-gray-600">{t(`billingTenant.paymentStates.${pay.status}`)}</td>
+                    <td className="py-2 text-right">
+                      {pay.status === 'pending' ? (
+                        <PaymentReconcile
+                          paymentId={pay.id}
+                          labels={{ confirm: t('billingTenant.confirm'), fail: t('billingTenant.fail') }}
+                        />
+                      ) : (
+                        <span className="text-xs text-gray-300">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <p className="text-xs text-gray-400">{t('detail.privacyNote')}</p>
     </div>

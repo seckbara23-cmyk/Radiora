@@ -3,6 +3,8 @@ import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getClinicAccess } from '@/lib/billing/access'
 import { getClinicSubscription, getPlans, getClinicInvoices } from '@/lib/data/billing'
 import type { AccessState } from '@/lib/billing/subscription'
+import { invoiceIsPayable } from '@/lib/billing/payments'
+import { PayInvoice } from './PayInvoice'
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params
@@ -40,6 +42,22 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
   const currentPlan = subscription
     ? plans.find((p) => p.id === subscription.planId) ?? null
     : null
+
+  const canPay = user.role === 'clinic_admin' || user.role === 'super_admin'
+  const payLabels = {
+    pay: t('pay.pay'),
+    cancel: t('pay.cancel'),
+    chooseMethod: t('pay.chooseMethod'),
+    confirm: t('pay.confirm'),
+    pendingTitle: t('pay.pendingTitle'),
+    pendingBody: t('pay.pendingBody'),
+    reference: t('pay.reference'),
+    methods: {
+      wave: t('pay.methods.wave'),
+      orange_money: t('pay.methods.orange_money'),
+      card: t('pay.methods.card'),
+    },
+  }
 
   return (
     <div className="space-y-8">
@@ -148,6 +166,7 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
                   <th className="px-4 py-3 font-medium">{t('invoiceDate')}</th>
                   <th className="px-4 py-3 font-medium">{t('invoiceAmount')}</th>
                   <th className="px-4 py-3 font-medium">{t('invoiceStatus')}</th>
+                  {canPay && <th className="px-4 py-3 font-medium text-right">{t('pay.action')}</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -159,6 +178,17 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
                     <td className="px-4 py-3">
                       <span className="text-gray-600">{t(`invoiceStates.${inv.status}`)}</span>
                     </td>
+                    {canPay && (
+                      <td className="px-4 py-3 text-right">
+                        {invoiceIsPayable(inv.status) ? (
+                          <div className="flex justify-end">
+                            <PayInvoice invoiceId={inv.id} labels={payLabels} />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

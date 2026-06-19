@@ -272,6 +272,61 @@ export async function getBillingOverview(): Promise<BillingOverview> {
   }
 }
 
+// ── Per-tenant billing (invoices + payments) for the clinic detail page ────────
+
+import type { Invoice, Payment } from '@/types/billing'
+
+export interface TenantBilling {
+  invoices: Invoice[]
+  payments: Payment[]
+}
+
+function mapInvoiceRow(r: Record<string, unknown>): Invoice {
+  return {
+    id: r.id as string,
+    clinicId: r.clinic_id as string,
+    subscriptionId: (r.subscription_id as string | null) ?? null,
+    number: r.number as string,
+    amountXof: Number(r.amount_xof ?? 0),
+    currency: (r.currency as string) ?? 'XOF',
+    status: r.status as Invoice['status'],
+    periodStart: (r.period_start as string | null) ?? null,
+    periodEnd: (r.period_end as string | null) ?? null,
+    dueDate: (r.due_date as string | null) ?? null,
+    issuedAt: r.issued_at as string,
+    paidAt: (r.paid_at as string | null) ?? null,
+  }
+}
+
+function mapPaymentRow(r: Record<string, unknown>): Payment {
+  return {
+    id: r.id as string,
+    clinicId: r.clinic_id as string,
+    invoiceId: (r.invoice_id as string | null) ?? null,
+    amountXof: Number(r.amount_xof ?? 0),
+    currency: (r.currency as string) ?? 'XOF',
+    method: r.method as Payment['method'],
+    status: r.status as Payment['status'],
+    providerRef: (r.provider_ref as string | null) ?? null,
+    paidAt: (r.paid_at as string | null) ?? null,
+    createdAt: r.created_at as string,
+  }
+}
+
+// Metadata only — billing records carry no clinical content.
+export async function getTenantBilling(clinicId: string): Promise<TenantBilling> {
+  await requireSuperAdmin()
+  const db = createAdminClient()
+  const [invRes, payRes] = await Promise.all([
+    db.from('invoices').select('id, clinic_id, subscription_id, number, amount_xof, currency, status, period_start, period_end, due_date, issued_at, paid_at').eq('clinic_id', clinicId).order('issued_at', { ascending: false }).limit(50),
+    db.from('payments').select('id, clinic_id, invoice_id, amount_xof, currency, method, status, provider_ref, paid_at, created_at').eq('clinic_id', clinicId).order('created_at', { ascending: false }).limit(50),
+  ])
+  return {
+    invoices: ((invRes.data as Record<string, unknown>[] | null) ?? []).map(mapInvoiceRow),
+    payments: ((payRes.data as Record<string, unknown>[] | null) ?? []).map(mapPaymentRow),
+  }
+}
+
 // ── Platform analytics ────────────────────────────────────────────────────────
 
 export interface PlatformAnalytics {

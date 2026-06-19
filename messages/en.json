@@ -952,6 +952,39 @@
       "next": "Next",
       "creating": "Creating…",
       "activate": "Create and activate trial"
+    },
+    "billingTenant": {
+      "heading": "Billing",
+      "issueInvoice": "+ Issue invoice",
+      "noInvoices": "No invoices issued.",
+      "invoice": "Invoice",
+      "date": "Date",
+      "amount": "Amount",
+      "status": "Status",
+      "action": "Action",
+      "payments": "Payments",
+      "method": "Method",
+      "confirm": "Confirm",
+      "fail": "Fail",
+      "invoiceStates": {
+        "draft": "Draft",
+        "open": "Due",
+        "paid": "Paid",
+        "void": "Void",
+        "uncollectible": "Uncollectible"
+      },
+      "paymentStates": {
+        "pending": "Pending",
+        "succeeded": "Succeeded",
+        "failed": "Failed",
+        "refunded": "Refunded"
+      },
+      "methods": {
+        "wave": "Wave",
+        "orange_money": "Orange Money",
+        "card": "Bank card",
+        "manual": "Manual"
+      }
     }
   },
   "billing": {
@@ -978,6 +1011,21 @@
       "paid": "Paid",
       "void": "Void",
       "uncollectible": "Uncollectible"
+    },
+    "pay": {
+      "action": "Payment",
+      "pay": "Pay",
+      "cancel": "Cancel",
+      "chooseMethod": "Payment method",
+      "confirm": "Confirm payment",
+      "pendingTitle": "Payment recorded",
+      "pendingBody": "Your payment is awaiting confirmation by the Radiora team.",
+      "reference": "Reference",
+      "methods": {
+        "wave": "Wave",
+        "orange_money": "Orange Money",
+        "card": "Bank card"
+      }
     },
     "state": {
       "active": "Active",

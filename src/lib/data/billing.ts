@@ -7,7 +7,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import type { PlanId, SubscriptionStatus } from '@/lib/billing/subscription'
-import type { Plan, Subscription, Invoice } from '@/types/billing'
+import type { Plan, Subscription, Invoice, Payment } from '@/types/billing'
 
 function mapPlan(row: Record<string, unknown>): Plan {
   const features = row.features
@@ -57,6 +57,21 @@ function mapInvoice(row: Record<string, unknown>): Invoice {
   }
 }
 
+function mapPayment(row: Record<string, unknown>): Payment {
+  return {
+    id: row.id as string,
+    clinicId: row.clinic_id as string,
+    invoiceId: (row.invoice_id as string | null) ?? null,
+    amountXof: Number(row.amount_xof ?? 0),
+    currency: (row.currency as string) ?? 'XOF',
+    method: row.method as Payment['method'],
+    status: row.status as Payment['status'],
+    providerRef: (row.provider_ref as string | null) ?? null,
+    paidAt: (row.paid_at as string | null) ?? null,
+    createdAt: row.created_at as string,
+  }
+}
+
 const PLAN_COLS =
   'id, name, description, price_xof, max_radiologists, max_secretaries, features, sort_order, is_active'
 const SUB_COLS =
@@ -96,4 +111,18 @@ export async function getClinicInvoices(clinicId: string): Promise<Invoice[]> {
     .order('issued_at', { ascending: false })
   if (error || !data) return []
   return (data as unknown as Record<string, unknown>[]).map(mapInvoice)
+}
+
+const PAYMENT_COLS =
+  'id, clinic_id, invoice_id, amount_xof, currency, method, status, provider_ref, paid_at, created_at'
+
+export async function getClinicPayments(clinicId: string): Promise<Payment[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('payments')
+    .select(PAYMENT_COLS)
+    .eq('clinic_id', clinicId)
+    .order('created_at', { ascending: false })
+  if (error || !data) return []
+  return (data as unknown as Record<string, unknown>[]).map(mapPayment)
 }
