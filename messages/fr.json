@@ -607,7 +607,10 @@
     "correctionsTitle": "Corrections suggérées",
     "correctionsApplyAll": "Tout appliquer",
     "correctionsApply": "Appliquer",
-    "correctionsIgnore": "Ignorer"
+    "correctionsIgnore": "Ignorer",
+    "segmentsTitle": "{count} patients détectés dans la dictée",
+    "segmentsHint": "Ce compte rendu ne concerne qu’un patient. Conservez le segment correspondant ; dictez ou saisissez les autres patients dans leurs propres comptes rendus.",
+    "segmentsKeep": "Conserver"
   },
   "smartStructuring": {
     "title": "Structuration IA",

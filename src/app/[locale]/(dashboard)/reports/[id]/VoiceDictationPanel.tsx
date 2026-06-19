@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef, useTransition } from 'react'
+import { useState, useEffect, useRef, useTransition, useMemo } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { createVoiceTranscript, reviewVoiceTranscript, rejectVoiceTranscript, applyVoiceTranscript } from '@/lib/actions/voice'
 import { findMedicalCorrections, applyAllCorrections, applyCorrection, type DetectedCorrection } from '@/lib/ai/voice-corrections'
+import { splitDictationSegments } from '@/lib/ai/dictation-segments'
 import type { VoiceTranscript } from '@/lib/data/voice-transcripts'
 
 interface Props {
@@ -42,6 +43,11 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
   const [showRejectForm,  setShowRejectForm]  = useState(false)
   const [rejectReason,    setRejectReason]    = useState('')
   const [corrections,     setCorrections]     = useState<DetectedCorrection[]>([])
+
+  // F14 — when one dictation holds several patients, surface the split so the
+  // radiologist can keep this report's segment and route the rest separately.
+  const segments = useMemo(() => splitDictationSegments(editText), [editText])
+  const isMultiPatient = segments.length > 1
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef  = useRef<any>(null)
@@ -377,6 +383,46 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent disabled:bg-gray-50 resize-y"
                 />
               </div>
+
+              {/* F14 — multi-patient dictation detected: review & keep one segment */}
+              {isMultiPatient && (
+                <div className="rounded-lg bg-violet-50 border border-violet-200 px-3 py-2.5 space-y-2">
+                  <div>
+                    <p className="text-[11px] font-semibold text-violet-800 uppercase tracking-wide">
+                      {t('segmentsTitle', { count: segments.length })}
+                    </p>
+                    <p className="mt-0.5 text-xs text-violet-700">{t('segmentsHint')}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    {segments.map((s) => (
+                      <div
+                        key={s.index}
+                        className="flex items-start gap-2 rounded-md border border-violet-200 bg-white px-2.5 py-2"
+                      >
+                        <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-violet-100 text-[11px] font-semibold text-violet-700">
+                          {s.index}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          {(s.hint || s.separator) && (
+                            <p className="truncate text-[11px] font-medium text-violet-600">
+                              {s.hint || s.separator}
+                            </p>
+                          )}
+                          <p className="text-xs text-gray-600 line-clamp-2">{s.text}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { setEditText(s.text); setCorrections(findMedicalCorrections(s.text)) }}
+                          disabled={isPending}
+                          className="flex-shrink-0 text-[11px] font-medium text-violet-600 hover:text-violet-800 disabled:opacity-50"
+                        >
+                          {t('segmentsKeep')}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Intelligent term corrections (Dictée vocale intelligente) */}
               {corrections.length > 0 && (

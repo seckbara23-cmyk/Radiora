@@ -607,7 +607,10 @@
     "correctionsTitle": "Suggested corrections",
     "correctionsApplyAll": "Apply all",
     "correctionsApply": "Apply",
-    "correctionsIgnore": "Ignore"
+    "correctionsIgnore": "Ignore",
+    "segmentsTitle": "{count} patients detected in the dictation",
+    "segmentsHint": "This report is for a single patient. Keep the matching segment; dictate or enter the other patients in their own reports.",
+    "segmentsKeep": "Keep"
   },
   "smartStructuring": {
     "title": "AI Structuring",
