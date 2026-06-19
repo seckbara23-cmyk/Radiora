@@ -893,7 +893,8 @@
     "nav": {
       "overview": "Vue d’ensemble",
       "clinics": "Cliniques",
-      "billing": "Facturation"
+      "billing": "Facturation",
+      "customers": "Réussite client"
     },
     "state": {
       "active": "Actif",
@@ -902,6 +903,50 @@
       "expired": "Expiré",
       "suspended": "Suspendu",
       "cancelled": "Résilié"
+    },
+    "customers": {
+      "title": "Réussite client",
+      "subtitle": "Suivez l’adoption et convertissez les essais en abonnements payants.",
+      "funnelHeading": "Conversion des essais",
+      "totalClinics": "Cliniques",
+      "trialing": "En essai",
+      "paying": "Payantes",
+      "churned": "Perdues",
+      "conversionRate": "Taux de conversion",
+      "conversionHint": "Part des cliniques résolues (payantes ou perdues) devenues payantes.",
+      "engagementHeading": "Engagement",
+      "engagementNew": "Nouvelles",
+      "engagementActive": "Actives",
+      "engagementAtRisk": "À risque",
+      "engagementDormant": "Dormantes",
+      "tableHeading": "Cliniques",
+      "colClinic": "Clinique",
+      "colSubscription": "Abonnement",
+      "colUsage": "Usage",
+      "colLastLogin": "Dernière connexion",
+      "colEngagement": "Engagement",
+      "usageUsers": "{count} utilisateur(s)",
+      "usageReports": "{count} compte(s) rendu(s)",
+      "neverLoggedIn": "Jamais connecté",
+      "today": "Aujourd’hui",
+      "daysAgo": "il y a {days} j",
+      "trialEndsIn": "Essai : {days} j restant(s)",
+      "trialExpired": "Essai expiré",
+      "noSubscription": "Aucun abonnement",
+      "empty": "Aucune clinique pour le moment.",
+      "privacyNote": "Statut d’abonnement, connexions et usage uniquement — jamais le contenu clinique.",
+      "urgency": {
+        "expired": "Expiré",
+        "critical": "Urgent",
+        "upcoming": "Bientôt",
+        "comfortable": "Confortable"
+      },
+      "engagementLevel": {
+        "new": "Nouvelle",
+        "active": "Active",
+        "at_risk": "À risque",
+        "dormant": "Dormante"
+      }
     },
     "overview": {
       "title": "Vue d’ensemble de la plateforme",

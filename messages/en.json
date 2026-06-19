@@ -893,7 +893,8 @@
     "nav": {
       "overview": "Overview",
       "clinics": "Clinics",
-      "billing": "Billing"
+      "billing": "Billing",
+      "customers": "Customer Success"
     },
     "state": {
       "active": "Active",
@@ -902,6 +903,50 @@
       "expired": "Expired",
       "suspended": "Suspended",
       "cancelled": "Cancelled"
+    },
+    "customers": {
+      "title": "Customer Success",
+      "subtitle": "Track adoption and convert trials into paying subscribers.",
+      "funnelHeading": "Trial conversion",
+      "totalClinics": "Clinics",
+      "trialing": "Trialing",
+      "paying": "Paying",
+      "churned": "Churned",
+      "conversionRate": "Conversion rate",
+      "conversionHint": "Share of resolved clinics (paying or churned) that became paying.",
+      "engagementHeading": "Engagement",
+      "engagementNew": "New",
+      "engagementActive": "Active",
+      "engagementAtRisk": "At risk",
+      "engagementDormant": "Dormant",
+      "tableHeading": "Clinics",
+      "colClinic": "Clinic",
+      "colSubscription": "Subscription",
+      "colUsage": "Usage",
+      "colLastLogin": "Last login",
+      "colEngagement": "Engagement",
+      "usageUsers": "{count} user(s)",
+      "usageReports": "{count} report(s)",
+      "neverLoggedIn": "Never logged in",
+      "today": "Today",
+      "daysAgo": "{days}d ago",
+      "trialEndsIn": "Trial: {days}d left",
+      "trialExpired": "Trial expired",
+      "noSubscription": "No subscription",
+      "empty": "No clinics yet.",
+      "privacyNote": "Subscription status, logins and usage only — never clinical content.",
+      "urgency": {
+        "expired": "Expired",
+        "critical": "Urgent",
+        "upcoming": "Soon",
+        "comfortable": "Comfortable"
+      },
+      "engagementLevel": {
+        "new": "New",
+        "active": "Active",
+        "at_risk": "At risk",
+        "dormant": "Dormant"
+      }
     },
     "overview": {
       "title": "Platform overview",

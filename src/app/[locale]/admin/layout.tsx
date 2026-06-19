@@ -20,6 +20,7 @@ export default async function AdminLayout({
   const navItems = [
     { href: '/admin', label: t('nav.overview') },
     { href: '/admin/clinics', label: t('nav.clinics') },
+    { href: '/admin/customers', label: t('nav.customers') },
     { href: '/admin/billing', label: t('nav.billing') },
   ]
 

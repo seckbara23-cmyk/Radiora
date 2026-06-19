@@ -29,6 +29,16 @@ import {
   type SubscriptionMetricRow,
   type MonthlyPoint,
 } from '@/lib/billing/metrics'
+import {
+  conversionFunnel,
+  summariseEngagement,
+  classifyEngagement,
+  trialUrgency,
+  type ConversionFunnel,
+  type EngagementCounts,
+  type EngagementLevel,
+  type TrialUrgency,
+} from '@/lib/analytics/customer-success'
 
 export interface TenantSummary {
   id: string
@@ -419,4 +429,113 @@ export async function getPlatformAnalytics(): Promise<PlatformAnalytics> {
     clinicGrowthRate: growthRate(clinicGrowth),
     reportGrowthRate: growthRate(reportGrowth),
   }
+}
+
+// ── Customer Success (Phase 5J) ─────────────────────────────────────────────────
+//
+// One row per tenant combining onboarding status, last login, usage activity and
+// trial state — the signals the platform owners use to convert trial clinics into
+// paying subscribers. Metadata only: no clinical content is ever read. Last-login
+// timestamps come from the auth admin API (auth.users.last_sign_in_at) mapped to
+// clinics via profiles.
+
+export interface CustomerRow {
+  clinicId: string
+  clinicName: string
+  clinicStatus: string
+  createdAt: string
+  subscriptionStatus: SubscriptionStatus | null
+  trialEndsAt: string | null
+  userCount: number
+  reportCount: number
+  lastLoginAt: string | null
+  engagement: EngagementLevel
+  trialUrgency: TrialUrgency | null
+}
+
+export interface CustomerSuccessOverview {
+  generatedAt: string
+  funnel: ConversionFunnel
+  engagement: EngagementCounts
+  customers: CustomerRow[]
+}
+
+// Pull every user's last_sign_in_at, paging through the auth admin API.
+async function lastLoginByUser(
+  db: ReturnType<typeof createAdminClient>,
+): Promise<Map<string, string>> {
+  const byUser = new Map<string, string>()
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await db.auth.admin.listUsers({ page, perPage: 1000 })
+    const users = data?.users ?? []
+    for (const u of users) {
+      if (u.last_sign_in_at) byUser.set(u.id, u.last_sign_in_at)
+    }
+    if (error || users.length < 1000) break
+  }
+  return byUser
+}
+
+export async function getCustomerSuccessOverview(): Promise<CustomerSuccessOverview> {
+  await requireSuperAdmin()
+  const db = createAdminClient()
+  const now = new Date().toISOString()
+
+  const [clinicsRes, subsRes, profilesRes, reportsRes, loginMap] = await Promise.all([
+    db.from('clinics').select('id, name, status, created_at').order('created_at', { ascending: false }),
+    db.from('subscriptions').select('clinic_id, status, trial_ends_at'),
+    db.from('profiles').select('id, clinic_id'),
+    db.from('reports').select('clinic_id'),
+    lastLoginByUser(db),
+  ])
+
+  const subByClinic = new Map<string, { status: SubscriptionStatus; trial_ends_at: string | null }>()
+  for (const s of (subsRes.data as { clinic_id: string; status: SubscriptionStatus; trial_ends_at: string | null }[] | null) ?? []) {
+    subByClinic.set(s.clinic_id, { status: s.status, trial_ends_at: s.trial_ends_at })
+  }
+
+  const profiles = ((profilesRes.data as { id: string; clinic_id: string | null }[] | null) ?? []).filter((p) => p.clinic_id)
+  const userCounts = tally(profiles as { clinic_id: string }[])
+
+  // Most recent login per clinic = max(last_sign_in_at) over the clinic's users.
+  const lastLoginByClinic = new Map<string, string>()
+  for (const p of profiles) {
+    const login = loginMap.get(p.id)
+    if (!login) continue
+    const current = lastLoginByClinic.get(p.clinic_id as string)
+    if (!current || login > current) lastLoginByClinic.set(p.clinic_id as string, login)
+  }
+
+  const reportCounts = tally(((reportsRes.data as { clinic_id: string }[] | null) ?? []).filter((r) => r.clinic_id))
+
+  const clinics = (clinicsRes.data as { id: string; name: string; status: string; created_at: string }[] | null) ?? []
+
+  const customers: CustomerRow[] = clinics.map((c) => {
+    const sub = subByClinic.get(c.id) ?? null
+    const lastLoginAt = lastLoginByClinic.get(c.id) ?? null
+    return {
+      clinicId: c.id,
+      clinicName: c.name,
+      clinicStatus: c.status,
+      createdAt: c.created_at,
+      subscriptionStatus: sub?.status ?? null,
+      trialEndsAt: sub?.trial_ends_at ?? null,
+      userCount: userCounts.get(c.id) ?? 0,
+      reportCount: reportCounts.get(c.id) ?? 0,
+      lastLoginAt,
+      engagement: classifyEngagement(lastLoginAt, c.created_at, now),
+      trialUrgency: sub?.status === 'trial' ? trialUrgency(sub.trial_ends_at, now) : null,
+    }
+  })
+
+  const funnel = conversionFunnel(
+    clinics.map((c) => ({ status: subByClinic.get(c.id)?.status ?? null })),
+    clinics.length,
+  )
+  const engagement = summariseEngagement(
+    customers.map((c) => ({ lastLoginISO: c.lastLoginAt, createdAtISO: c.createdAt })),
+    now,
+  )
+
+  return { generatedAt: now, funnel, engagement, customers }
 }
