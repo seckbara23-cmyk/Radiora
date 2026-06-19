@@ -1642,6 +1642,7 @@
     "placeholder": "Indication : … Technique : … Résultats : … Conclusion : …",
     "structureBtn": "Structurer la dictée",
     "emptyInput": "Saisissez une dictée pour lancer la démonstration.",
+    "parseError": "Impossible de structurer ce texte. Vérifiez votre dictée (indication, technique, résultats, conclusion) et réessayez.",
     "ctaHeading": "Vous voulez tester Radiora dans votre service ?",
     "ctaTrial": "Essayer gratuitement pendant 30 jours",
     "ctaDemo": "Demander une démo",

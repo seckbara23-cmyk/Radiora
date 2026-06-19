@@ -17,8 +17,6 @@ import { Link } from '@/i18n/navigation'
 import { DEMO_SAMPLES } from '@/lib/demo/demo-samples'
 import { runDemo, type DemoResult } from '@/lib/demo/demo-structuring'
 
-type Mode = 'sample' | 'custom'
-
 const TYPE_INTERVAL_MS = 16
 const TYPE_CHARS_PER_TICK = 3
 
@@ -26,19 +24,23 @@ export function RadioraDemo() {
   const t = useTranslations('demo')
   const locale = useLocale()
 
-  // Default to the first sample, computed deterministically (safe for SSR).
+  // ── Sample walkthrough (the animated 5-step demo) ──────────────────────────
   const [sampleId, setSampleId] = useState<string>(DEMO_SAMPLES[0].id)
-  const [mode, setMode] = useState<Mode>('sample')
   const [result, setResult] = useState<DemoResult>(() => {
     const s = DEMO_SAMPLES[0]
     return runDemo(s.dictation, s.patient)
   })
 
-  // Animation state. `revealed` gates how many workflow panels are visible:
+  // `revealed` gates how many workflow panels are visible:
   // 0 = dictation only, 1 = transcribing, 2 = +correction, 3 = +structuring, 4 = +report.
   const [revealed, setRevealed] = useState(0)
   const [typed, setTyped] = useState('')
+
+  // ── Free-text input (independent of the walkthrough above) ─────────────────
   const [input, setInput] = useState('')
+  const [customResult, setCustomResult] = useState<DemoResult | null>(null)
+  const [customError, setCustomError] = useState<string | null>(null)
+  const customRef = useRef<HTMLDivElement>(null)
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([])
   const clearTimers = () => {
@@ -57,7 +59,6 @@ export function RadioraDemo() {
     clearTimers()
     const s = DEMO_SAMPLES.find((x) => x.id === id) ?? DEMO_SAMPLES[0]
     setSampleId(s.id)
-    setMode('sample')
     setResult(runDemo(s.dictation, s.patient))
     setRevealed(0)
     setTyped('')
@@ -93,20 +94,123 @@ export function RadioraDemo() {
     setRevealed(1)
   }
 
+  // Structure the visitor's own dictation. Produces its OWN inline result block
+  // right below the button (so the output is visible where the user is looking),
+  // and never touches the sample walkthrough above.
   function structureCustom() {
-    clearTimers()
     const text = input.trim()
-    if (!text) return
-    // Free text → NO patient metadata (never echo visitor identity as a patient).
-    const r = runDemo(text)
-    setMode('custom')
-    setResult(r)
-    setTyped(r.raw)
-    setRevealed(4)
+    if (!text) {
+      setCustomResult(null)
+      setCustomError(t('emptyInput'))
+      return
+    }
+    try {
+      // Free text → NO patient metadata (never echo visitor identity as a patient).
+      const r = runDemo(text)
+      if (r.sections.length === 0) {
+        setCustomResult(null)
+        setCustomError(t('parseError'))
+        return
+      }
+      setCustomError(null)
+      setCustomResult(r)
+    } catch {
+      setCustomResult(null)
+      setCustomError(t('parseError'))
+    }
   }
+
+  // Bring the freshly-produced result (or error) into view below the button.
+  useEffect(() => {
+    if (customResult || customError) {
+      customRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [customResult, customError])
 
   const activeStep = revealed <= 1 ? 0 : revealed === 2 ? 1 : revealed === 3 ? 2 : 3
   const stepLabels = [t('steps.dictee'), t('steps.correction'), t('steps.structuration'), t('steps.validation')]
+
+  // ── Reusable renderers (closures over t / today) ───────────────────────────
+  const renderStructured = (r: DemoResult) => (
+    <dl className="space-y-3">
+      {r.sections.map((s) => (
+        <div key={s.key}>
+          <dt className="text-xs font-bold uppercase tracking-wide text-blue-600">{s.label}</dt>
+          <dd className="mt-0.5 text-sm leading-relaxed text-gray-700">{s.body}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+
+  const renderCorrection = (r: DemoResult) =>
+    r.corrections.length > 0 ? (
+      <div className="space-y-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+          {t('step3Badge')}
+        </span>
+        {r.corrections.map((c, i) => (
+          <div key={i} className="space-y-1.5 text-sm">
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 w-14 shrink-0 text-xs font-semibold uppercase text-gray-400">{t('beforeLabel')}</span>
+              <span className="text-red-600 line-through decoration-red-300">{c.removed}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 w-14 shrink-0 text-xs font-semibold uppercase text-gray-400">{t('afterLabel')}</span>
+              <span className="font-medium text-emerald-700">{c.kept}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <p className="text-sm text-gray-500">{t('noCorrection')}</p>
+    )
+
+  const renderReportCard = (r: DemoResult) => (
+    <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-400">
+        {t('step5Title')}
+      </div>
+      <div className="p-6" style={{ fontFamily: "'Times New Roman', serif", color: '#111' }}>
+        {/* header bar */}
+        <div className="border-b-2 border-gray-900 pb-2">
+          <div className="text-[13px] font-bold uppercase tracking-wide text-gray-400">{t('reportHeaderPlaceholder')}</div>
+          <div className="mt-0.5 text-[11px] text-gray-500">{t('reportDeptName')}</div>
+        </div>
+
+        {/* patient box */}
+        <div className="my-3 grid grid-cols-2 gap-x-4 gap-y-1 border border-gray-400 px-3 py-2 text-[11px]">
+          <Field label={t('patientLabel')} value={r.patient.name} />
+          <Field label={t('dateLabel')} value={today || '—'} />
+          <Field label={t('ageLabel')} value={r.patient.age} />
+          <Field label={t('sexLabel')} value={r.patient.sex} />
+        </div>
+
+        {/* exam title */}
+        <div className="my-4 text-center text-[15px] font-bold uppercase tracking-wider underline">{r.examTitle}</div>
+
+        {/* sections */}
+        <div className="space-y-3">
+          {r.sections.map((s) => (
+            <div key={s.key}>
+              <div className="text-[11px] font-bold underline">{s.label} :</div>
+              <div className="mt-0.5 whitespace-pre-wrap text-justify text-[11px] leading-relaxed">{s.body}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* signature */}
+        <div className="mt-8 text-right text-[11px]">
+          <div className="font-bold">{t('signatureLabel')}</div>
+          <div className="text-gray-500">{t('signaturePlaceholder')}</div>
+        </div>
+      </div>
+
+      <div className="border-t border-amber-100 bg-amber-50 px-4 py-2.5 text-center text-[11px] font-medium text-amber-700">
+        {t('reviewRequired')}
+      </div>
+    </div>
+  )
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -156,7 +260,7 @@ export function RadioraDemo() {
               onClick={() => loadSample(s.id)}
               className={[
                 'rounded-full border px-4 py-2 text-sm font-medium transition',
-                mode === 'sample' && sampleId === s.id
+                sampleId === s.id
                   ? 'border-blue-600 bg-blue-50 text-blue-700'
                   : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50',
               ].join(' ')}
@@ -197,42 +301,14 @@ export function RadioraDemo() {
           {/* Step 3 — smart correction */}
           {revealed >= 2 && (
             <StepCard n={3} title={t('step3Title')} hint={t('step3Explain')}>
-              {result.corrections.length > 0 ? (
-                <div className="space-y-3">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-inset ring-amber-600/20">
-                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                    {t('step3Badge')}
-                  </span>
-                  {result.corrections.map((c, i) => (
-                    <div key={i} className="space-y-1.5 text-sm">
-                      <div className="flex items-start gap-2">
-                        <span className="mt-0.5 w-14 shrink-0 text-xs font-semibold uppercase text-gray-400">{t('beforeLabel')}</span>
-                        <span className="text-red-600 line-through decoration-red-300">{c.removed}</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="mt-0.5 w-14 shrink-0 text-xs font-semibold uppercase text-gray-400">{t('afterLabel')}</span>
-                        <span className="font-medium text-emerald-700">{c.kept}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">{t('noCorrection')}</p>
-              )}
+              {renderCorrection(result)}
             </StepCard>
           )}
 
           {/* Step 4 — structuring */}
           {revealed >= 3 && (
             <StepCard n={4} title={t('step4Title')} hint={t('step4Hint')}>
-              <dl className="space-y-3">
-                {result.sections.map((s) => (
-                  <div key={s.key}>
-                    <dt className="text-xs font-bold uppercase tracking-wide text-blue-600">{s.label}</dt>
-                    <dd className="mt-0.5 text-sm leading-relaxed text-gray-700">{s.body}</dd>
-                  </div>
-                ))}
-              </dl>
+              {renderStructured(result)}
               {result.removedTokens.length > 0 && (
                 <p className="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-400">
                   {t('beforeLabel')}: {result.removedTokens.map((r) => `« ${r.text} »`).join(', ')}
@@ -245,49 +321,7 @@ export function RadioraDemo() {
         {/* ── Right column: report preview ── */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           {revealed >= 4 ? (
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-              <div className="border-b border-gray-100 bg-gray-50 px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-gray-400">
-                {t('step5Title')}
-              </div>
-              <div className="p-6" style={{ fontFamily: "'Times New Roman', serif", color: '#111' }}>
-                {/* header bar */}
-                <div className="border-b-2 border-gray-900 pb-2">
-                  <div className="text-[13px] font-bold uppercase tracking-wide text-gray-400">{t('reportHeaderPlaceholder')}</div>
-                  <div className="mt-0.5 text-[11px] text-gray-500">{t('reportDeptName')}</div>
-                </div>
-
-                {/* patient box */}
-                <div className="my-3 grid grid-cols-2 gap-x-4 gap-y-1 border border-gray-400 px-3 py-2 text-[11px]">
-                  <Field label={t('patientLabel')} value={result.patient.name} />
-                  <Field label={t('dateLabel')} value={today || '—'} />
-                  <Field label={t('ageLabel')} value={result.patient.age} />
-                  <Field label={t('sexLabel')} value={result.patient.sex} />
-                </div>
-
-                {/* exam title */}
-                <div className="my-4 text-center text-[15px] font-bold uppercase tracking-wider underline">{result.examTitle}</div>
-
-                {/* sections */}
-                <div className="space-y-3">
-                  {result.sections.map((s) => (
-                    <div key={s.key}>
-                      <div className="text-[11px] font-bold underline">{s.label} :</div>
-                      <div className="mt-0.5 whitespace-pre-wrap text-justify text-[11px] leading-relaxed">{s.body}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* signature */}
-                <div className="mt-8 text-right text-[11px]">
-                  <div className="font-bold">{t('signatureLabel')}</div>
-                  <div className="text-gray-500">{t('signaturePlaceholder')}</div>
-                </div>
-              </div>
-
-              <div className="border-t border-amber-100 bg-amber-50 px-4 py-2.5 text-center text-[11px] font-medium text-amber-700">
-                {t('reviewRequired')}
-              </div>
-            </div>
+            renderReportCard(result)
           ) : (
             <div className="flex h-full min-h-[280px] flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 p-8 text-center">
               <svg className="h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -329,6 +363,35 @@ export function RadioraDemo() {
           </button>
           <span className="text-xs text-gray-400">{t('noStore')}</span>
         </div>
+
+        {/* Inline result for the visitor's own dictation */}
+        {(customResult || customError) && (
+          <div ref={customRef} className="mt-6">
+            {customError ? (
+              <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                {customError}
+              </div>
+            ) : (
+              customResult && (
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="space-y-5">
+                    {customResult.corrections.length > 0 && (
+                      <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                        <h4 className="text-sm font-semibold text-gray-900">{t('step3Title')}</h4>
+                        <div className="mt-4">{renderCorrection(customResult)}</div>
+                      </div>
+                    )}
+                    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                      <h4 className="text-sm font-semibold text-gray-900">{t('step4Title')}</h4>
+                      <div className="mt-4">{renderStructured(customResult)}</div>
+                    </div>
+                  </div>
+                  <div>{renderReportCard(customResult)}</div>
+                </div>
+              )
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── CTA ── */}

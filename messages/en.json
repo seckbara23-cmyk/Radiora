@@ -1642,6 +1642,7 @@
     "placeholder": "Indication: … Technique: … Résultats: … Conclusion: …",
     "structureBtn": "Structure the dictation",
     "emptyInput": "Enter a dictation to start the demo.",
+    "parseError": "This text could not be structured. Check your dictation (indication, technique, results, conclusion) and try again.",
     "ctaHeading": "Want to try Radiora in your department?",
     "ctaTrial": "Try free for 30 days",
     "ctaDemo": "Request a demo",

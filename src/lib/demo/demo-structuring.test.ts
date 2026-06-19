@@ -110,3 +110,34 @@ describe('runDemo — free text (no patient)', () => {
     expect(r.corrections.length).toBe(0)
   })
 })
+
+// Regression — the public demo textarea ("Structurer la dictée") feeds free text
+// straight into runDemo. Accented French headers like "Résultats :" must split
+// into their own sections so the visitor actually sees structured output.
+describe('runDemo — custom textarea input with accented headers', () => {
+  const r = runDemo(
+    "Indication : céphalées.\nTechnique : scanner cérébral sans injection.\nRésultats : pas d'anomalie décelable.\nConclusion : examen normal.",
+  )
+
+  it('returns at least one section (button never appears to do nothing)', () => {
+    expect(r.sections.length).toBeGreaterThan(0)
+  })
+
+  it('parses the accented "Résultats :" header into its own results section', () => {
+    const results = r.sections.find((s) => s.key === 'results')
+    expect(results).toBeDefined()
+    expect(results!.body).toContain("pas d'anomalie décelable")
+    // the results body must not absorb the conclusion sentence
+    expect(results!.body).not.toContain('examen normal')
+  })
+
+  it('parses INDICATION, TECHNIQUE and CONCLUSION alongside RÉSULTATS', () => {
+    expect(r.sections.find((s) => s.key === 'indication')!.body).toContain('céphalées')
+    expect(r.sections.find((s) => s.key === 'technique')!.body).toContain('sans injection')
+    expect(r.sections.find((s) => s.key === 'conclusion')!.body).toContain('examen normal')
+  })
+
+  it('does not echo any patient identity for free text', () => {
+    expect(r.patient.name).toBe('—')
+  })
+})
