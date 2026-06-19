@@ -24,15 +24,35 @@ import {
   CLINIC_PAYMENT_METHODS,
   type PaymentMethod,
 } from '@/lib/billing/payments'
+import {
+  applyPaymentSuccess,
+  applyPaymentFailure,
+  GRACE_DAYS,
+  type PaymentRow,
+} from '@/lib/billing/payment-transitions'
+import { buildCheckoutUrl } from '@/lib/billing/payment-webhook'
 
 export type FormState = { error: string | null }
-export type PaymentState = { error: string | null; providerRef?: string; method?: PaymentMethod }
+export type PaymentState = {
+  error: string | null
+  providerRef?: string
+  method?: PaymentMethod
+  /** Hosted-checkout URL for mobile-money methods (Wave / Orange Money). */
+  checkoutUrl?: string
+}
 
 const RENEWAL_DAYS = 30
-const GRACE_DAYS = 7
 
 function providerRef(method: PaymentMethod): string {
   return `${method}-${randomBytes(6).toString('hex')}`
+}
+
+// Per-provider hosted-checkout base. Stand-in default until real provider
+// onboarding supplies the production base URL. Returns '' for non-mobile methods.
+function checkoutBase(method: PaymentMethod): string {
+  if (method === 'wave') return process.env.WAVE_CHECKOUT_BASE ?? 'https://pay.wave.example/checkout'
+  if (method === 'orange_money') return process.env.ORANGE_MONEY_CHECKOUT_BASE ?? 'https://pay.orange.example/checkout'
+  return ''
 }
 
 // ── Issue an invoice (super_admin; 4E will automate this) ──────────────────────
@@ -157,9 +177,15 @@ export async function initiatePayment(_prev: PaymentState, formData: FormData): 
     metadata: { method, providerRef: ref },
   })
 
+  // For mobile-money methods the clinic is redirected to the provider's hosted
+  // checkout; the provider then confirms the payment via our webhook. Card/manual
+  // have no hosted page (they stay pending for manual reconciliation).
+  const base = checkoutBase(method)
+  const checkoutUrl = base ? buildCheckoutUrl(base, ref) : undefined
+
   revalidatePath('/settings/billing')
   revalidatePath(`/admin/clinics/${clinicId}`)
-  return { error: null, providerRef: ref, method }
+  return { error: null, providerRef: ref, method, checkoutUrl }
 }
 
 // ── Reconcile a payment (super_admin; manual stand-in for provider webhook) ─────
@@ -179,29 +205,14 @@ export async function confirmPayment(_prev: FormState, formData: FormData): Prom
     .maybeSingle()
   if (!payment) return { error: 'Paiement introuvable.' }
   const clinicId = payment.clinic_id as string
-  const invoiceId = payment.invoice_id as string | null
 
-  await db.from('payments').update({ status: 'succeeded', paid_at: now }).eq('id', paymentId)
-  if (invoiceId) {
-    await db.from('invoices').update({ status: 'paid', paid_at: now }).eq('id', invoiceId)
-    await db.from('payment_attempts').update({ status: 'succeeded' }).eq('invoice_id', invoiceId).eq('status', 'pending')
-  }
-
-  // A successful payment reactivates and renews the subscription.
-  await db
-    .from('subscriptions')
-    .update({
-      status: 'active',
-      grace_ends_at: null,
-      current_period_start: now,
-      current_period_end: addDaysISO(now, RENEWAL_DAYS),
-    })
-    .eq('clinic_id', clinicId)
-  await db.from('clinics').update({ status: 'active' }).eq('id', clinicId)
+  // Same transition the provider webhook applies — kept in one place.
+  await applyPaymentSuccess(db, payment as PaymentRow, now)
 
   await logAudit({
     userId: admin.id, clinicId,
     action: 'payment.confirmed', entityType: 'payment', entityId: paymentId,
+    metadata: { via: 'manual' },
   })
 
   revalidatePath(`/admin/clinics/${clinicId}`)
@@ -225,31 +236,14 @@ export async function failPayment(_prev: FormState, formData: FormData): Promise
     .maybeSingle()
   if (!payment) return { error: 'Paiement introuvable.' }
   const clinicId = payment.clinic_id as string
-  const invoiceId = payment.invoice_id as string | null
 
-  await db.from('payments').update({ status: 'failed' }).eq('id', paymentId)
-  if (invoiceId) {
-    await db.from('payment_attempts').update({ status: 'failed', failure_reason: reason }).eq('invoice_id', invoiceId).eq('status', 'pending')
-  }
-
-  // A failed payment pushes an active/trial subscription into a grace window
-  // before suspension (Trial/Active → Grace lifecycle step).
-  const { data: sub } = await db
-    .from('subscriptions')
-    .select('status')
-    .eq('clinic_id', clinicId)
-    .maybeSingle()
-  if (sub && (sub.status === 'active' || sub.status === 'trial')) {
-    await db
-      .from('subscriptions')
-      .update({ status: 'grace', grace_ends_at: addDaysISO(now, GRACE_DAYS) })
-      .eq('clinic_id', clinicId)
-  }
+  // Same transition the provider webhook applies — kept in one place.
+  await applyPaymentFailure(db, payment as PaymentRow, reason, now)
 
   await logAudit({
     userId: admin.id, clinicId,
     action: 'payment.failed', entityType: 'payment', entityId: paymentId,
-    metadata: { reason },
+    metadata: { reason, via: 'manual' },
   })
 
   revalidatePath(`/admin/clinics/${clinicId}`)

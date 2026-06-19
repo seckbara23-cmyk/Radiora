@@ -19,6 +19,7 @@ export function PayInvoice({
     pendingTitle: string
     pendingBody: string
     reference: string
+    continueCheckout: string
     methods: Record<string, string>
   }
 }) {
@@ -35,6 +36,16 @@ export function PayInvoice({
         <p className="mt-1 font-mono text-[11px] text-amber-700">
           {labels.reference}: {state.providerRef}
         </p>
+        {state.checkoutUrl && (
+          <a
+            href={state.checkoutUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 inline-block rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            {labels.continueCheckout}
+          </a>
+        )}
       </div>
     )
   }

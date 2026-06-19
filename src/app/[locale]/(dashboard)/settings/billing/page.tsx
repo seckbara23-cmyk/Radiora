@@ -52,6 +52,7 @@ export default async function BillingPage({ params }: { params: Promise<{ locale
     pendingTitle: t('pay.pendingTitle'),
     pendingBody: t('pay.pendingBody'),
     reference: t('pay.reference'),
+    continueCheckout: t('pay.continueCheckout'),
     methods: {
       wave: t('pay.methods.wave'),
       orange_money: t('pay.methods.orange_money'),

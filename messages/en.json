@@ -1103,8 +1103,9 @@
       "chooseMethod": "Payment method",
       "confirm": "Confirm payment",
       "pendingTitle": "Payment recorded",
-      "pendingBody": "Your payment is awaiting confirmation by the Radiora team.",
+      "pendingBody": "Complete the payment on the provider's secure page. Your subscription is activated automatically once confirmed.",
       "reference": "Reference",
+      "continueCheckout": "Continue to payment",
       "methods": {
         "wave": "Wave",
         "orange_money": "Orange Money",
