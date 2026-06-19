@@ -115,7 +115,7 @@ export async function assembleReportExport(
       .maybeSingle(),
     supabase
       .from('profiles')
-      .select('first_name, last_name, signature_title, signature_url, stamp_url')
+      .select('first_name, last_name, signature_title, signature_url, stamp_url, title_prefix, signature_style, signature_custom')
       .eq('id', report.authorId)
       .maybeSingle(),
   ])
@@ -167,6 +167,9 @@ export async function assembleReportExport(
           firstName: radioRow.first_name ?? '',
           lastName: radioRow.last_name ?? '',
           signatureTitle: radioRow.signature_title ?? undefined,
+          titlePrefix: radioRow.title_prefix ?? undefined,
+          signatureStyle: radioRow.signature_style ?? undefined,
+          signatureCustom: radioRow.signature_custom ?? undefined,
         }
       : null,
     headerOverride,

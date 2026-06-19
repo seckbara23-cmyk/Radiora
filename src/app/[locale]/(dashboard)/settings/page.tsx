@@ -16,16 +16,17 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
   const t = await getTranslations('settings')
   const te = await getTranslations('exams')
   const th = await getTranslations('hospitalHeaders')
+  const tp = await getTranslations('profileSettings')
   await requireCurrentUser()
 
   // Real, navigable settings areas (built out as features land).
   const links = [
+    { href: '/settings/profile', title: tp('title'), desc: tp('subtitle') },
     { href: '/settings/exams', title: te('title'), desc: te('description') },
     { href: '/settings/headers', title: th('title'), desc: th('subtitle') },
   ]
 
   const sections = [
-    { key: 'profile' as const,       descKey: 'Profile' },
     { key: 'notifications' as const,  descKey: 'Notifications' },
     { key: 'security' as const,       descKey: 'Security' },
     { key: 'language' as const,       descKey: 'Language' },

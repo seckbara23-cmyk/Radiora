@@ -5,6 +5,7 @@ import { getReport } from '@/lib/data/reports'
 import { getStudy } from '@/lib/data/studies'
 import { getPatient } from '@/lib/data/patients'
 import { getHospitalHeader } from '@/lib/data/hospital-headers'
+import { getRadiologistSignature } from '@/lib/data/profile'
 import { parseHeaderChoice } from '@/lib/export/load'
 import type { HospitalHeader } from '@/types/hospital-header'
 
@@ -23,12 +24,15 @@ export default async function ReportPrintPage({ params, searchParams }: Props) {
   if (!report) notFound()
 
   const choice = parseHeaderChoice(headerParam)
-  const [study, patient, libraryHeader] = await Promise.all([
+  const [study, patient, libraryHeader, sig] = await Promise.all([
     getStudy(report.studyId),
     getPatient(report.patientId),
     choice.headerId ? getHospitalHeader(choice.headerId) : Promise.resolve<HospitalHeader | null>(null),
+    getRadiologistSignature(report.authorId),
   ])
   const showHeader = choice.includeHeader !== false
+  const signatureName = sig?.name || 'Le Radiologue'
+  const signatureTitle = sig?.title ?? ''
 
   const sd = report.structuredData
   const patientName = patient ? `${patient.lastName.toUpperCase()} ${patient.firstName}` : '—'
@@ -202,9 +206,12 @@ export default async function ReportPrintPage({ params, searchParams }: Props) {
           </>
         )}
 
-        {/* ── Signature ── */}
+        {/* ── Signature ── (auto-inserted from the author's F11 profile) */}
         <div className="signature-row">
-          <div style={{ marginBottom: '4px', fontWeight: 'bold' }}>Le Radiologue</div>
+          <div style={{ marginBottom: '4px', fontWeight: 'bold' }}>{signatureName}</div>
+          {signatureTitle && (
+            <div style={{ fontSize: '10pt', color: '#555' }}>{signatureTitle}</div>
+          )}
           {report.signedAt && (
             <div style={{ fontSize: '10pt', color: '#555' }}>
               Signé le {report.signedAt.slice(0, 10)}

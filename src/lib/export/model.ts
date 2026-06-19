@@ -7,6 +7,7 @@
 // so every output (PDF, DOCX, print) is guaranteed identical in structure.
 
 import type { StructuredReportData } from '@/types/report'
+import { buildSignatureName, coerceSignatureStyle } from '@/lib/profile/signature'
 
 export interface ExportSection {
   label: string
@@ -98,6 +99,10 @@ export interface ExportInputRadiologist {
   firstName: string
   lastName: string
   signatureTitle?: string
+  /** F11 signature preference — honorific, style and custom text. */
+  titlePrefix?: string
+  signatureStyle?: string
+  signatureCustom?: string
 }
 
 export interface ReportExportInput {
@@ -243,7 +248,13 @@ export function buildReportExportModel(input: ReportExportInput): ReportExportMo
 
   // ── Signature block ──
   const radiologistName = radiologist
-    ? `Dr ${clean(radiologist.firstName)} ${clean(radiologist.lastName)}`.replace(/\s+/g, ' ').trim()
+    ? buildSignatureName({
+        titlePrefix: clean(radiologist.titlePrefix) || 'Dr',
+        firstName: radiologist.firstName,
+        lastName: radiologist.lastName,
+        style: coerceSignatureStyle(radiologist.signatureStyle),
+        custom: radiologist.signatureCustom,
+      })
     : ''
   const signature: ExportSignature = {
     name: radiologistName || 'Le Radiologue',
