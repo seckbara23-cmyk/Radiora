@@ -1,5 +1,6 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { RadioraDemo } from '@/components/marketing/radiora-demo'
+import { ResultsBanner } from '@/components/marketing/landing-sections'
 
 // Public interactive AI demo. Lives under the (marketing) route group, which is
 // NOT in the middleware PROTECTED_SEGMENTS list — so it is public by construction
@@ -19,7 +20,10 @@ export default async function DemoPage({ params }: { params: Promise<{ locale: s
   return (
     <section className="bg-gradient-to-br from-slate-50 via-white to-blue-50">
       <div className="mx-auto max-w-6xl px-6 py-20">
-        <RadioraDemo />
+        <ResultsBanner />
+        <div className="mt-12">
+          <RadioraDemo />
+        </div>
       </div>
     </section>
   )

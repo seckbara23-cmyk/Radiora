@@ -1647,5 +1647,70 @@
     "ctaDemo": "Demander une démo",
     "metaTitle": "Démo interactive — Radiora",
     "metaDescription": "Découvrez comment Radiora transforme une dictée médicale en compte rendu radiologique structuré, en moins d'une minute et sans inscription."
+  },
+  "landing": {
+    "banner": {
+      "items": [
+        "Dictée de 35 secondes",
+        "Structuration en 2 secondes",
+        "Validation radiologue obligatoire",
+        "Aucune donnée enregistrée dans la démonstration"
+      ]
+    },
+    "senegal": {
+      "title": "Conçu avec des radiologues sénégalais",
+      "body": "Radiora a été développé en collaboration avec des radiologues exerçant au Sénégal afin de répondre aux réalités des vacations d'imagerie à fort volume.",
+      "modalities": ["Scanner", "IRM", "Échographie", "Radiographie conventionnelle"],
+      "footer": "Optimisé pour des vacations de 20 à 50 patients par jour."
+    },
+    "mobile": {
+      "title": "Dictée mobile sécurisée",
+      "subtitle": "Transformez votre téléphone en microphone radiologique.",
+      "steps": [
+        "Téléphone",
+        "QR sécurisé",
+        "Dictée",
+        "Structuration IA",
+        "Validation radiologue",
+        "PDF / DOCX / Impression"
+      ],
+      "note1": "Aucune application à installer.",
+      "note2": "Connexion instantanée par QR code sécurisé."
+    },
+    "roi": {
+      "title": "Gagnez plusieurs heures chaque semaine",
+      "volume": "40 examens par jour",
+      "withoutTitle": "Sans Radiora",
+      "withoutSteps": [
+        "Dictaphone",
+        "Transfert USB",
+        "Saisie secrétaire",
+        "Correction manuelle",
+        "Impression"
+      ],
+      "withTitle": "Avec Radiora",
+      "withSteps": [
+        "Téléphone ou dictée web",
+        "Structuration automatique",
+        "Validation radiologue",
+        "Export PDF / DOCX",
+        "Livraison sécurisée"
+      ],
+      "footer": "Réduisez les tâches administratives et concentrez-vous sur l'interprétation médicale."
+    },
+    "testimonial": {
+      "badge": "Programme pilote Sénégal",
+      "name": "Dr Abibou BA",
+      "role": "Radiologue",
+      "quote": "Radiora réduit considérablement le temps consacré à la rédaction des comptes rendus tout en conservant la validation finale par le radiologue.",
+      "note": "Témoignage recueilli dans le cadre du programme pilote."
+    },
+    "trial": {
+      "headline": "Essayez Radiora gratuitement pendant 30 jours",
+      "subtext1": "Aucune carte bancaire requise.",
+      "subtext2": "Configuration en moins de 10 minutes.",
+      "primary": "Créer mon compte",
+      "secondary": "Demander une démonstration"
+    }
   }
 }

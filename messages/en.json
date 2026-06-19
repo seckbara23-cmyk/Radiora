@@ -1647,5 +1647,70 @@
     "ctaDemo": "Request a demo",
     "metaTitle": "Interactive demo — Radiora",
     "metaDescription": "See how Radiora turns a medical dictation into a structured radiology report in under a minute, with no sign-up."
+  },
+  "landing": {
+    "banner": {
+      "items": [
+        "35-second dictation",
+        "Structured in 2 seconds",
+        "Radiologist validation required",
+        "No data stored in the demo"
+      ]
+    },
+    "senegal": {
+      "title": "Built with Senegalese radiologists",
+      "body": "Radiora was developed in collaboration with radiologists practising in Senegal to meet the realities of high-volume imaging sessions.",
+      "modalities": ["CT", "MRI", "Ultrasound", "Conventional X-ray"],
+      "footer": "Optimized for sessions of 20 to 50 patients per day."
+    },
+    "mobile": {
+      "title": "Secure mobile dictation",
+      "subtitle": "Turn your phone into a radiology microphone.",
+      "steps": [
+        "Phone",
+        "Secure QR",
+        "Dictation",
+        "AI structuring",
+        "Radiologist validation",
+        "PDF / DOCX / Print"
+      ],
+      "note1": "No app to install.",
+      "note2": "Instant connection via secure QR code."
+    },
+    "roi": {
+      "title": "Save several hours every week",
+      "volume": "40 exams per day",
+      "withoutTitle": "Without Radiora",
+      "withoutSteps": [
+        "Dictaphone",
+        "USB transfer",
+        "Secretary typing",
+        "Manual correction",
+        "Printing"
+      ],
+      "withTitle": "With Radiora",
+      "withSteps": [
+        "Phone or web dictation",
+        "Automatic structuring",
+        "Radiologist validation",
+        "PDF / DOCX export",
+        "Secure delivery"
+      ],
+      "footer": "Reduce administrative tasks and focus on medical interpretation."
+    },
+    "testimonial": {
+      "badge": "Senegal pilot program",
+      "name": "Dr Abibou BA",
+      "role": "Radiologist",
+      "quote": "Radiora significantly reduces the time spent writing reports while keeping final validation by the radiologist.",
+      "note": "Testimonial collected as part of the pilot program."
+    },
+    "trial": {
+      "headline": "Try Radiora free for 30 days",
+      "subtext1": "No credit card required.",
+      "subtext2": "Set up in under 10 minutes.",
+      "primary": "Create my account",
+      "secondary": "Request a demo"
+    }
   }
 }

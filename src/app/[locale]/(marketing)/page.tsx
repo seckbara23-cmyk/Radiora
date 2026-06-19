@@ -2,6 +2,14 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { SenegalStar } from '@/components/ui/senegal-accents'
 import { RadioraDemo } from '@/components/marketing/radiora-demo'
+import {
+  ResultsBanner,
+  SenegalSection,
+  MobileDictation,
+  RoiComparison,
+  PilotTestimonial,
+  TrialCta,
+} from '@/components/marketing/landing-sections'
 
 interface Highlight {
   title: string
@@ -74,28 +82,30 @@ export default async function MarketingHome({
         </div>
       </section>
 
-      {/* Interactive AI demo */}
+      {/* Results banner + Interactive AI demo */}
       <section className="border-t border-gray-100 bg-gradient-to-br from-slate-50 via-white to-blue-50">
         <div className="mx-auto max-w-6xl px-6 py-20">
-          <RadioraDemo />
-        </div>
-      </section>
-
-      {/* CTA band */}
-      <section className="bg-blue-600">
-        <div className="mx-auto max-w-4xl px-6 py-16 text-center">
-          <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">{t('home.bandTitle')}</h2>
-          <p className="mt-3 text-base text-blue-100">{t('home.bandDesc')}</p>
-          <div className="mt-8">
-            <Link
-              href="/signup"
-              className="inline-block rounded-xl bg-white px-7 py-3.5 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50"
-            >
-              {t('cta')}
-            </Link>
+          <ResultsBanner />
+          <div className="mt-12">
+            <RadioraDemo />
           </div>
         </div>
       </section>
+
+      {/* Conçu pour le Sénégal */}
+      <SenegalSection />
+
+      {/* Mobile dictation workflow */}
+      <MobileDictation />
+
+      {/* ROI / productivity comparison */}
+      <RoiComparison />
+
+      {/* Pilot program testimonial */}
+      <PilotTestimonial />
+
+      {/* Trial CTA */}
+      <TrialCta />
     </>
   )
 }
