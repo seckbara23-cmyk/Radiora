@@ -1639,7 +1639,7 @@
     },
     "tryHeading": "Essayez avec votre propre dictée",
     "tryHint": "Saisissez une dictée en français, puis lancez la structuration.",
-    "placeholder": "Indication : … Technique : … Description : … Conclusion : …",
+    "placeholder": "Indication : … Technique : … Résultats : … Conclusion : …",
     "structureBtn": "Structurer la dictée",
     "emptyInput": "Saisissez une dictée pour lancer la démonstration.",
     "ctaHeading": "Vous voulez tester Radiora dans votre service ?",

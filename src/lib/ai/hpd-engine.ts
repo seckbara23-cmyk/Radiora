@@ -173,6 +173,41 @@ function norm(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
+// Each accent-folded base letter → a character class that also matches its
+// accented French variants. Lets a keyword regex built from a folded keyword
+// still match accented source text ("Résultats" as well as "Resultats"), while
+// the `i` flag covers upper/lower case (incl. "RÉSULTATS").
+const ACCENT_CLASS: Record<string, string> = {
+  a: 'aàâä', c: 'cç', e: 'eéèêë', i: 'iîï',
+  o: 'oôö', u: 'uùûü', y: 'yÿ', n: 'nñ',
+}
+
+const REGEX_SPECIAL = /[-[\]{}()*+?.,\\^$|#]/
+
+/**
+ * Turns an already-accent-folded keyword into a regex fragment that is both
+ * accent- and case-insensitive: every foldable letter expands to its accented
+ * variant class, runs of whitespace become `\s+`, and regex metacharacters are
+ * escaped. The result is matched against the ORIGINAL (accented) text.
+ */
+function accentInsensitivePattern(foldedKeyword: string): string {
+  let out = ''
+  let prevSpace = false
+  for (const ch of foldedKeyword) {
+    if (/\s/.test(ch)) {
+      if (!prevSpace) out += '\\s+'
+      prevSpace = true
+      continue
+    }
+    prevSpace = false
+    const cls = ACCENT_CLASS[ch]
+    if (cls) out += `[${cls}]`
+    else if (REGEX_SPECIAL.test(ch)) out += `\\${ch}`
+    else out += ch
+  }
+  return out
+}
+
 export function buildExamInfo(modality: string | null, bodyPart: string | null): ExamInfo {
   if (!modality) return { examType: 'examen_radiologique', examTitle: 'EXAMEN RADIOLOGIQUE' }
 
@@ -220,12 +255,13 @@ export function parseStructuredText(freeText: string, context: HpdContext): Stru
   const text                   = freeText.trim()
   const { examType, examTitle } = buildExamInfo(context.modality, context.bodyPart)
 
-  // Build split regex from all known keywords
-  const allKw = [...new Set(Object.values(SECTION_KEYWORDS).flat())]
+  // Build split regex from all known keywords. Keywords are accent-folded then
+  // expanded to accent-INSENSITIVE patterns so the split fires on accented
+  // headers ("Résultats :") as well as folded ones ("Resultats :") — the regex
+  // is matched against the original (accented) text, so content is preserved.
+  const allKw = [...new Set(Object.values(SECTION_KEYWORDS).flat().map(norm))]
   const sorted = allKw.sort((a, b) => b.length - a.length)
-  const escapedKw = sorted
-    .map((k) => norm(k).replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&').replace(/\s+/g, '\\s+'))
-    .join('|')
+  const escapedKw = sorted.map(accentInsensitivePattern).join('|')
 
   // Split on section headers ("KEYWORD :" or "KEYWORD\n")
   const splitRe = new RegExp(`(?=(?:${escapedKw})\\s*[:\\n])`, 'gi')

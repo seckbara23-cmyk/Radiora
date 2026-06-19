@@ -1639,7 +1639,7 @@
     },
     "tryHeading": "Try it with your own dictation",
     "tryHint": "Enter a dictation in French, then run structuring.",
-    "placeholder": "Indication: … Technique: … Description: … Conclusion: …",
+    "placeholder": "Indication: … Technique: … Résultats: … Conclusion: …",
     "structureBtn": "Structure the dictation",
     "emptyInput": "Enter a dictation to start the demo.",
     "ctaHeading": "Want to try Radiora in your department?",

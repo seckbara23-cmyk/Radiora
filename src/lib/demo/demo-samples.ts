@@ -7,11 +7,7 @@
 // never fakes output, it runs the same deterministic pipeline as the product.
 //
 // Each sample purposely shows:
-//   • explicit dictated section cues (Indication / Technique / Description / Conclusion)
-//     — note: the findings header is the unaccented "Description :" (a standard
-//     radiology section term). The engine's section splitter keys on accent-folded
-//     keywords, so an accented "Résultats :" header is not matched; the structured
-//     report still renders the canonical "RÉSULTATS" label regardless.
+//   • explicit dictated section cues (Indication / Technique / Résultats / Conclusion)
 //   • a natural self-correction the radiologist speaks mid-dictation
 //   • (some) a dictation artefact (filler / repetition) the cleanup removes
 //
@@ -40,7 +36,7 @@ export const DEMO_SAMPLES: DemoSample[] = [
     dictation: [
       'Indication : traumatisme crânien.',
       'Technique : scanner cérébral sans injection de produit de contraste.',
-      'Description :',
+      'Résultats :',
       "Pas d'hémorragie intracrânienne. Je corrige. Petite hyperdensité frontale droite.",
       'Conclusion : aspect compatible avec euh une contusion frontale droite.',
     ].join('\n'),
@@ -51,7 +47,7 @@ export const DEMO_SAMPLES: DemoSample[] = [
     dictation: [
       "Indication : bilan d'une toux chronique.",
       'Technique : scanner thoracique sans injection de produit de contraste.',
-      'Description :',
+      'Résultats :',
       'Épanchement pleural droit de grande abondance. Non. Fine lame lame pleurale droite.',
       'Conclusion : fine lame pleurale droite, sans autre anomalie significative.',
     ].join('\n'),
@@ -62,7 +58,7 @@ export const DEMO_SAMPLES: DemoSample[] = [
     dictation: [
       "Indication : douleurs de l'hypochondre droit.",
       'Technique : échographie abdominale réalisée par voie transcutanée.',
-      'Description :',
+      'Résultats :',
       'Lithiase vésiculaire avec paroi épaissie. Je corrige. Lithiase vésiculaire sans épaississement pariétal.',
       'Conclusion : lithiase vésiculaire non compliquée.',
     ].join('\n'),
