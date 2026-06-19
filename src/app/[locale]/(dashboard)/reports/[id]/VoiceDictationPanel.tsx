@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useTransition, useMemo } from 'react'
 import { useTranslations, useLocale } from 'next-intl'
 import { createVoiceTranscript, reviewVoiceTranscript, rejectVoiceTranscript, applyVoiceTranscript } from '@/lib/actions/voice'
+import { recordVocabularyLearning, suggestVocabulary } from '@/lib/actions/vocabulary'
 import { findMedicalCorrections, applyAllCorrections, applyCorrection, type DetectedCorrection } from '@/lib/ai/voice-corrections'
 import { splitDictationSegments } from '@/lib/ai/dictation-segments'
 import type { VoiceTranscript } from '@/lib/data/voice-transcripts'
@@ -53,6 +54,29 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
   const recognitionRef  = useRef<any>(null)
   const finalTextRef    = useRef('')
   const timerRef        = useRef<ReturnType<typeof setInterval> | null>(null)
+  // F15 — the raw STT text, kept so we can learn from the radiologist's edits.
+  const rawTranscriptRef = useRef('')
+
+  // F15 — static medical corrections plus this radiologist's learned vocabulary,
+  // merged as non-overlapping suggestions. Suggestions only — never auto-applied.
+  function computeCorrections(text: string) {
+    const base = findMedicalCorrections(text)
+    setCorrections(base)
+    suggestVocabulary(text)
+      .then((extra) => {
+        if (!extra.length) return
+        setCorrections((current) => {
+          const occupied = current.map((c) => [c.startIndex, c.endIndex] as const)
+          const merged = [...current]
+          for (const s of extra) {
+            const clashes = occupied.some(([a, b]) => s.startIndex < b && s.endIndex > a)
+            if (!clashes) merged.push(s)
+          }
+          return merged.sort((a, b) => a.startIndex - b.startIndex)
+        })
+      })
+      .catch(() => { /* suggestions are best-effort */ })
+  }
 
   useEffect(() => {
     if (open && supported === null) {
@@ -125,8 +149,9 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
     recognition.onend = () => {
       stopTimer()
       const captured = finalTextRef.current.trim()
+      rawTranscriptRef.current = captured
       setEditText(captured)
-      setCorrections(findMedicalCorrections(captured))
+      computeCorrections(captured)
       setPhase('review')
     }
 
@@ -139,8 +164,9 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
     } else {
       stopTimer()
       const captured = liveText.trim()
+      rawTranscriptRef.current = captured
       setEditText(captured)
-      setCorrections(findMedicalCorrections(captured))
+      computeCorrections(captured)
       setPhase('review')
     }
   }
@@ -198,6 +224,11 @@ export function VoiceDictationPanel({ reportId, onApply }: Props) {
       setSavedTranscript(transcript)
       setPhase('saved')
       await applyVoiceTranscript(transcript.id, reportId)
+      // F15 — learn this radiologist's wording from the edits they made to the
+      // raw transcript (pure, meaning-preserving pairs only). Best-effort.
+      if (rawTranscriptRef.current && rawTranscriptRef.current !== text) {
+        recordVocabularyLearning(rawTranscriptRef.current, text).catch(() => {})
+      }
       onApply(text)
     })
   }

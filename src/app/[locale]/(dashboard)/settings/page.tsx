@@ -17,6 +17,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
   const te = await getTranslations('exams')
   const th = await getTranslations('hospitalHeaders')
   const tp = await getTranslations('profileSettings')
+  const tv = await getTranslations('vocabulary')
   await requireCurrentUser()
 
   // Real, navigable settings areas (built out as features land).
@@ -24,6 +25,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ local
     { href: '/settings/profile', title: tp('title'), desc: tp('subtitle') },
     { href: '/settings/exams', title: te('title'), desc: te('description') },
     { href: '/settings/headers', title: th('title'), desc: th('subtitle') },
+    { href: '/settings/vocabulary', title: tv('title'), desc: tv('subtitle') },
   ]
 
   const sections = [
