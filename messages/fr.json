@@ -52,6 +52,7 @@
     "forgotPassword": "Mot de passe oublié ?",
     "signingIn": "Connexion en cours…",
     "footer": "Radiora Medical © {year} — Conforme HIPAA",
+    "builtBy": "Conçu par Teranga Tech",
     "invalidCredentials": "E-mail ou mot de passe incorrect.",
     "notifications": "Notifications",
     "noAccount": "Pas encore de compte ?",
@@ -1444,7 +1445,8 @@
       "tagline": "La plateforme de comptes rendus radiologiques pour le Sénégal et l'Afrique de l'Ouest.",
       "productHeading": "Produit",
       "companyHeading": "Entreprise",
-      "rights": "© {year} Radiora Medical. Tous droits réservés."
+      "rights": "© {year} Radiora Medical. Tous droits réservés.",
+      "builtBy": "Conçu par Teranga Tech"
     },
     "home": {
       "badge": "Plateforme de radiologie assistée par IA",

@@ -152,6 +152,17 @@ export default function LoginPage() {
           {t('footer', { year: new Date().getFullYear() })}
         </p>
 
+        <p className="mt-1.5 text-center text-xs text-gray-400">
+          <a
+            href="https://teranga-tech.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition hover:text-gray-600"
+          >
+            {t('builtBy')}
+          </a>
+        </p>
+
       </div>
     </div>
   )

@@ -100,11 +100,19 @@ export default async function MarketingLayout({
           </div>
         </div>
         <div className="border-t border-gray-100">
-          <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-6 py-5">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-5 sm:flex-row sm:gap-3">
             <p className="flex items-center gap-1.5 text-xs text-gray-400">
               <SenegalStar className="text-[#00853F] opacity-70" />
               {t('footer.rights', { year: new Date().getFullYear() })}
             </p>
+            <a
+              href="https://teranga-tech.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-gray-400 transition hover:text-gray-600"
+            >
+              {t('footer.builtBy')}
+            </a>
           </div>
         </div>
       </footer>

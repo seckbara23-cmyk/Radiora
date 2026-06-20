@@ -220,6 +220,7 @@ aucun compte ne sera créé sans votre action.
 
 Conçu avec des radiologues sénégalais.
 Radiora Medical — {{ .SiteURL }}
+Conçu par Teranga Tech — https://teranga-tech.com
 
 ---
 You've been invited to join Radiora Medical. Activate your account using the
@@ -336,6 +337,7 @@ is consistent the day signup is turned on.
             <td class="pad" align="center" style="padding:28px 40px 36px 40px; font-family:Arial,Helvetica,sans-serif; border-top:1px solid #E2E8F0;">
               <p style="margin:18px 0 4px 0; font-size:13px; line-height:1.6; color:#64748B;">Conçu avec des radiologues sénégalais. 🇸🇳</p>
               <p style="margin:0; font-size:12px; line-height:1.6; color:#94A3B8;">Radiora Medical · <a href="{{ .SiteURL }}" target="_blank" style="color:#94A3B8; text-decoration:underline;">{{ .SiteURL }}</a></p>
+              <p style="margin:6px 0 0 0; font-size:12px; line-height:1.6; color:#94A3B8;"><a href="https://teranga-tech.com" target="_blank" rel="noopener noreferrer" style="color:#94A3B8; text-decoration:underline;">Conçu par Teranga Tech</a></p>
             </td>
           </tr>
         </table>
@@ -358,6 +360,7 @@ Vous n'êtes pas à l'origine de cette inscription ? Ignorez cet e-mail.
 
 Conçu avec des radiologues sénégalais.
 Radiora Medical — {{ .SiteURL }}
+Conçu par Teranga Tech — https://teranga-tech.com
 ```
 
 ---
@@ -469,6 +472,7 @@ template is ready when `resetPasswordForEmail()` is added.
             <td class="pad" align="center" style="padding:28px 40px 36px 40px; font-family:Arial,Helvetica,sans-serif; border-top:1px solid #E2E8F0;">
               <p style="margin:18px 0 4px 0; font-size:13px; line-height:1.6; color:#64748B;">Conçu avec des radiologues sénégalais. 🇸🇳</p>
               <p style="margin:0; font-size:12px; line-height:1.6; color:#94A3B8;">Radiora Medical · <a href="{{ .SiteURL }}" target="_blank" style="color:#94A3B8; text-decoration:underline;">{{ .SiteURL }}</a></p>
+              <p style="margin:6px 0 0 0; font-size:12px; line-height:1.6; color:#94A3B8;"><a href="https://teranga-tech.com" target="_blank" rel="noopener noreferrer" style="color:#94A3B8; text-decoration:underline;">Conçu par Teranga Tech</a></p>
             </td>
           </tr>
         </table>
@@ -493,6 +497,7 @@ de passe reste inchangé.
 
 Conçu avec des radiologues sénégalais.
 Radiora Medical — {{ .SiteURL }}
+Conçu par Teranga Tech — https://teranga-tech.com
 ```
 
 ---
@@ -606,6 +611,7 @@ code (`{{ .Token }}`) so it works for either the magic-link or OTP variant.
             <td class="pad" align="center" style="padding:28px 40px 36px 40px; font-family:Arial,Helvetica,sans-serif; border-top:1px solid #E2E8F0;">
               <p style="margin:18px 0 4px 0; font-size:13px; line-height:1.6; color:#64748B;">Conçu avec des radiologues sénégalais. 🇸🇳</p>
               <p style="margin:0; font-size:12px; line-height:1.6; color:#94A3B8;">Radiora Medical · <a href="{{ .SiteURL }}" target="_blank" style="color:#94A3B8; text-decoration:underline;">{{ .SiteURL }}</a></p>
+              <p style="margin:6px 0 0 0; font-size:12px; line-height:1.6; color:#94A3B8;"><a href="https://teranga-tech.com" target="_blank" rel="noopener noreferrer" style="color:#94A3B8; text-decoration:underline;">Conçu par Teranga Tech</a></p>
             </td>
           </tr>
         </table>
@@ -630,6 +636,7 @@ Vous n'avez pas demandé à vous connecter ? Ignorez cet e-mail.
 
 Conçu avec des radiologues sénégalais.
 Radiora Medical — {{ .SiteURL }}
+Conçu par Teranga Tech — https://teranga-tech.com
 ```
 
 ---

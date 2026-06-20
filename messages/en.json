@@ -52,6 +52,7 @@
     "forgotPassword": "Forgot password?",
     "signingIn": "Signing in…",
     "footer": "Radiora Medical © {year} — HIPAA Compliant",
+    "builtBy": "Built by Teranga Tech",
     "invalidCredentials": "Invalid email or password.",
     "notifications": "Notifications",
     "noAccount": "Don't have an account yet?",
@@ -1444,7 +1445,8 @@
       "tagline": "The radiology reporting platform for Senegal and West Africa.",
       "productHeading": "Product",
       "companyHeading": "Company",
-      "rights": "© {year} Radiora Medical. All rights reserved."
+      "rights": "© {year} Radiora Medical. All rights reserved.",
+      "builtBy": "Built by Teranga Tech"
     },
     "home": {
       "badge": "AI-assisted radiology platform",
