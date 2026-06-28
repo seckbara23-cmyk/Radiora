@@ -267,7 +267,19 @@
     "viewReport": "View →",
     "editReport": "Edit →",
     "pageTitle": "Radiology Report",
-    "batchDownload": "Download all (ZIP)"
+    "batchDownload": "Download all (ZIP)",
+    "workspaceTitle": "Turn the transcription into a validated report.",
+    "workspaceSubtitle": "Review, correct, structure and validate your report before delivery.",
+    "sectionCanvasTitle": "Report canvas",
+    "sectionCanvasDesc": "Patient identity · Exam date · Exam number · Exam type · Indication · Technique · Results · Conclusion · Signature.",
+    "sectionCanvasTemplates": "Structured templates available: Mammography, Pelvimetry CT, TAGT.",
+    "sectionCorrectionTitle": "Medical correction",
+    "sectionCorrectionDesc": "Manual editing in the canvas and correction history — under radiologist control.",
+    "sectionValidationTitle": "Validation",
+    "sectionValidationDesc": "The safety review supports the decision; draft, validation and signing happen from the canvas above.",
+    "sectionExportTitle": "Preview & export",
+    "sectionExportDesc": "Word, PDF, preview, print and secure delivery.",
+    "exportInHeader": "Word, PDF and print exports are available via the actions at the top of the page."
   },
   "templates": {
     "title": "Templates",

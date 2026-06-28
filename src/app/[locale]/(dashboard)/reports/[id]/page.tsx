@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from '@/i18n/navigation'
 import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
@@ -29,6 +30,27 @@ import { getExplanationByReport } from '@/lib/data/explanations'
 import { getTranslationByReport, getTranslationByExplanation } from '@/lib/data/translations'
 
 type Props = { params: Promise<{ id: string; locale: string }> }
+
+// Large numbered section header for the radiologist's report workspace
+// (presentation Screen 6). Presentational only — frames existing components.
+function WorkspaceSection({
+  n, title, desc, children,
+}: { n: number; title: string; desc: string; children: ReactNode }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-start gap-3">
+        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-600">
+          {n}
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+          <p className="mt-0.5 text-sm text-gray-500">{desc}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  )
+}
 
 // French sex labels for the HPD document header.
 const SEX_FR: Record<string, string> = {
@@ -107,9 +129,10 @@ export default async function ReportPage({ params }: Props) {
           >
             ← {study ? `${study.modality} — ${study.bodyPart}` : ''}
           </Link>
-          <h1 className="mt-1.5 text-xl font-semibold text-gray-900">{t('pageTitle')}</h1>
+          <h1 className="mt-1.5 text-xl font-semibold text-gray-900">{t('workspaceTitle')}</h1>
+          <p className="mt-0.5 text-sm text-gray-500">{t('workspaceSubtitle')}</p>
           {patient && (
-            <p className="mt-0.5 text-sm text-gray-500">
+            <p className="mt-1 text-sm font-medium text-gray-600">
               {patient.firstName} {patient.lastName}&nbsp;&middot;&nbsp;MRN {patient.mrn}
             </p>
           )}
@@ -145,37 +168,68 @@ export default async function ReportPage({ params }: Props) {
         </div>
       )}
 
-      <ReportEditor
-        report={report}
-        canWrite={canWrite}
-        canAmend={canAmend}
-        templates={templates}
-        modality={study?.modality ?? null}
-        bodyPart={study?.bodyPart ?? null}
-        initialPhrases={initialPhrases}
-        patientInfo={{
-          name: patient ? `${patient.lastName.toUpperCase()} ${patient.firstName}`.trim() : '',
-          age:  computeAge(patient?.dateOfBirth),
-          sex:  patient ? (SEX_FR[patient.sex] ?? '') : '',
-        }}
-        examDate={study?.studyDate ?? report.createdAt.slice(0, 10)}
-      />
-
-      {canReview && !isFinalized && (
-        <SafetyReviewPanel report={report} safety={safetyContext} />
-      )}
-
-      <VersionHistory versions={versions} />
-
-      {canReview && isFinalized && (
-        <SecureDeliveryPanel
-          reportId={id}
-          locale={locale}
-          headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
-          deliveries={deliveries}
-          nowISO={nowISO}
+      {/* ── 1. Canevas du compte rendu ── (HPD editor — reused) */}
+      <WorkspaceSection
+        n={1}
+        title={t('sectionCanvasTitle')}
+        desc={t('sectionCanvasDesc')}
+      >
+        <p className="-mt-1 text-xs text-gray-400">{t('sectionCanvasTemplates')}</p>
+        <ReportEditor
+          report={report}
+          canWrite={canWrite}
+          canAmend={canAmend}
+          templates={templates}
+          modality={study?.modality ?? null}
+          bodyPart={study?.bodyPart ?? null}
+          initialPhrases={initialPhrases}
+          patientInfo={{
+            name: patient ? `${patient.lastName.toUpperCase()} ${patient.firstName}`.trim() : '',
+            age:  computeAge(patient?.dateOfBirth),
+            sex:  patient ? (SEX_FR[patient.sex] ?? '') : '',
+          }}
+          examDate={study?.studyDate ?? report.createdAt.slice(0, 10)}
         />
+      </WorkspaceSection>
+
+      {/* ── 2. Correction médicale ── (correction history — reused) */}
+      <WorkspaceSection
+        n={2}
+        title={t('sectionCorrectionTitle')}
+        desc={t('sectionCorrectionDesc')}
+      >
+        <VersionHistory versions={versions} />
+      </WorkspaceSection>
+
+      {/* ── 3. Validation ── (clinical safety review — reused, pre-finalize) */}
+      {canReview && !isFinalized && (
+        <WorkspaceSection
+          n={3}
+          title={t('sectionValidationTitle')}
+          desc={t('sectionValidationDesc')}
+        >
+          <SafetyReviewPanel report={report} safety={safetyContext} />
+        </WorkspaceSection>
       )}
+
+      {/* ── 4. Aperçu & export ── (export actions in header; secure delivery here) */}
+      <WorkspaceSection
+        n={4}
+        title={t('sectionExportTitle')}
+        desc={t('sectionExportDesc')}
+      >
+        {canReview && isFinalized ? (
+          <SecureDeliveryPanel
+            reportId={id}
+            locale={locale}
+            headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
+            deliveries={deliveries}
+            nowISO={nowISO}
+          />
+        ) : (
+          <p className="text-sm text-gray-400">{t('exportInHeader')}</p>
+        )}
+      </WorkspaceSection>
 
       {canReview && isFinalized && (
         <PatientExplanationPanel
