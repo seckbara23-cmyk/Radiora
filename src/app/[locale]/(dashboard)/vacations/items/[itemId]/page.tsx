@@ -17,6 +17,7 @@ import { ConnectMobileDictation } from './ConnectMobileDictation'
 import { TranscriptionEditor } from './TranscriptionEditor'
 import { PatientMatchControl } from './PatientMatchControl'
 import { StructuringReview } from './StructuringReview'
+import { TranscriptionAI } from './TranscriptionAI'
 import { CreateReportFromQueue } from './CreateReportFromQueue'
 import type { UserRole } from '@/types/user'
 import type { StructuringResult } from '@/types/structuring'
@@ -159,6 +160,9 @@ export default async function ItemWorkspacePage({ params }: Props) {
       {canManage && !item.reportId && (
         <CreateReportFromQueue itemId={item.id} hasPatient={Boolean(item.patientId)} />
       )}
+
+      {/* Transcription IA — explains the engine + visual pipeline (presentation Screen 5) */}
+      {(canManage || initialStructuring) && <TranscriptionAI />}
 
       {/* AI structuring (Feature 7) */}
       {(canManage || initialStructuring) && (
