@@ -58,8 +58,8 @@ export default function LoginPage() {
               />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Radiora Medical</h1>
-          <p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('welcomeTitle')}</h1>
+          <p className="mt-2 text-sm font-medium text-blue-700">{t('tagline')}</p>
         </div>
 
         {/* Tricolor accent bar above card */}
@@ -137,6 +137,16 @@ export default function LoginPage() {
               )}
               {loading ? t('signingIn') : t('signIn')}
             </button>
+
+            {/* Secure-access note (presentation Screen 1) */}
+            <div className="flex items-start gap-2 pt-1 text-xs text-gray-500">
+              <svg className="w-4 h-4 mt-px shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+              <span>{t('secureNote')}</span>
+            </div>
 
           </form>
         </div>
