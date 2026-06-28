@@ -135,7 +135,25 @@
     "recentStudies": "Recent Studies",
     "recentReports": "Recent Reports",
     "noStudies": "No studies yet.",
-    "noReports": "No reports yet."
+    "noReports": "No reports yet.",
+    "modulesHeading": "Your modules",
+    "modulesSubtitle": "A simple, specialized workflow centered on how radiologists actually work.",
+    "activityHeading": "Your activity",
+    "open": "Open",
+    "modules": {
+      "profile": {
+        "title": "Profile",
+        "description": "Configure the radiologist's identity, signature, institution and report templates."
+      },
+      "voice": {
+        "title": "Voice dictation",
+        "description": "Record live from your phone or import an audio file to get an AI-assisted transcription."
+      },
+      "text": {
+        "title": "Text processing",
+        "description": "Review, correct, structure, validate, then export or send the finalized report."
+      }
+    }
   },
   "patients": {
     "title": "Patients",

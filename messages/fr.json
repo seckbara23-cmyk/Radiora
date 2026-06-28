@@ -135,7 +135,25 @@
     "recentStudies": "Examens récents",
     "recentReports": "Comptes rendus récents",
     "noStudies": "Aucun examen.",
-    "noReports": "Aucun compte rendu."
+    "noReports": "Aucun compte rendu.",
+    "modulesHeading": "Vos modules",
+    "modulesSubtitle": "Une navigation simple et spécialisée, centrée sur le flux réel du radiologue.",
+    "activityHeading": "Votre activité",
+    "open": "Ouvrir",
+    "modules": {
+      "profile": {
+        "title": "Profil",
+        "description": "Configurer l’identité du radiologue, la signature, l’établissement et les modèles de comptes-rendus."
+      },
+      "voice": {
+        "title": "Dictée vocale",
+        "description": "Enregistrer en direct via téléphone ou importer un audio afin d’obtenir une transcription assistée par l’IA."
+      },
+      "text": {
+        "title": "Traitement de texte",
+        "description": "Relire, corriger, structurer, valider puis exporter ou envoyer le compte-rendu finalisé."
+      }
+    }
   },
   "patients": {
     "title": "Patients",

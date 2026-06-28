@@ -31,6 +31,30 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
     getRecentReports(4),
   ])
 
+  // Presentation Screen 2 — the three primary modules the radiologist starts from.
+  // Each reuses an existing area: Profil → settings/profile, Dictée vocale →
+  // vacation queue, Traitement de texte → reports.
+  const modules = [
+    {
+      key: 'profile' as const,
+      href: '/settings/profile',
+      accent: 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />,
+    },
+    {
+      key: 'voice' as const,
+      href: '/vacations',
+      accent: 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3zM19 10v2a7 7 0 01-14 0v-2M12 19v4m-4 0h8" />,
+    },
+    {
+      key: 'text' as const,
+      href: '/reports',
+      accent: 'bg-violet-50 text-violet-600 group-hover:bg-violet-600 group-hover:text-white',
+      icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />,
+    },
+  ]
+
   const kpiCards = [
     { labelKey: 'activePatients' as const,   value: stats.totalPatients,    color: 'text-blue-600 bg-blue-50',     icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /> },
     { labelKey: 'pendingStudies' as const,   value: stats.pendingStudies,   color: 'text-amber-600 bg-amber-50',   icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /> },
@@ -45,23 +69,37 @@ export default async function DashboardPage({ params }: { params: Promise<{ loca
         <p className="mt-1 text-sm text-gray-500">{t('welcome', { name: user.firstName || user.email })}</p>
       </div>
 
-      {/* Session panel */}
-      <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-5 py-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-indigo-400">{t('session')}</p>
-        <dl className="grid grid-cols-1 gap-y-2 gap-x-6 sm:grid-cols-2 lg:grid-cols-4">
-          {([
-            [t('userId'),   user.id],
-            [t('email'),    user.email],
-            [t('role'),     user.role],
-            [t('clinicId'), user.clinicId ?? t('superAdmin')],
-          ] as [string, string][]).map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-xs font-medium text-indigo-500">{label}</dt>
-              <dd className="mt-0.5 font-mono text-xs text-indigo-900 break-all">{value}</dd>
-            </div>
+      {/* Primary modules (presentation Screen 2) */}
+      <section>
+        <div className="mb-3">
+          <h2 className="text-sm font-semibold text-gray-900">{t('modulesHeading')}</h2>
+          <p className="mt-0.5 text-sm text-gray-500">{t('modulesSubtitle')}</p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {modules.map((m) => (
+            <Link
+              key={m.key}
+              href={m.href}
+              className="group flex flex-col rounded-xl border border-gray-200 bg-white p-5 transition hover:border-blue-300 hover:shadow-sm"
+            >
+              <span className={`mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors ${m.accent}`}>
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">{m.icon}</svg>
+              </span>
+              <h3 className="text-base font-semibold text-gray-900">{t(`modules.${m.key}.title`)}</h3>
+              <p className="mt-1 flex-1 text-sm leading-relaxed text-gray-500">{t(`modules.${m.key}.description`)}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-blue-600 group-hover:text-blue-700">
+                {t('open')}
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </Link>
           ))}
-        </dl>
-      </div>
+        </div>
+      </section>
+
+      {/* Activity — supporting KPIs and recent items (kept, secondary) */}
+      <h2 className="pt-2 text-sm font-semibold text-gray-900">{t('activityHeading')}</h2>
 
       {/* KPI cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
