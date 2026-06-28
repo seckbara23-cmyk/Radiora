@@ -12,10 +12,24 @@ const MODALITIES: Modality[] = ['CT', 'MRI', 'XR', 'US', 'NM', 'PT', 'MG', 'DX',
 const inputCls =
   'w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100'
 
-export function CreateVacationForm({ radiologists }: { radiologists: ClinicRadiologist[] }) {
+export function CreateVacationForm({
+  radiologists,
+  open: openProp,
+  onOpenChange,
+  hideTrigger = false,
+}: {
+  radiologists: ClinicRadiologist[]
+  /** Controlled open state (optional). Omit for the default self-managed button. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  /** Hide the built-in "+ New session" trigger (when an external control opens it). */
+  hideTrigger?: boolean
+}) {
   const t = useTranslations('vacationQueue')
   const router = useRouter()
-  const [open, setOpen]     = useState(false)
+  const [openState, setOpenState] = useState(false)
+  const open = openProp ?? openState
+  const setOpen = (v: boolean) => { setOpenState(v); onOpenChange?.(v) }
   const [error, setError]   = useState<string | null>(null)
   const [pending, start]    = useTransition()
 
@@ -44,6 +58,7 @@ export function CreateVacationForm({ radiologists }: { radiologists: ClinicRadio
   }
 
   if (!open) {
+    if (hideTrigger) return null
     return (
       <button
         onClick={() => setOpen(true)}

@@ -10,6 +10,8 @@ import {
 import { Badge, vacationWorkflowVariant } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { CreateVacationForm } from './CreateVacationForm'
+import { DictationOptions } from './DictationOptions'
+import { TranscriptionPipeline } from './TranscriptionPipeline'
 import { ItemStatusControl } from './ItemStatusControl'
 import type { Modality } from '@/types/study'
 import {
@@ -69,12 +71,18 @@ export default async function VacationsPage({ params, searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-gray-500">{t('subtitle')}</p>
-        </div>
+      {/* Header (presentation Screen 4 — Dictée vocale) */}
+      <div>
+        <h1 className="text-xl font-semibold text-gray-900">{t('voiceTitle')}</h1>
+        <p className="mt-1 text-sm text-gray-500">{t('voiceSubtitle')}</p>
+      </div>
+
+      {/* Two large entry options — QR live dictation · audio import */}
+      <DictationOptions radiologists={radiologists} />
+
+      {/* Existing Vacation Audio Queue (reused, not redesigned) */}
+      <div className="flex items-center justify-between gap-4 pt-2">
+        <h2 className="text-base font-semibold text-gray-900">{t('title')}</h2>
         <CreateVacationForm radiologists={radiologists} />
       </div>
 
@@ -209,6 +217,9 @@ export default async function VacationsPage({ params, searchParams }: Props) {
           )}
         </div>
       </section>
+
+      {/* Automatic AI processing pipeline (visual, informational) */}
+      <TranscriptionPipeline />
     </div>
   )
 }
