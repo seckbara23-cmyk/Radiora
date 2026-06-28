@@ -141,10 +141,6 @@ export default async function ReportPage({ params }: Props) {
           <Badge variant={reportStatusVariant[report.status]}>
             {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
           </Badge>
-          <ReportExportActions
-            reportId={id}
-            headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
-          />
         </div>
       </div>
 
@@ -212,13 +208,61 @@ export default async function ReportPage({ params }: Props) {
         </WorkspaceSection>
       )}
 
-      {/* ── 4. Aperçu & export ── (export actions in header; secure delivery here) */}
+      {/* ── 4. Prévisualisation ── (document preview + draft/final status) */}
       <WorkspaceSection
         n={4}
-        title={t('sectionExportTitle')}
-        desc={t('sectionExportDesc')}
+        title={t('previewSectionTitle')}
+        desc={t('previewSectionDesc')}
       >
-        {canReview && isFinalized ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="inline-flex items-center gap-2 text-sm text-gray-600">
+              {t('previewStatusLabel')} :
+              <Badge variant={reportStatusVariant[report.status]}>
+                {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
+              </Badge>
+            </span>
+            <a
+              href="print"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            >
+              <span aria-hidden>🔍</span> {t('previewOpen')}
+            </a>
+          </div>
+          <p className="mt-3 text-xs text-gray-400">{t('previewValidateNote')}</p>
+        </div>
+      </WorkspaceSection>
+
+      {/* ── 5. Export ── (Word / PDF / print — reused actions + filename convention) */}
+      <WorkspaceSection
+        n={5}
+        title={t('exportSectionTitle')}
+        desc={t('exportSectionDesc')}
+      >
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+          <ReportExportActions
+            reportId={id}
+            headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
+          />
+          <div className="border-t border-gray-100 pt-3">
+            <p className="text-xs font-medium text-gray-500">{t('filenameLabel')}</p>
+            <p className="mt-1 inline-block rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-700">
+              {t('filenameExample')}
+            </p>
+            <p className="mt-2 text-xs text-gray-400">{t('filenameAuto')}</p>
+          </div>
+        </div>
+      </WorkspaceSection>
+
+      {/* ── 6. Archivage ── (persistence, secure delivery, audit, batch ZIP) */}
+      <WorkspaceSection
+        n={6}
+        title={t('archiveSectionTitle')}
+        desc={t('archiveSectionDesc')}
+      >
+        {canReview && isFinalized && (
           <SecureDeliveryPanel
             reportId={id}
             locale={locale}
@@ -226,9 +270,16 @@ export default async function ReportPage({ params }: Props) {
             deliveries={deliveries}
             nowISO={nowISO}
           />
-        ) : (
-          <p className="text-sm text-gray-400">{t('exportInHeader')}</p>
         )}
+        <div className="mt-3 rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-sm text-gray-600">{t('archiveNote')}</p>
+          <Link
+            href="/reports"
+            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            {t('archiveBatchLink')}
+          </Link>
+        </div>
       </WorkspaceSection>
 
       {canReview && isFinalized && (

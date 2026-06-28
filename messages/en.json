@@ -279,7 +279,21 @@
     "sectionValidationDesc": "The safety review supports the decision; draft, validation and signing happen from the canvas above.",
     "sectionExportTitle": "Preview & export",
     "sectionExportDesc": "Word, PDF, preview, print and secure delivery.",
-    "exportInHeader": "Word, PDF and print exports are available via the actions at the top of the page."
+    "exportInHeader": "Word, PDF and print exports are available via the actions at the top of the page.",
+    "previewSectionTitle": "Preview",
+    "previewSectionDesc": "Review the document before delivery. The radiologist validates each report individually.",
+    "previewStatusLabel": "Status",
+    "previewOpen": "Open document preview",
+    "previewValidateNote": "The radiologist reviews and validates every report before any delivery.",
+    "exportSectionTitle": "Export",
+    "exportSectionDesc": "Export to Word or PDF, or print the report.",
+    "filenameLabel": "File name",
+    "filenameExample": "PatientName_ExamType_ExamNumber",
+    "filenameAuto": "The file name is generated automatically.",
+    "archiveSectionTitle": "Archiving",
+    "archiveSectionDesc": "Every report stays archived and traceable.",
+    "archiveNote": "Each report is saved individually, with secure delivery and a full audit trail.",
+    "archiveBatchLink": "Batch export (ZIP) from the reports list →"
   },
   "templates": {
     "title": "Templates",

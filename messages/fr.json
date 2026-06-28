@@ -279,7 +279,21 @@
     "sectionValidationDesc": "Le contrôle de sécurité accompagne la décision ; brouillon, validation et signature s’effectuent depuis le canevas ci-dessus.",
     "sectionExportTitle": "Aperçu & export",
     "sectionExportDesc": "Word, PDF, aperçu, impression et envoi sécurisé.",
-    "exportInHeader": "Les exports Word, PDF et l’impression sont accessibles via les actions en haut de la page."
+    "exportInHeader": "Les exports Word, PDF et l’impression sont accessibles via les actions en haut de la page.",
+    "previewSectionTitle": "Prévisualisation",
+    "previewSectionDesc": "Visualisez le document avant diffusion. Le radiologue valide chaque compte rendu individuellement.",
+    "previewStatusLabel": "Statut",
+    "previewOpen": "Ouvrir l’aperçu du document",
+    "previewValidateNote": "Le radiologue relit et valide chaque compte rendu avant toute diffusion.",
+    "exportSectionTitle": "Export",
+    "exportSectionDesc": "Exportez en Word ou PDF, ou imprimez le compte rendu.",
+    "filenameLabel": "Nom de fichier",
+    "filenameExample": "NomPatient_TypeExamen_NumExamen",
+    "filenameAuto": "Le nom du fichier est généré automatiquement.",
+    "archiveSectionTitle": "Archivage",
+    "archiveSectionDesc": "Chaque compte rendu reste archivé et traçable.",
+    "archiveNote": "Sauvegarde individuelle de chaque compte rendu, envoi sécurisé et journal d’audit complet.",
+    "archiveBatchLink": "Export groupé (ZIP) depuis la liste des comptes rendus →"
   },
   "templates": {
     "title": "Modèles",
