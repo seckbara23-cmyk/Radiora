@@ -101,6 +101,20 @@ const icons: Record<IconName, React.ReactNode> = {
       />
     </svg>
   ),
+  feedback: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M8 10h.01M12 10h.01M16 10h.01M21 12a8 8 0 01-11.5 7.16L3 20l1.05-3.5A8 8 0 1121 12z"
+      />
+    </svg>
+  ),
+  pilot: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M3 3v18h18M9 17V9m4 8V5m4 12v-6"
+      />
+    </svg>
+  ),
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────

@@ -38,6 +38,8 @@
     "vacations": "Dictée vocale",
     "secretary": "Bureau secrétariat",
     "clinics": "Cliniques",
+    "feedback": "Votre avis",
+    "pilot": "Tableau de bord pilote",
     "adminSection": "Administration"
   },
   "auth": {
@@ -118,6 +120,104 @@
     "next": "Suivant",
     "haveAccount": "Vous avez déjà un compte ?",
     "signIn": "Se connecter"
+  },
+  "feedback": {
+    "title": "Votre avis",
+    "subtitle": "Aidez-nous à améliorer Radiora pendant le pilote. Vos retours sont précieux et confidentiels.",
+    "category": "Catégorie",
+    "categories": {
+      "workflow": "Flux de travail",
+      "ai": "Intelligence artificielle",
+      "ui": "Interface",
+      "performance": "Performance",
+      "other": "Autre"
+    },
+    "priority": "Priorité",
+    "priorities": {
+      "critical": "Critique",
+      "important": "Important",
+      "nice_to_have": "Confort"
+    },
+    "message": "Votre retour",
+    "messagePlaceholder": "Décrivez ce qui fonctionne bien ou ce qui pourrait être amélioré…",
+    "submit": "Envoyer mon retour",
+    "submitting": "Envoi…",
+    "success": "Merci ! Votre retour a bien été envoyé.",
+    "another": "Envoyer un autre retour"
+  },
+  "pilot": {
+    "title": "Tableau de bord pilote",
+    "subtitle": "Suivi de l'évaluation clinique de Radiora par les radiologues.",
+    "rangeNote": "Sur les {days} derniers jours.",
+    "unit": { "min": "{n} min" },
+    "kpi": {
+      "reportsCompleted": "Comptes rendus finalisés",
+      "avgDictation": "Dictée moyenne",
+      "avgValidation": "Validation moyenne",
+      "avgCorrections": "Corrections moyennes",
+      "exportCount": "Exports",
+      "secureDelivery": "Envois sécurisés"
+    },
+    "confidence": {
+      "title": "Distribution de la confiance IA",
+      "subtitle": "Répartition des sections structurées par niveau de confiance.",
+      "empty": "Aucune donnée de confiance sur la période.",
+      "high": "Confiance élevée",
+      "medium": "Confiance moyenne",
+      "low": "Confiance faible"
+    },
+    "session": {
+      "title": "Analyse des sessions",
+      "stepDictation": "Dictée",
+      "stepValidation": "Validation",
+      "stepTurnaround": "Délai total",
+      "completion": "Taux de complétion",
+      "method": "Méthode de dictée",
+      "methodMobile": "Téléphone (QR)",
+      "methodUpload": "Import de fichier",
+      "topMethod": "Méthode la plus utilisée",
+      "method_mobile": "Téléphone (QR)",
+      "method_upload": "Import de fichier",
+      "method_none": "—",
+      "exportUsage": "Utilisation des exports",
+      "print": "Impression"
+    },
+    "feedback": {
+      "title": "Synthèse des retours",
+      "total": "{n} retour(s) sur la période.",
+      "empty": "Aucun retour pour l'instant.",
+      "byCategory": "Par catégorie",
+      "byPriority": "Par priorité",
+      "recent": "Retours récents",
+      "categories": {
+        "workflow": "Flux de travail",
+        "ai": "Intelligence artificielle",
+        "ui": "Interface",
+        "performance": "Performance",
+        "other": "Autre"
+      },
+      "priorities": {
+        "critical": "Critique",
+        "important": "Important",
+        "nice_to_have": "Confort"
+      }
+    },
+    "report": {
+      "title": "Rapport pilote",
+      "subtitle": "Synthèse réservée à l'administrateur.",
+      "commonIssues": "Problèmes les plus signalés",
+      "noIssues": "Aucun problème signalé.",
+      "recommendations": "Recommandations",
+      "rec": {
+        "critical_feedback": "Des retours critiques nécessitent une attention immédiate.",
+        "low_confidence": "Beaucoup de sections à faible confiance : enrichissez les modèles et la mémoire de vocabulaire.",
+        "high_corrections": "Nombre élevé de corrections : revoyez les modèles et le style préféré du radiologue.",
+        "slow_validation": "Temps de validation élevé : simplifiez la relecture et les modèles structurés.",
+        "low_completion": "Taux de complétion faible : accompagnez les utilisateurs sur la fin du flux.",
+        "healthy": "Le pilote se déroule bien : aucun signal d'alerte sur la période."
+      },
+      "footer": "Clinique : {clinic} · Généré le {date}"
+    }
   },
   "dashboard": {
     "title": "Tableau de bord",

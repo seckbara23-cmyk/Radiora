@@ -38,6 +38,8 @@
     "vacations": "Voice dictation",
     "secretary": "Secretary Desk",
     "clinics": "Clinics",
+    "feedback": "Feedback",
+    "pilot": "Pilot dashboard",
     "adminSection": "Admin"
   },
   "auth": {
@@ -118,6 +120,104 @@
     "next": "Next",
     "haveAccount": "Already have an account?",
     "signIn": "Sign in"
+  },
+  "feedback": {
+    "title": "Feedback",
+    "subtitle": "Help us improve Radiora during the pilot. Your feedback is valuable and confidential.",
+    "category": "Category",
+    "categories": {
+      "workflow": "Workflow",
+      "ai": "AI",
+      "ui": "Interface",
+      "performance": "Performance",
+      "other": "Other"
+    },
+    "priority": "Priority",
+    "priorities": {
+      "critical": "Critical",
+      "important": "Important",
+      "nice_to_have": "Nice to have"
+    },
+    "message": "Your feedback",
+    "messagePlaceholder": "Describe what works well or what could be improved…",
+    "submit": "Send feedback",
+    "submitting": "Sending…",
+    "success": "Thank you! Your feedback has been sent.",
+    "another": "Send another"
+  },
+  "pilot": {
+    "title": "Pilot dashboard",
+    "subtitle": "Tracking Radiora's clinical evaluation by radiologists.",
+    "rangeNote": "Over the last {days} days.",
+    "unit": { "min": "{n} min" },
+    "kpi": {
+      "reportsCompleted": "Reports completed",
+      "avgDictation": "Avg. dictation",
+      "avgValidation": "Avg. validation",
+      "avgCorrections": "Avg. corrections",
+      "exportCount": "Exports",
+      "secureDelivery": "Secure deliveries"
+    },
+    "confidence": {
+      "title": "AI confidence distribution",
+      "subtitle": "Structured sections by confidence level.",
+      "empty": "No confidence data for this period.",
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    },
+    "session": {
+      "title": "Session analytics",
+      "stepDictation": "Dictation",
+      "stepValidation": "Validation",
+      "stepTurnaround": "Turnaround",
+      "completion": "Completion rate",
+      "method": "Dictation method",
+      "methodMobile": "Phone (QR)",
+      "methodUpload": "File import",
+      "topMethod": "Most-used method",
+      "method_mobile": "Phone (QR)",
+      "method_upload": "File import",
+      "method_none": "—",
+      "exportUsage": "Export usage",
+      "print": "Print"
+    },
+    "feedback": {
+      "title": "Feedback summary",
+      "total": "{n} item(s) in this period.",
+      "empty": "No feedback yet.",
+      "byCategory": "By category",
+      "byPriority": "By priority",
+      "recent": "Recent feedback",
+      "categories": {
+        "workflow": "Workflow",
+        "ai": "AI",
+        "ui": "Interface",
+        "performance": "Performance",
+        "other": "Other"
+      },
+      "priorities": {
+        "critical": "Critical",
+        "important": "Important",
+        "nice_to_have": "Nice to have"
+      }
+    },
+    "report": {
+      "title": "Pilot report",
+      "subtitle": "Administrator-only summary.",
+      "commonIssues": "Most-reported issues",
+      "noIssues": "No issues reported.",
+      "recommendations": "Recommendations",
+      "rec": {
+        "critical_feedback": "Critical feedback needs immediate attention.",
+        "low_confidence": "Many low-confidence sections: enrich templates and vocabulary memory.",
+        "high_corrections": "High correction count: review templates and the radiologist's preferred style.",
+        "slow_validation": "High validation time: streamline review and structured templates.",
+        "low_completion": "Low completion rate: support users through the end of the flow.",
+        "healthy": "The pilot is going well: no warning signals this period."
+      },
+      "footer": "Clinic: {clinic} · Generated {date}"
+    }
   },
   "dashboard": {
     "title": "Dashboard",

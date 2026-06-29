@@ -14,6 +14,8 @@ export type IconName =
   | 'critical'
   | 'vacations'
   | 'secretary'
+  | 'feedback'
+  | 'pilot'
 
 export interface NavItem {
   label: string
@@ -79,6 +81,13 @@ export const navigation: NavGroup[] = [
         href: '/critical-queue',
         icon: 'critical',
         roles: ['clinic_admin', 'radiologist', 'technician', 'super_admin'],
+      },
+      { label: 'Feedback', href: '/feedback', icon: 'feedback' },
+      {
+        label: 'Pilot',
+        href: '/pilot',
+        icon: 'pilot',
+        roles: ['clinic_admin', 'super_admin'],
       },
     ],
   },
