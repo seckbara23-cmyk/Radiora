@@ -1903,18 +1903,19 @@
       "title": "Built with Senegalese radiologists",
       "body": "Radiora was developed in collaboration with radiologists practising in Senegal to meet the realities of high-volume imaging sessions.",
       "modalities": ["CT", "MRI", "Ultrasound", "Conventional X-ray"],
-      "footer": "Optimized for sessions of 20 to 50 patients per day."
+      "footer": "Optimized for sessions of 20 to 50 exams per day."
     },
     "mobile": {
-      "title": "Secure mobile dictation",
-      "subtitle": "Turn your phone into a radiology microphone.",
+      "title": "How Radiora works",
+      "subtitle": "One single flow, from phone to secure delivery.",
       "steps": [
         "Phone",
         "Secure QR",
         "Dictation",
         "AI structuring",
         "Radiologist validation",
-        "PDF / DOCX / Print"
+        "Export PDF / Word",
+        "Secure delivery"
       ],
       "note1": "No app to install.",
       "note2": "Instant connection via secure QR code."
@@ -1955,17 +1956,16 @@
       "secondary": "Request a demo"
     },
     "why": {
-      "heading": "Why choose Radiora?",
-      "subtitle": "A clear value proposition, validated with Senegalese radiologists.",
+      "heading": "Why Radiora?",
+      "subtitle": "The essentials, in six points.",
       "themes": [
-        { "icon": "⏱", "title": "Time saved", "points": ["Phone", "AI", "Validation", "PDF"] },
-        { "icon": "📋", "title": "Quality", "points": ["Standardization", "Structuring", "Templates", "Validation"] },
-        { "icon": "📱", "title": "Mobility", "points": ["Phone", "QR code", "No app"] },
-        { "icon": "🔒", "title": "Security", "points": ["Radiologist validation", "Archiving", "Audit", "Secure delivery"] },
-        { "icon": "🎯", "title": "Adaptation", "points": ["Personal style", "Vocabulary", "Institution", "Signature"] }
-      ],
-      "senegalTitle": "Built with Senegalese radiologists",
-      "senegalDesc": "Designed for the real practice of imaging in Senegal and West Africa."
+        { "icon": "⏱", "title": "Time saved", "desc": "From phone to validated PDF in minutes." },
+        { "icon": "🩺", "title": "Medical validation", "desc": "The radiologist validates and signs every report. AI assists, never decides." },
+        { "icon": "📱", "title": "Mobile dictation", "desc": "Your phone becomes a secure microphone via QR code — no app." },
+        { "icon": "🔒", "title": "Security", "desc": "Archiving, full audit trail and password-protected secure delivery." },
+        { "icon": "🎯", "title": "Radiologist-adapted", "desc": "Personalized style, vocabulary, signature and institution." },
+        { "icon": "🇸🇳", "title": "Built in Senegal", "desc": "Developed with Senegalese radiologists for high-volume sessions." }
+      ]
     }
   }
 }

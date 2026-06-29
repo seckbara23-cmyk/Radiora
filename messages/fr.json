@@ -1903,18 +1903,19 @@
       "title": "Conçu avec des radiologues sénégalais",
       "body": "Radiora a été développé en collaboration avec des radiologues exerçant au Sénégal afin de répondre aux réalités des vacations d'imagerie à fort volume.",
       "modalities": ["Scanner", "IRM", "Échographie", "Radiographie conventionnelle"],
-      "footer": "Optimisé pour des vacations de 20 à 50 patients par jour."
+      "footer": "Optimisé pour des vacations de 20 à 50 examens par jour."
     },
     "mobile": {
-      "title": "Dictée mobile sécurisée",
-      "subtitle": "Transformez votre téléphone en microphone radiologique.",
+      "title": "Comment fonctionne Radiora",
+      "subtitle": "Un seul flux, du téléphone à l'envoi sécurisé.",
       "steps": [
         "Téléphone",
         "QR sécurisé",
         "Dictée",
         "Structuration IA",
         "Validation radiologue",
-        "PDF / DOCX / Impression"
+        "Export PDF / Word",
+        "Envoi sécurisé"
       ],
       "note1": "Aucune application à installer.",
       "note2": "Connexion instantanée par QR code sécurisé."
@@ -1955,17 +1956,16 @@
       "secondary": "Demander une démonstration"
     },
     "why": {
-      "heading": "Pourquoi choisir Radiora ?",
-      "subtitle": "Une proposition de valeur claire, validée avec des radiologues sénégalais.",
+      "heading": "Pourquoi Radiora ?",
+      "subtitle": "L'essentiel, en six points.",
       "themes": [
-        { "icon": "⏱", "title": "Gain de temps", "points": ["Téléphone", "IA", "Validation", "PDF"] },
-        { "icon": "📋", "title": "Qualité", "points": ["Standardisation", "Structuration", "Modèles", "Validation"] },
-        { "icon": "📱", "title": "Mobilité", "points": ["Téléphone", "QR Code", "Aucune application"] },
-        { "icon": "🔒", "title": "Sécurité", "points": ["Validation radiologue", "Archivage", "Audit", "Envoi sécurisé"] },
-        { "icon": "🎯", "title": "Adaptation", "points": ["Style personnel", "Vocabulaire", "Établissement", "Signature"] }
-      ],
-      "senegalTitle": "Conçu avec des radiologues sénégalais",
-      "senegalDesc": "Pensé pour la pratique réelle de l’imagerie au Sénégal et en Afrique de l’Ouest."
+        { "icon": "⏱", "title": "Gain de temps", "desc": "Du téléphone au PDF validé en quelques minutes." },
+        { "icon": "🩺", "title": "Validation médicale", "desc": "Le radiologue valide et signe chaque compte rendu. L'IA assiste, jamais ne décide." },
+        { "icon": "📱", "title": "Dictée mobile", "desc": "Votre téléphone devient un microphone sécurisé via QR code, sans application." },
+        { "icon": "🔒", "title": "Sécurité", "desc": "Archivage, audit complet et envoi sécurisé protégé par mot de passe." },
+        { "icon": "🎯", "title": "Adaptation au radiologue", "desc": "Style, vocabulaire, signature et établissement personnalisés." },
+        { "icon": "🇸🇳", "title": "Conçu au Sénégal", "desc": "Développé avec des radiologues sénégalais, pour les vacations à fort volume." }
+      ]
     }
   }
 }

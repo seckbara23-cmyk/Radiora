@@ -6,16 +6,10 @@ import {
   ResultsBanner,
   SenegalSection,
   MobileDictation,
-  RoiComparison,
   PilotTestimonial,
   WhyRadiora,
   TrialCta,
 } from '@/components/marketing/landing-sections'
-
-interface Highlight {
-  title: string
-  desc: string
-}
 
 export default async function MarketingHome({
   params,
@@ -25,8 +19,6 @@ export default async function MarketingHome({
   const { locale } = await params
   setRequestLocale(locale)
   const t = await getTranslations('marketing')
-
-  const highlights = t.raw('home.highlights') as Highlight[]
 
   return (
     <>
@@ -63,52 +55,29 @@ export default async function MarketingHome({
         </div>
       </section>
 
-      {/* Highlights */}
-      <section className="border-t border-gray-100">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <h2 className="text-center text-xs font-semibold uppercase tracking-wider text-gray-400">
-            {t('home.highlightsHeading')}
-          </h2>
-          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {highlights.map((h, i) => (
-              <div key={i} className="rounded-2xl border border-gray-100 bg-white p-6">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-sm font-bold text-blue-600">
-                  {i + 1}
-                </div>
-                <h3 className="mt-4 text-sm font-semibold text-gray-900">{h.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-gray-500">{h.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Results banner + Interactive AI demo */}
+      {/* 2. Interactive AI demo (moved directly under the hero) */}
       <section className="border-t border-gray-100 bg-gradient-to-br from-slate-50 via-white to-blue-50">
-        <div className="mx-auto max-w-6xl px-6 py-20">
+        <div className="mx-auto max-w-6xl px-6 py-16">
           <ResultsBanner />
-          <div className="mt-12">
+          <div className="mt-10">
             <RadioraDemo />
           </div>
         </div>
       </section>
 
-      {/* Conçu pour le Sénégal */}
-      <SenegalSection />
-
-      {/* Mobile dictation workflow */}
+      {/* 3. Clinical workflow — the single, unified "how it works" section */}
       <MobileDictation />
 
-      {/* ROI / productivity comparison */}
-      <RoiComparison />
-
-      {/* Pilot program testimonial */}
-      <PilotTestimonial />
-
-      {/* Pourquoi choisir Radiora ? — value proposition (presentation Screen 9) */}
+      {/* 4. Why Radiora — single benefits section (six cards) */}
       <WhyRadiora />
 
-      {/* Trial CTA */}
+      {/* 5. Built with Senegalese radiologists (compact) */}
+      <SenegalSection />
+
+      {/* 6. Pilot testimonial */}
+      <PilotTestimonial />
+
+      {/* 7. Final CTA */}
       <TrialCta />
     </>
   )

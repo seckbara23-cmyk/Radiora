@@ -54,33 +54,29 @@ export async function SenegalSection() {
   const modalities = t.raw('senegal.modalities') as string[]
   return (
     <section aria-labelledby="senegal-heading" className="border-t border-gray-100 bg-white">
-      <div className="mx-auto max-w-5xl px-6 py-20">
-        <div className="mx-auto max-w-2xl text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-            <SenegalStar className="text-[#00853F]" />
-            Sénégal
-          </span>
-          <h2 id="senegal-heading" className="mt-5 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            {t('senegal.title')}
-          </h2>
-          <p className="mt-5 text-lg leading-relaxed text-gray-500">{t('senegal.body')}</p>
-        </div>
+      <div className="mx-auto max-w-4xl px-6 py-12 text-center">
+        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-semibold text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
+          <SenegalStar className="text-[#00853F]" />
+          Sénégal
+        </span>
+        <h2 id="senegal-heading" className="mt-4 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+          {t('senegal.title')}
+        </h2>
 
-        <ul className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {/* Modalities as compact inline chips */}
+        <ul className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
           {modalities.map((m, i) => (
             <li
               key={i}
-              className="flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-gradient-to-b from-white to-slate-50 p-6 text-center"
+              className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3.5 py-1.5 text-sm font-medium text-gray-700"
             >
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                <CheckIcon className="h-5 w-5" />
-              </span>
-              <span className="text-sm font-semibold text-gray-900">{m}</span>
+              <CheckIcon className="h-3.5 w-3.5 text-emerald-500" />
+              {m}
             </li>
           ))}
         </ul>
 
-        <p className="mt-10 flex items-center justify-center gap-2 text-center text-sm font-medium text-gray-600">
+        <p className="mt-6 flex items-center justify-center gap-2 text-sm font-medium text-gray-600">
           <SenegalDots />
           {t('senegal.footer')}
         </p>
@@ -89,8 +85,8 @@ export async function SenegalSection() {
   )
 }
 
-// ── Section 3 — Mobile dictation workflow ─────────────────────────────────────
-const MOBILE_EMOJI = ['📱', '🔗', '🎙', '🧠', '✅', '📄']
+// ── Section 3 — Clinical workflow (unified "how it works") ────────────────────
+const MOBILE_EMOJI = ['📱', '🔗', '🎙', '🧠', '✅', '📄', '📨']
 
 export async function MobileDictation() {
   const t = await getTranslations('landing')
@@ -137,73 +133,6 @@ export async function MobileDictation() {
   )
 }
 
-// ── Section 4 — ROI / productivity comparison ─────────────────────────────────
-function FlowColumn({
-  title,
-  steps,
-  tone,
-}: {
-  title: string
-  steps: string[]
-  tone: 'muted' | 'brand'
-}) {
-  const brand = tone === 'brand'
-  return (
-    <div
-      className={[
-        'rounded-2xl border p-6',
-        brand ? 'border-blue-200 bg-blue-50/60' : 'border-gray-200 bg-gray-50',
-      ].join(' ')}
-    >
-      <h3 className={['text-center text-sm font-bold uppercase tracking-wide', brand ? 'text-blue-700' : 'text-gray-500'].join(' ')}>
-        {title}
-      </h3>
-      <ol className="mt-5 flex flex-col items-center gap-2">
-        {steps.map((step, i) => (
-          <li key={i} className="contents">
-            <span
-              className={[
-                'w-full rounded-lg px-4 py-2.5 text-center text-sm font-medium',
-                brand ? 'bg-white text-gray-900 shadow-sm ring-1 ring-inset ring-blue-100' : 'bg-white text-gray-600 ring-1 ring-inset ring-gray-100',
-              ].join(' ')}
-            >
-              {step}
-            </span>
-            {i < steps.length - 1 && (
-              <ArrowDown className={['h-4 w-4', brand ? 'text-blue-400' : 'text-gray-300'].join(' ')} />
-            )}
-          </li>
-        ))}
-      </ol>
-    </div>
-  )
-}
-
-export async function RoiComparison() {
-  const t = await getTranslations('landing')
-  return (
-    <section aria-labelledby="roi-heading" className="border-t border-gray-100 bg-white">
-      <div className="mx-auto max-w-4xl px-6 py-20">
-        <div className="text-center">
-          <h2 id="roi-heading" className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            {t('roi.title')}
-          </h2>
-          <span className="mt-5 inline-block rounded-full bg-gray-900 px-4 py-1.5 text-sm font-semibold text-white">
-            {t('roi.volume')}
-          </span>
-        </div>
-
-        <div className="mt-12 grid gap-6 sm:grid-cols-2">
-          <FlowColumn title={t('roi.withoutTitle')} steps={t.raw('roi.withoutSteps') as string[]} tone="muted" />
-          <FlowColumn title={t('roi.withTitle')} steps={t.raw('roi.withSteps') as string[]} tone="brand" />
-        </div>
-
-        <p className="mx-auto mt-10 max-w-2xl text-center text-sm font-medium text-gray-600">{t('roi.footer')}</p>
-      </div>
-    </section>
-  )
-}
-
 // ── Section 5 — Pilot program testimonial ─────────────────────────────────────
 export async function PilotTestimonial() {
   const t = await getTranslations('landing')
@@ -244,13 +173,13 @@ export async function PilotTestimonial() {
   )
 }
 
-// ── Section — "Pourquoi choisir Radiora ?" value proposition (Screen 9) ───────
-// Consolidates the expert-validated value themes (slide 12). Reuses the existing
-// design system; static, French-first, no backend.
+// ── Section 4 — "Pourquoi Radiora" — the single benefits section ──────────────
+// One unified value-proposition grid (six cards). Merges the former highlights
+// grid and the second "why" section into a single, scannable block.
 interface WhyTheme {
   icon: string
   title: string
-  points: string[]
+  desc: string
 }
 
 export async function WhyRadiora() {
@@ -273,27 +202,9 @@ export async function WhyRadiora() {
                 {theme.icon}
               </span>
               <h3 className="mt-4 text-base font-semibold text-gray-900">{theme.title}</h3>
-              <ul className="mt-3 space-y-2">
-                {theme.points.map((p, j) => (
-                  <li key={j} className="flex items-start gap-2 text-sm text-gray-600">
-                    <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-                    {p}
-                  </li>
-                ))}
-              </ul>
+              <p className="mt-1.5 text-sm leading-relaxed text-gray-500">{theme.desc}</p>
             </div>
           ))}
-
-          {/* Theme 6 — Conçu avec des radiologues sénégalais */}
-          <div className="flex flex-col justify-center rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
-            <span className="flex items-center gap-2 text-2xl" aria-hidden="true">
-              <SenegalStar className="h-6 w-6 text-[#00853F]" />
-              🇸🇳
-            </span>
-            <h3 className="mt-4 text-base font-semibold text-gray-900">{t('why.senegalTitle')}</h3>
-            <p className="mt-2 text-sm leading-relaxed text-gray-600">{t('why.senegalDesc')}</p>
-            <SenegalDots className="mt-4" />
-          </div>
         </div>
       </div>
     </section>
