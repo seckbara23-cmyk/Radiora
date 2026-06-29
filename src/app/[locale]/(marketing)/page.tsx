@@ -8,6 +8,7 @@ import {
   MobileDictation,
   RoiComparison,
   PilotTestimonial,
+  WhyRadiora,
   TrialCta,
 } from '@/components/marketing/landing-sections'
 
@@ -103,6 +104,9 @@ export default async function MarketingHome({
 
       {/* Pilot program testimonial */}
       <PilotTestimonial />
+
+      {/* Pourquoi choisir Radiora ? — value proposition (presentation Screen 9) */}
+      <WhyRadiora />
 
       {/* Trial CTA */}
       <TrialCta />

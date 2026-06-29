@@ -1853,6 +1853,19 @@
       "subtext2": "Set up in under 10 minutes.",
       "primary": "Create my account",
       "secondary": "Request a demo"
+    },
+    "why": {
+      "heading": "Why choose Radiora?",
+      "subtitle": "A clear value proposition, validated with Senegalese radiologists.",
+      "themes": [
+        { "icon": "⏱", "title": "Time saved", "points": ["Phone", "AI", "Validation", "PDF"] },
+        { "icon": "📋", "title": "Quality", "points": ["Standardization", "Structuring", "Templates", "Validation"] },
+        { "icon": "📱", "title": "Mobility", "points": ["Phone", "QR code", "No app"] },
+        { "icon": "🔒", "title": "Security", "points": ["Radiologist validation", "Archiving", "Audit", "Secure delivery"] },
+        { "icon": "🎯", "title": "Adaptation", "points": ["Personal style", "Vocabulary", "Institution", "Signature"] }
+      ],
+      "senegalTitle": "Built with Senegalese radiologists",
+      "senegalDesc": "Designed for the real practice of imaging in Senegal and West Africa."
     }
   }
 }

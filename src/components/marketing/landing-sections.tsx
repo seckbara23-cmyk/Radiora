@@ -244,6 +244,62 @@ export async function PilotTestimonial() {
   )
 }
 
+// ── Section — "Pourquoi choisir Radiora ?" value proposition (Screen 9) ───────
+// Consolidates the expert-validated value themes (slide 12). Reuses the existing
+// design system; static, French-first, no backend.
+interface WhyTheme {
+  icon: string
+  title: string
+  points: string[]
+}
+
+export async function WhyRadiora() {
+  const t = await getTranslations('landing')
+  const themes = t.raw('why.themes') as WhyTheme[]
+  return (
+    <section aria-labelledby="why-heading" className="border-t border-gray-100 bg-white">
+      <div className="mx-auto max-w-6xl px-6 py-20">
+        <div className="mx-auto max-w-2xl text-center">
+          <h2 id="why-heading" className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
+            {t('why.heading')}
+          </h2>
+          <p className="mt-4 text-lg leading-relaxed text-gray-500">{t('why.subtitle')}</p>
+        </div>
+
+        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {themes.map((theme, i) => (
+            <div key={i} className="rounded-2xl border border-gray-100 bg-gradient-to-b from-white to-slate-50 p-6">
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-50 text-2xl" aria-hidden="true">
+                {theme.icon}
+              </span>
+              <h3 className="mt-4 text-base font-semibold text-gray-900">{theme.title}</h3>
+              <ul className="mt-3 space-y-2">
+                {theme.points.map((p, j) => (
+                  <li key={j} className="flex items-start gap-2 text-sm text-gray-600">
+                    <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                    {p}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+
+          {/* Theme 6 — Conçu avec des radiologues sénégalais */}
+          <div className="flex flex-col justify-center rounded-2xl border border-emerald-100 bg-emerald-50/50 p-6">
+            <span className="flex items-center gap-2 text-2xl" aria-hidden="true">
+              <SenegalStar className="h-6 w-6 text-[#00853F]" />
+              🇸🇳
+            </span>
+            <h3 className="mt-4 text-base font-semibold text-gray-900">{t('why.senegalTitle')}</h3>
+            <p className="mt-2 text-sm leading-relaxed text-gray-600">{t('why.senegalDesc')}</p>
+            <SenegalDots className="mt-4" />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // ── Section 6 — Trial CTA ─────────────────────────────────────────────────────
 export async function TrialCta() {
   const t = await getTranslations('landing')

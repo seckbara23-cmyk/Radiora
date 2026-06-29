@@ -1853,6 +1853,19 @@
       "subtext2": "Configuration en moins de 10 minutes.",
       "primary": "Créer mon compte",
       "secondary": "Demander une démonstration"
+    },
+    "why": {
+      "heading": "Pourquoi choisir Radiora ?",
+      "subtitle": "Une proposition de valeur claire, validée avec des radiologues sénégalais.",
+      "themes": [
+        { "icon": "⏱", "title": "Gain de temps", "points": ["Téléphone", "IA", "Validation", "PDF"] },
+        { "icon": "📋", "title": "Qualité", "points": ["Standardisation", "Structuration", "Modèles", "Validation"] },
+        { "icon": "📱", "title": "Mobilité", "points": ["Téléphone", "QR Code", "Aucune application"] },
+        { "icon": "🔒", "title": "Sécurité", "points": ["Validation radiologue", "Archivage", "Audit", "Envoi sécurisé"] },
+        { "icon": "🎯", "title": "Adaptation", "points": ["Style personnel", "Vocabulaire", "Établissement", "Signature"] }
+      ],
+      "senegalTitle": "Conçu avec des radiologues sénégalais",
+      "senegalDesc": "Pensé pour la pratique réelle de l’imagerie au Sénégal et en Afrique de l’Ouest."
     }
   }
 }
