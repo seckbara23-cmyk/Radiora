@@ -1355,8 +1355,18 @@
     "add": "Ajouter"
   },
   "delivery": {
-    "panelTitle": "Transmission sécurisée",
+    "panelTitle": "Envoi sécurisé",
     "panelSubtitle": "Créez un lien sécurisé pour transmettre ce compte rendu validé. Aucune donnée n’est envoyée à un service externe ; chaque accès est journalisé.",
+    "sections": {
+      "recipientTitle": "Destinataire",
+      "recipientDesc": "Le compte rendu peut être envoyé de manière sécurisée au patient ou au médecin prescripteur.",
+      "protectionTitle": "Protection",
+      "protectionDesc": "Chaque lien est personnel et sécurisé.",
+      "deliveryTitle": "Diffusion",
+      "deliveryDesc": "Le document distribué est figé après validation.",
+      "traceTitle": "Traçabilité",
+      "traceDesc": "Toutes les actions sont historisées."
+    },
     "channel": {
       "patient": "Envoyer au patient",
       "physician": "Envoyer au médecin traitant",
@@ -1383,6 +1393,7 @@
     },
     "list": {
       "title": "Liens existants",
+      "empty": "Aucun envoi pour l’instant. Les liens créés apparaîtront ici avec leur historique.",
       "opened": "Ouvertures",
       "downloaded": "Téléchargements",
       "copyLink": "Copier lien sécurisé",

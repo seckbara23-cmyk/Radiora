@@ -5,7 +5,7 @@
 // secure URL, and revokes links. Sending never transmits PHI externally — it
 // records an in-app secure link + audit trail.
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { createDelivery, revokeDelivery } from '@/lib/actions/deliveries'
@@ -18,6 +18,27 @@ interface Props {
   headers: { id: string; name: string }[]
   deliveries: ReportDelivery[]
   nowISO: string
+}
+
+// Numbered sub-section for the secure-delivery workflow (presentation Screen 8).
+// Presentational only — frames the existing form fields and history list.
+function SubSection({
+  n, title, desc, children,
+}: { n: number; title: string; desc: string; children: ReactNode }) {
+  return (
+    <div className="mt-6 border-t border-gray-100 pt-5">
+      <div className="flex items-start gap-3">
+        <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-semibold text-blue-600">
+          {n}
+        </span>
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+          <p className="mt-0.5 text-xs text-gray-500">{desc}</p>
+        </div>
+      </div>
+      <div className="mt-4">{children}</div>
+    </div>
+  )
 }
 
 export function SecureDeliveryPanel({ reportId, locale, headers, deliveries, nowISO }: Props) {
@@ -96,103 +117,116 @@ export function SecureDeliveryPanel({ reportId, locale, headers, deliveries, now
       <h2 className="text-base font-semibold text-gray-900">{t('panelTitle')}</h2>
       <p className="mt-1 text-sm text-gray-500">{t('panelSubtitle')}</p>
 
-      {/* Create form */}
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">{t('form.recipientType')}</span>
-          <select
-            value={channel}
-            onChange={(e) => setChannel(e.target.value as typeof channel)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          >
-            <option value="patient">{t('channel.patient')}</option>
-            <option value="physician">{t('channel.physician')}</option>
-            <option value="link">{t('channel.link')}</option>
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">{t('form.recipientLabel')}</span>
-          <input
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            placeholder={t('form.recipientPlaceholder')}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          />
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">{t('form.header')}</span>
-          <select
-            value={header}
-            onChange={(e) => setHeader(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          >
-            <option value="">{t('form.headerDefault')}</option>
-            <option value="none">{t('form.headerNone')}</option>
-            {headers.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">{t('form.expiry')}</span>
-          <select
-            value={expiresInDays}
-            onChange={(e) => setExpiresInDays(Number(e.target.value))}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          >
-            <option value={7}>{t('form.expiry7')}</option>
-            <option value={30}>{t('form.expiry30')}</option>
-            <option value={0}>{t('form.expiryNever')}</option>
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="text-sm font-medium text-gray-700">{t('form.password')}</span>
-          <select
-            value={passwordKind}
-            onChange={(e) => setPasswordKind(e.target.value as typeof passwordKind)}
-            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-          >
-            <option value="dob">{t('form.passwordDob')}</option>
-            <option value="custom">{t('form.passwordCustom')}</option>
-            <option value="none">{t('form.passwordNone')}</option>
-          </select>
-        </label>
-
-        {passwordKind === 'custom' && (
+      {/* ── 1. Destinataire ── */}
+      <SubSection n={1} title={t('sections.recipientTitle')} desc={t('sections.recipientDesc')}>
+        <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="text-sm font-medium text-gray-700">{t('form.customPassword')}</span>
+            <span className="text-sm font-medium text-gray-700">{t('form.recipientType')}</span>
+            <select
+              value={channel}
+              onChange={(e) => setChannel(e.target.value as typeof channel)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="patient">{t('channel.patient')}</option>
+              <option value="physician">{t('channel.physician')}</option>
+              <option value="link">{t('channel.link')}</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">{t('form.recipientLabel')}</span>
             <input
-              value={customPassword}
-              onChange={(e) => setCustomPassword(e.target.value)}
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              placeholder={t('form.recipientPlaceholder')}
               className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </label>
-        )}
-      </div>
+        </div>
+      </SubSection>
 
-      {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      {/* ── 2. Protection ── */}
+      <SubSection n={2} title={t('sections.protectionTitle')} desc={t('sections.protectionDesc')}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">{t('form.password')}</span>
+            <select
+              value={passwordKind}
+              onChange={(e) => setPasswordKind(e.target.value as typeof passwordKind)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="dob">{t('form.passwordDob')}</option>
+              <option value="custom">{t('form.passwordCustom')}</option>
+              <option value="none">{t('form.passwordNone')}</option>
+            </select>
+          </label>
 
-      <div className="mt-4">
-        <button
-          onClick={handleCreate}
-          disabled={pending}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
-        >
-          {pending ? t('form.creating') : t('form.create')}
-        </button>
-      </div>
+          {passwordKind === 'custom' && (
+            <label className="block">
+              <span className="text-sm font-medium text-gray-700">{t('form.customPassword')}</span>
+              <input
+                value={customPassword}
+                onChange={(e) => setCustomPassword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+            </label>
+          )}
 
-      {/* Existing deliveries */}
-      {deliveries.length > 0 && (
-        <div className="mt-6 border-t border-gray-100 pt-5">
-          <h3 className="text-sm font-semibold text-gray-700">{t('list.title')}</h3>
-          <ul className="mt-3 space-y-2">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">{t('form.expiry')}</span>
+            <select
+              value={expiresInDays}
+              onChange={(e) => setExpiresInDays(Number(e.target.value))}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value={7}>{t('form.expiry7')}</option>
+              <option value={30}>{t('form.expiry30')}</option>
+              <option value={0}>{t('form.expiryNever')}</option>
+            </select>
+          </label>
+        </div>
+      </SubSection>
+
+      {/* ── 3. Diffusion ── */}
+      <SubSection n={3} title={t('sections.deliveryTitle')} desc={t('sections.deliveryDesc')}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="text-sm font-medium text-gray-700">{t('form.header')}</span>
+            <select
+              value={header}
+              onChange={(e) => setHeader(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">{t('form.headerDefault')}</option>
+              <option value="none">{t('form.headerNone')}</option>
+              {headers.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+        <div className="mt-4">
+          <button
+            onClick={handleCreate}
+            disabled={pending}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {pending ? t('form.creating') : t('form.create')}
+          </button>
+        </div>
+      </SubSection>
+
+      {/* ── 4. Traçabilité ── */}
+      <SubSection n={4} title={t('sections.traceTitle')} desc={t('sections.traceDesc')}>
+        {deliveries.length === 0 ? (
+          <p className="text-sm text-gray-400">{t('list.empty')}</p>
+        ) : (
+          <ul className="space-y-2">
             {deliveries.map((d) => {
               const state = deliveryState(d.expiresAt, d.revokedAt, nowISO)
               const stateColor =
@@ -242,8 +276,8 @@ export function SecureDeliveryPanel({ reportId, locale, headers, deliveries, now
               )
             })}
           </ul>
-        </div>
-      )}
+        )}
+      </SubSection>
     </section>
   )
 }

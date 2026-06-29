@@ -1357,6 +1357,16 @@
   "delivery": {
     "panelTitle": "Secure delivery",
     "panelSubtitle": "Create a secure link to deliver this validated report. No data is sent to an external service; every access is logged.",
+    "sections": {
+      "recipientTitle": "Recipient",
+      "recipientDesc": "The report can be securely sent to the patient or to the referring physician.",
+      "protectionTitle": "Protection",
+      "protectionDesc": "Each link is personal and secure.",
+      "deliveryTitle": "Delivery",
+      "deliveryDesc": "The delivered document is frozen after validation.",
+      "traceTitle": "Traceability",
+      "traceDesc": "Every action is recorded."
+    },
     "channel": {
       "patient": "Send to patient",
       "physician": "Send to referring physician",
@@ -1383,6 +1393,7 @@
     },
     "list": {
       "title": "Existing links",
+      "empty": "No delivery yet. Links you create will appear here with their history.",
       "opened": "Opens",
       "downloaded": "Downloads",
       "copyLink": "Copy secure link",
