@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { CreateVacationForm } from './CreateVacationForm'
 import { DictationOptions } from './DictationOptions'
 import { TranscriptionPipeline } from './TranscriptionPipeline'
+import { LiveDictationPanel } from '@/components/dictation/LiveDictationPanel'
 import { ItemStatusControl } from './ItemStatusControl'
 import type { Modality } from '@/types/study'
 import {
@@ -79,6 +80,9 @@ export default async function VacationsPage({ params, searchParams }: Props) {
 
       {/* Two large entry options — QR live dictation · audio import */}
       <DictationOptions radiologists={radiologists} />
+
+      {/* Live browser dictation (Phase 6B) — try it here; copy the transcript */}
+      <LiveDictationPanel />
 
       {/* Existing Vacation Audio Queue (reused, not redesigned) */}
       <div className="flex items-center justify-between gap-4 pt-2">

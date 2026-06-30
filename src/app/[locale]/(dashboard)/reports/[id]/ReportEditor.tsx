@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl'
 import { handleReportForm } from '@/lib/actions/reports'
 import { SmartStructuringPanel } from './SmartStructuringPanel'
 import { VoiceDictationPanel } from './VoiceDictationPanel'
+import { LiveDictationPanel } from '@/components/dictation/LiveDictationPanel'
 import { buildExamInfo, buildDefaultTechnique } from '@/lib/ai/hpd-engine'
 import { SectionSuggestions } from './SectionSuggestions'
 import { getSpecialForm, SPECIAL_LAYOUTS, type SpecialFormSchema } from '@/config/special-forms'
@@ -610,6 +611,18 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
       {/* ── Voice dictation ──────── (free-text exams only) ──────── */}
       {isEditable && !hasSpecialForm && (
         <VoiceDictationPanel reportId={report.id} onApply={handleVoiceApply} />
+      )}
+
+      {/* ── Live browser dictation (Phase 6B) ── (free-text exams only) ── */}
+      {isEditable && !hasSpecialForm && (
+        <LiveDictationPanel
+          modality={modality}
+          bodyPart={bodyPart}
+          patientName={patientInfo.name}
+          patientAge={patientInfo.age}
+          patientSex={patientInfo.sex}
+          onApply={handleVoiceApply}
+        />
       )}
 
       {/* ── AI structuring panel ── (free-text exams only) ──────── */}

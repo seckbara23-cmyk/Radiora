@@ -19,6 +19,7 @@ import { PatientMatchControl } from './PatientMatchControl'
 import { StructuringReview } from './StructuringReview'
 import { TranscriptionAI } from './TranscriptionAI'
 import { CreateReportFromQueue } from './CreateReportFromQueue'
+import { LiveDictationPanel } from '@/components/dictation/LiveDictationPanel'
 import type { UserRole } from '@/types/user'
 import type { StructuringResult } from '@/types/structuring'
 
@@ -137,6 +138,15 @@ export default async function ItemWorkspacePage({ params }: Props) {
           <p className="text-sm text-gray-400">{t('noAudioYet')}</p>
         )}
       </section>
+
+      {/* Live browser dictation (Phase 6B) — fills the transcript on explicit apply */}
+      {canManage && (
+        <LiveDictationPanel
+          modality={item.vacationModality ?? null}
+          patientName={item.patientName ?? item.patientLabel ?? ''}
+          saveToItemId={item.id}
+        />
+      )}
 
       {/* Transcription */}
       <section className="bg-white rounded-xl border border-gray-200 p-4">
