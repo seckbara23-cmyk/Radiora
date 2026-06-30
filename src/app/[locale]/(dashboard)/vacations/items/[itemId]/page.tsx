@@ -145,6 +145,7 @@ export default async function ItemWorkspacePage({ params }: Props) {
           modality={item.vacationModality ?? null}
           patientName={item.patientName ?? item.patientLabel ?? ''}
           saveToItemId={item.id}
+          existingText={transcriptText}
         />
       )}
 

@@ -25,6 +25,8 @@ export interface SpeechRecognitionState {
   resume: () => void
   stop: () => void
   reset: () => void
+  /** Inject text without the mic (sample-dictation helper for pilot testing). */
+  injectText: (text: string) => void
 }
 
 export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecognitionOptions = {}): SpeechRecognitionState {
@@ -147,6 +149,18 @@ export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecog
     setStatus('idle')
   }, [stopTimer])
 
+  // Sample-dictation helper: stop any live capture and load fixed text so a
+  // radiologist can try the flow without speaking. Never records, never saves.
+  const injectText = useCallback((text: string) => {
+    stoppingRef.current = true
+    try { recognitionRef.current?.abort() } catch { /* noop */ }
+    recognitionRef.current = null
+    stopTimer()
+    finalRef.current = text
+    setTranscript(text)
+    setStatus('stopped')
+  }, [stopTimer])
+
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
@@ -156,5 +170,5 @@ export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecog
     }
   }, [])
 
-  return { supported, status, transcript, elapsed, start, pause, resume, stop, reset }
+  return { supported, status, transcript, elapsed, start, pause, resume, stop, reset, injectText }
 }

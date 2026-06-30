@@ -152,7 +152,48 @@
     "copyTranscript": "Copier la transcription",
     "applying": "Application…",
     "applied": "Transcription appliquée",
-    "noAutoSave": "Rien n'est enregistré automatiquement."
+    "noAutoSave": "Rien n'est enregistré automatiquement.",
+    "notSavedWarning": "Cette transcription n'est pas encore enregistrée. Cliquez sur le bouton ci-dessous pour l'utiliser.",
+    "diagnostic": {
+      "check": "Vérifier mon navigateur",
+      "hide": "Masquer le diagnostic",
+      "title": "Diagnostic du navigateur",
+      "speechApi": "API de reconnaissance vocale",
+      "available": "Disponible",
+      "unavailable": "Indisponible",
+      "mic": "Microphone",
+      "micGranted": "Autorisé",
+      "micDenied": "Refusé",
+      "micPrompt": "À autoriser",
+      "micUnknown": "Inconnu",
+      "language": "Langue",
+      "browser": "Navigateur",
+      "guidance": "Pour la dictée en direct, utilisez Chrome ou Edge sur ordinateur. Sinon, utilisez l'import audio ou la dictée mobile."
+    },
+    "samples": {
+      "label": "Essayer un exemple :",
+      "items": [
+        { "label": "Scanner cérébral", "text": "Indication : céphalées. Technique : scanner cérébral sans injection. Résultats : pas d'hémorragie ni d'effet de masse, structures médianes en place. Conclusion : scanner cérébral normal." },
+        { "label": "Scanner thoracique", "text": "Indication : bilan. Technique : scanner thoracique avec injection. Résultats : absence d'épanchement pleural, pas d'adénopathie médiastinale, parenchyme pulmonaire sans foyer. Conclusion : examen normal." },
+        { "label": "Échographie abdominale", "text": "Indication : douleurs abdominales. Technique : échographie abdominale. Résultats : foie de taille normale, pas de lithiase vésiculaire, reins sans dilatation. Conclusion : échographie abdominale sans anomalie." }
+      ]
+    },
+    "compare": {
+      "title": "Une transcription existe déjà. Que souhaitez-vous faire ?",
+      "existing": "Transcription existante",
+      "new": "Nouvelle transcription",
+      "replace": "Remplacer",
+      "append": "Ajouter à la suite",
+      "cancel": "Annuler"
+    },
+    "feedbackPrompt": {
+      "question": "La dictée en direct était-elle utile ?",
+      "yes": "Oui",
+      "no": "Non",
+      "commentPlaceholder": "Commentaire (facultatif)…",
+      "send": "Envoyer",
+      "thanks": "Merci pour votre retour !"
+    }
   },
   "feedback": {
     "title": "Votre avis",
@@ -848,7 +889,7 @@
     "noPhrasesYet": "Aucune préférence enregistrée"
   },
   "voiceDictation": {
-    "title": "Dictée vocale",
+    "title": "Enregistrement classique",
     "badge": "Navigateur",
     "disclaimer": "Révision clinicien requise. Les transcriptions vocales doivent être révisées et éditées avant usage clinique. Les transcriptions sont transmises à la structuration intelligente — jamais appliquées automatiquement.",
     "noSpeechApi": "Votre navigateur ne prend pas en charge la Web Speech API. Vous pouvez saisir vos notes de dictée manuellement ci-dessous.",

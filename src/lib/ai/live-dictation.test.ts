@@ -4,6 +4,8 @@ import {
   liveCleanup,
   findLiveCorrections,
   computeLivePreview,
+  detectBrowserName,
+  combineTranscript,
 } from '@/lib/ai/live-dictation'
 
 // ── 6B browser support fallback logic ─────────────────────────────────────────
@@ -16,6 +18,36 @@ describe('isSpeechRecognitionSupported', () => {
     expect(isSpeechRecognitionSupported({})).toBe(false)
     expect(isSpeechRecognitionSupported(null)).toBe(false)
     expect(isSpeechRecognitionSupported(undefined)).toBe(false)
+  })
+})
+
+// ── 6B.2 diagnostic: browser detection ────────────────────────────────────────
+describe('detectBrowserName', () => {
+  it('identifies Edge before Chrome', () => {
+    expect(detectBrowserName('Mozilla/5.0 (Windows) AppleWebKit Chrome/120 Safari Edg/120')).toBe('Edge')
+  })
+  it('identifies Chrome, Firefox and Safari', () => {
+    expect(detectBrowserName('Mozilla/5.0 Chrome/120 Safari/537')).toBe('Chrome')
+    expect(detectBrowserName('Mozilla/5.0 Firefox/121')).toBe('Firefox')
+    expect(detectBrowserName('Mozilla/5.0 (Macintosh) Version/17 Safari/605')).toBe('Safari')
+  })
+  it('falls back to Autre for unknown UAs', () => {
+    expect(detectBrowserName('curl/8.0')).toBe('Autre')
+    expect(detectBrowserName('')).toBe('Autre')
+  })
+})
+
+// ── 6B.2 comparison mode: combine transcripts ─────────────────────────────────
+describe('combineTranscript', () => {
+  it('replace returns the incoming transcript', () => {
+    expect(combineTranscript('replace', 'old text', 'new text')).toBe('new text')
+  })
+  it('append joins existing and incoming on a new line', () => {
+    expect(combineTranscript('append', 'old', 'new')).toBe('old\nnew')
+  })
+  it('append handles empty sides gracefully', () => {
+    expect(combineTranscript('append', '', 'new')).toBe('new')
+    expect(combineTranscript('append', 'old', '')).toBe('old')
   })
 })
 

@@ -152,7 +152,48 @@
     "copyTranscript": "Copy transcript",
     "applying": "Applying…",
     "applied": "Transcript applied",
-    "noAutoSave": "Nothing is saved automatically."
+    "noAutoSave": "Nothing is saved automatically.",
+    "notSavedWarning": "This transcript is not saved yet. Click the button below to use it.",
+    "diagnostic": {
+      "check": "Check my browser",
+      "hide": "Hide diagnostic",
+      "title": "Browser diagnostic",
+      "speechApi": "Speech recognition API",
+      "available": "Available",
+      "unavailable": "Unavailable",
+      "mic": "Microphone",
+      "micGranted": "Granted",
+      "micDenied": "Denied",
+      "micPrompt": "Will prompt",
+      "micUnknown": "Unknown",
+      "language": "Language",
+      "browser": "Browser",
+      "guidance": "For live dictation, use Chrome or Edge on a computer. Otherwise, use audio import or mobile dictation."
+    },
+    "samples": {
+      "label": "Try an example:",
+      "items": [
+        { "label": "Brain CT", "text": "Indication: headache. Technique: non-contrast brain CT. Results: no hemorrhage or mass effect, midline structures in place. Conclusion: normal brain CT." },
+        { "label": "Chest CT", "text": "Indication: workup. Technique: contrast-enhanced chest CT. Results: no pleural effusion, no mediastinal adenopathy, lung parenchyma without focus. Conclusion: normal exam." },
+        { "label": "Abdominal ultrasound", "text": "Indication: abdominal pain. Technique: abdominal ultrasound. Results: normal-sized liver, no gallstones, kidneys without dilation. Conclusion: abdominal ultrasound without abnormality." }
+      ]
+    },
+    "compare": {
+      "title": "A transcript already exists. What would you like to do?",
+      "existing": "Existing transcript",
+      "new": "New transcript",
+      "replace": "Replace",
+      "append": "Append",
+      "cancel": "Cancel"
+    },
+    "feedbackPrompt": {
+      "question": "Was live dictation useful?",
+      "yes": "Yes",
+      "no": "No",
+      "commentPlaceholder": "Comment (optional)…",
+      "send": "Send",
+      "thanks": "Thanks for your feedback!"
+    }
   },
   "feedback": {
     "title": "Feedback",
@@ -848,7 +889,7 @@
     "noPhrasesYet": "No saved preferences yet"
   },
   "voiceDictation": {
-    "title": "Voice Dictation",
+    "title": "Classic recording",
     "badge": "Browser",
     "disclaimer": "Clinician review required. Voice transcripts must be reviewed and edited before clinical use. Transcripts are forwarded to Smart Structuring for structuring — never applied to the report automatically.",
     "noSpeechApi": "Your browser does not support the Web Speech API. You can type your dictation notes manually below.",

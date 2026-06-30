@@ -18,6 +18,33 @@ export function isSpeechRecognitionSupported(win: unknown): boolean {
   return 'SpeechRecognition' in w || 'webkitSpeechRecognition' in w
 }
 
+// Friendly browser name from a user-agent string (for the diagnostic card).
+// Order matters: Edge/Opera UAs also contain "Chrome".
+export function detectBrowserName(userAgent: string): string {
+  const ua = userAgent || ''
+  if (/\bEdg(e|A|iOS)?\//i.test(ua)) return 'Edge'
+  if (/\bOPR\/|\bOpera\b/i.test(ua)) return 'Opera'
+  if (/\bChrome\//i.test(ua) && !/Chromium/i.test(ua)) return 'Chrome'
+  if (/\bChromium\//i.test(ua)) return 'Chromium'
+  if (/\bFirefox\//i.test(ua)) return 'Firefox'
+  if (/\bSafari\//i.test(ua) && /Version\//i.test(ua)) return 'Safari'
+  return 'Autre'
+}
+
+// Combine a freshly dictated transcript with existing text (comparison mode).
+export function combineTranscript(
+  mode: 'replace' | 'append',
+  existing: string,
+  incoming: string,
+): string {
+  const inc = (incoming ?? '').trim()
+  if (mode === 'replace') return inc
+  const ex = (existing ?? '').trim()
+  if (!ex) return inc
+  if (!inc) return ex
+  return `${ex}\n${inc}`
+}
+
 // ── Accent restoration for common radiology terms ─────────────────────────────
 // Web Speech sometimes drops diacritics. These restore them. They are word-bound,
 // case-insensitive, and only touch specific medical nouns/adjectives — NEVER
