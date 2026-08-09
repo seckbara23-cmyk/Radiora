@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getLocale } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
+import { LANDING_ROUTE } from '@/config/product-scope'
 import type { UserRole } from '@/types/user'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -101,14 +102,15 @@ export async function requireCurrentUser(): Promise<CurrentUser> {
 }
 
 // Gate for the Super Admin (platform) portal. Only super_admin may enter; any
-// other authenticated user is bounced to their dashboard. Platform admins
-// manage tenants/billing only — clinical RLS still hides PHI from them.
+// other authenticated user is bounced to Reports (the R2.1 landing page).
+// Platform admins manage tenants/billing only — clinical RLS still hides PHI
+// from them, and platform access grants no clinical signing authority.
 export async function requireSuperAdmin(): Promise<CurrentUser> {
   const user = await requireCurrentUser()
   const locale = await getLocale().catch(() => 'fr')
 
   if (user.role !== 'super_admin') {
-    redirect(`/${locale}/dashboard`)
+    redirect(`/${locale}${LANDING_ROUTE}`)
   }
 
   return user

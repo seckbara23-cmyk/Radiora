@@ -154,7 +154,7 @@ export function AcceptInviteClient() {
     // Audit account activation before navigating away (best-effort).
     await recordInviteAccepted()
     setStep('done')
-    router.push('/dashboard')
+    router.push('/reports')
   }
 
   const inputCls =
@@ -219,7 +219,7 @@ export function AcceptInviteClient() {
                 {submitting ? t('submitting') : t('continueAs')}
               </button>
               <Link
-                href="/dashboard"
+                href="/reports"
                 className="block text-center text-sm font-medium text-gray-500 hover:text-gray-700"
               >
                 {t('cancel')}

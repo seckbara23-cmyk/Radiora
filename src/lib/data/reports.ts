@@ -57,18 +57,31 @@ export interface ReportListItem {
   updatedAt: string
   study: { modality: string; bodyPart: string; accessionNumber: string } | null
   patient: { firstName: string; lastName: string; mrn: string } | null
+  /** R2.1 — a secure delivery exists for this report. Drives the "Envoyé"
+   *  display status. False for roles whose RLS hides report_deliveries. */
+  delivered: boolean
 }
 
+/** R2.1 — retrieval is bounded. Supabase silently caps at 1000 rows, so an
+ *  unbounded list would just start losing reports with no indication. */
+export const REPORTS_PAGE_SIZE = 50
+
 export async function getReportsList(opts?: {
-  status?: ReportStatus
+  /** One or more internal statuses. Callers pass display-status groups. */
+  statuses?: ReportStatus[]
+  limit?: number
+  offset?: number
 }): Promise<ReportListItem[]> {
   const supabase = await createClient()
+  const limit  = Math.min(Math.max(opts?.limit ?? REPORTS_PAGE_SIZE, 1), 200)
+  const offset = Math.max(opts?.offset ?? 0, 0)
 
   let query = supabase
     .from('reports')
     .select('id, study_id, patient_id, status, exam_type, created_at, updated_at')
     .order('updated_at', { ascending: false })
-  if (opts?.status) query = query.eq('status', opts.status)
+    .range(offset, offset + limit - 1)
+  if (opts?.statuses?.length) query = query.in('status', opts.statuses)
 
   const { data: rows } = await query
   if (!rows || rows.length === 0) return []
@@ -76,7 +89,9 @@ export async function getReportsList(opts?: {
   const studyIds   = [...new Set(rows.map((r) => r.study_id as string))]
   const patientIds = [...new Set(rows.map((r) => r.patient_id as string))]
 
-  const [studiesRes, patientsRes] = await Promise.all([
+  const reportIds = rows.map((r) => r.id as string)
+
+  const [studiesRes, patientsRes, deliveriesRes] = await Promise.all([
     supabase
       .from('studies')
       .select('id, modality, body_part, accession_number')
@@ -85,10 +100,18 @@ export async function getReportsList(opts?: {
       .from('patients')
       .select('id, first_name, last_name, mrn')
       .in('id', patientIds),
+    // Delivery presence only — never the token or password hash. RLS limits
+    // this to the roles that may issue deliveries; others simply see "Signé".
+    supabase
+      .from('report_deliveries')
+      .select('report_id')
+      .in('report_id', reportIds)
+      .is('revoked_at', null),
   ])
 
   const studyMap   = Object.fromEntries((studiesRes.data ?? []).map((s) => [s.id as string, s]))
   const patientMap = Object.fromEntries((patientsRes.data ?? []).map((p) => [p.id as string, p]))
+  const deliveredIds = new Set((deliveriesRes.data ?? []).map((d) => d.report_id as string))
 
   return rows.map((r) => {
     const s = studyMap[r.study_id as string]
@@ -103,6 +126,7 @@ export async function getReportsList(opts?: {
       updatedAt: r.updated_at as string,
       study:   s ? { modality: s.modality as string, bodyPart: s.body_part as string, accessionNumber: s.accession_number as string } : null,
       patient: p ? { firstName: p.first_name as string, lastName: p.last_name as string, mrn: p.mrn as string } : null,
+      delivered: deliveredIds.has(r.id as string),
     }
   })
 }

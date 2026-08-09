@@ -39,7 +39,7 @@ export default async function AdminLayout({
               <span className="hidden text-gray-500 sm:inline">
                 {user.firstName} {user.lastName}
               </span>
-              <Link href="/dashboard" className="text-blue-600 hover:text-blue-700">
+              <Link href="/reports" className="text-blue-600 hover:text-blue-700">
                 {t('backToApp')}
               </Link>
             </div>

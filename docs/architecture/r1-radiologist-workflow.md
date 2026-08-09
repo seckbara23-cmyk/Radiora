@@ -2,10 +2,11 @@
 
 **Status:** frozen for R2. **Date:** 2026-08-09. **Application SHA at audit:** `9cbba6e`.
 
-> **Implementation status — R2.0 COMPLETE.** See
-> [§R2.0 implementation status](#r20-implementation-status) at the end of this
+> **Implementation status — R2.0 and R2.1 COMPLETE.** See
+> [§R2.0 implementation status](#r20-implementation-status) and
+> [§R2.1 implementation status](#r21-implementation-status) at the end of this
 > document. The body below is the original audit and remains the frozen
-> architecture; only the status appendix is added.
+> architecture; only the status appendices are added.
 
 This document is the product-surface and architecture freeze that R2 implements
 against. It is the result of a full read-only audit of the repository — every
@@ -764,3 +765,48 @@ gate sees confidence on both paths.
   navigation changes.
 - Template ingestion. Legacy code removal. The `external-ai.ts` append bug
   (§12.1) remains open.
+
+---
+
+## R2.1 implementation status
+
+**Gate R2.1 — product surface freeze. COMPLETE.**
+
+The product now presents one workflow. A normal radiologist's navigation is
+**New Report · Reports · Templates**; everything else listed in §1.4 as
+`DEPRECATE LATER` — plus Dashboard, Patients, Studies, Vacation Queue, Secretary
+Desk, Analytics, Critical Queue, Audit History, Feedback and Pilot — is frozen
+out of the surface. **Nothing was deleted**: routes, actions, tables, RLS,
+migrations, audit events and history are untouched.
+
+Scope is decided once, in `src/config/product-scope.ts`, classifying every
+feature as CORE / SUPPORTING_HIDDEN / FROZEN / ADMIN_ONLY. Navigation and the
+middleware redirect both derive from it, so the surface cannot drift between
+them. The full rationale is in
+[`docs/product/radiora-simple-scope.md`](../product/radiora-simple-scope.md).
+
+**Landing.** `/[locale]/reports` replaces the dashboard after login and is where
+frozen routes redirect, preserving locale. The Reports page gained a prominent
+New Report action, plain-language statuses, bounded retrieval (page size 50 —
+previously unbounded, which silently truncated at Supabase's 1000-row cap) and
+an empty state that starts the workflow.
+
+**Canonical entry.** `/[locale]/reports/new` is the one New Report route. It is
+an entry shell: it names the six-step workflow and reuses the existing
+`createReport` server action against examinations that have no report yet. No
+patient, study or report creation logic was duplicated. R2.2/R2.3 replace step 2
+onward with the unified dictation workspace; the creation call stays as-is.
+
+**Unchanged and verified by test.**
+
+- QR/mobile dictation is CORE: `/m/*` is on the never-redirect allowlist, along
+  with `/api/*`, `/auth/*`, public delivery `/r/*` and `/reports/[id]/print`.
+- The R2.0 canonical structuring path, the signing gate and the R0.8 authority
+  boundary are untouched. Administrative access still grants **no** clinical
+  signing authority.
+- The canonical export model is unchanged.
+
+**Still pending.** Migration 044 (report-linked transcripts and QR), live
+section population, and the full workspace redesign. Live structuring must
+still gate on `splitStableTranscript` (§8.2) before any partial transcript is
+allowed to mutate a report.

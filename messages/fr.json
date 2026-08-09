@@ -40,7 +40,10 @@
     "clinics": "Cliniques",
     "feedback": "Votre avis",
     "pilot": "Tableau de bord pilote",
-    "adminSection": "Administration"
+    "adminSection": "Administration",
+    "platformSection": "Plateforme",
+    "newReport": "Nouveau compte rendu",
+    "letterhead": "En-tête"
   },
   "auth": {
     "signIn": "Se connecter",
@@ -416,6 +419,10 @@
     "title": "Comptes rendus",
     "noReports": "Aucun compte rendu.",
     "noReportsDesc": "Les comptes rendus apparaîtront ici une fois créés.",
+    "newReport": "Nouveau compte rendu",
+    "patient": "Patient",
+    "previous": "Précédent",
+    "next": "Suivant",
     "found": "{count, plural, =0 {Aucun compte rendu} one {# compte rendu trouvé} other {# comptes rendus trouvés}}",
     "findings": "Constatations",
     "impression": "Impression",
@@ -468,6 +475,24 @@
     "archiveSectionDesc": "Chaque compte rendu reste archivé et traçable.",
     "archiveNote": "Sauvegarde individuelle de chaque compte rendu, envoi sécurisé et journal d’audit complet.",
     "archiveBatchLink": "Export groupé (ZIP) depuis la liste des comptes rendus →"
+  },
+  "newReport": {
+    "title": "Nouveau compte rendu",
+    "subtitle": "Sélectionnez l'examen à dicter.",
+    "back": "Comptes rendus",
+    "step1": "Patient et examen",
+    "step2": "Dictée (poste ou téléphone)",
+    "step3": "Structuration IA",
+    "step4": "Relecture",
+    "step5": "Signature",
+    "step6": "Export et envoi sécurisé",
+    "selectExam": "Examens en attente de compte rendu",
+    "selectExamDesc": "Choisissez un examen pour ouvrir son compte rendu.",
+    "start": "Commencer",
+    "noExams": "Aucun examen en attente.",
+    "noExamsDesc": "Tous les examens disposent déjà d'un compte rendu.",
+    "noPermission": "Accès non autorisé.",
+    "noPermissionDesc": "Seul un radiologue peut créer un compte rendu."
   },
   "templates": {
     "title": "Modèles",
@@ -627,6 +652,12 @@
       "in_review": "En révision",
       "finalized": "Finalisé",
       "amended": "Modifié"
+    },
+    "display": {
+      "draft": "Brouillon",
+      "review_required": "À relire",
+      "signed": "Signé",
+      "delivered": "Envoyé"
     },
     "patient": {
       "active": "Actif",

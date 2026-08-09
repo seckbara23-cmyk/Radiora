@@ -40,7 +40,10 @@
     "clinics": "Clinics",
     "feedback": "Feedback",
     "pilot": "Pilot dashboard",
-    "adminSection": "Admin"
+    "adminSection": "Admin",
+    "platformSection": "Platform",
+    "newReport": "New report",
+    "letterhead": "Letterhead"
   },
   "auth": {
     "signIn": "Sign In",
@@ -416,6 +419,10 @@
     "title": "Reports",
     "noReports": "No reports.",
     "noReportsDesc": "Reports will appear here once created.",
+    "newReport": "New report",
+    "patient": "Patient",
+    "previous": "Previous",
+    "next": "Next",
     "found": "{count, plural, =0 {No reports found} one {# report found} other {# reports found}}",
     "findings": "Findings",
     "impression": "Impression",
@@ -468,6 +475,24 @@
     "archiveSectionDesc": "Every report stays archived and traceable.",
     "archiveNote": "Each report is saved individually, with secure delivery and a full audit trail.",
     "archiveBatchLink": "Batch export (ZIP) from the reports list →"
+  },
+  "newReport": {
+    "title": "New report",
+    "subtitle": "Select the examination you want to dictate.",
+    "back": "Reports",
+    "step1": "Patient and examination",
+    "step2": "Dictation (workstation or phone)",
+    "step3": "AI structuring",
+    "step4": "Review",
+    "step5": "Signature",
+    "step6": "Export and secure delivery",
+    "selectExam": "Examinations awaiting a report",
+    "selectExamDesc": "Pick an examination to open its report.",
+    "start": "Start",
+    "noExams": "No examinations awaiting a report.",
+    "noExamsDesc": "Every examination already has a report.",
+    "noPermission": "Not authorised.",
+    "noPermissionDesc": "Only a radiologist can create a report."
   },
   "templates": {
     "title": "Templates",
@@ -627,6 +652,12 @@
       "in_review": "In Review",
       "finalized": "Finalized",
       "amended": "Amended"
+    },
+    "display": {
+      "draft": "Draft",
+      "review_required": "Review required",
+      "signed": "Signed",
+      "delivered": "Delivered"
     },
     "patient": {
       "active": "Active",

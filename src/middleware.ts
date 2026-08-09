@@ -2,10 +2,16 @@ import createIntlMiddleware from 'next-intl/middleware'
 import { type NextRequest, NextResponse } from 'next/server'
 import { routing } from '@/i18n/routing'
 import { updateSession } from '@/lib/supabase/middleware'
+// isFrozenRoute() already applies the never-redirect allowlist internally, so
+// the allowlist is not imported separately here.
+import { isFrozenRoute, LANDING_ROUTE } from '@/config/product-scope'
 
 const handleI18n = createIntlMiddleware(routing)
 
 // Dashboard-app paths that require an authenticated session (locale-stripped).
+// Frozen segments stay listed: they must still require a session, because an
+// unauthenticated visitor should reach /login rather than be bounced to the
+// landing page. R2.1 freezes the product SURFACE, not authentication.
 const PROTECTED_SEGMENTS = [
   '/dashboard',
   '/patients',
@@ -18,6 +24,10 @@ const PROTECTED_SEGMENTS = [
   '/templates',
   '/analytics',
   '/critical-queue',
+  '/vacations',
+  '/secretary',
+  '/feedback',
+  '/pilot',
 ]
 
 export async function middleware(request: NextRequest) {
@@ -74,9 +84,21 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(`/${locale}/login`, request.url), { status: 303 })
     }
 
-    // Already authenticated → skip the login page.
+    // Already authenticated → skip the login page, land on Reports.
     if (isLoginPage && user) {
-      return NextResponse.redirect(new URL(`/${locale}/dashboard`, request.url), { status: 303 })
+      return NextResponse.redirect(new URL(`/${locale}${LANDING_ROUTE}`, request.url), { status: 303 })
+    }
+
+    // R2.1 — product-surface freeze. An authenticated user who lands on a
+    // frozen module is sent to Reports. The pages, actions and data behind
+    // those routes are untouched; only the surface is closed.
+    //
+    // isFrozenRoute() is the single decision point (src/config/product-scope.ts)
+    // and it returns false for everything in the never-redirect allowlist —
+    // /api, /auth, public delivery /r/, mobile dictation /m/, print and every
+    // /reports/* path — so no loop is possible: the target is itself CORE.
+    if (user && isFrozenRoute(localelessPath)) {
+      return NextResponse.redirect(new URL(`/${locale}${LANDING_ROUTE}`, request.url), { status: 307 })
     }
 
     // MUST return supabaseResponse — it carries the refreshed session cookie.

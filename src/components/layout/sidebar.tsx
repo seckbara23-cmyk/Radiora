@@ -2,31 +2,35 @@
 
 import { useTranslations } from 'next-intl'
 import { Link, usePathname } from '@/i18n/navigation'
-import { navigation, type IconName } from '@/config/navigation'
+import { visibleNavigation, type IconName } from '@/config/navigation'
 import { SenegalDots } from '@/components/ui/senegal-accents'
 import type { UserRole } from '@/types/user'
 
 // ─── Icon map ─────────────────────────────────────────────────────────────────
 
+// R2.1 — only the icons the frozen surface still needs. Icons for frozen
+// modules (patients, studies, vacations, secretary, audit, critical, feedback,
+// pilot) were removed along with their nav entries; the pages themselves are
+// untouched and still reachable in the repository.
 const icons: Record<IconName, React.ReactNode> = {
+  newReport: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M12 4v16m8-8H4"
+      />
+    </svg>
+  ),
+  letterhead: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M4 6h16M4 10h10M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+      />
+    </svg>
+  ),
   dashboard: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
         d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-      />
-    </svg>
-  ),
-  patients: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-      />
-    </svg>
-  ),
-  studies: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
       />
     </svg>
   ),
@@ -59,13 +63,6 @@ const icons: Record<IconName, React.ReactNode> = {
       />
     </svg>
   ),
-  audit: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"
-      />
-    </svg>
-  ),
   templates: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -77,41 +74,6 @@ const icons: Record<IconName, React.ReactNode> = {
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
         d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-      />
-    </svg>
-  ),
-  critical: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-      />
-    </svg>
-  ),
-  vacations: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M19 11a7 7 0 01-14 0m7 7v3m0-3a4 4 0 01-4-4V7a4 4 0 118 0v4a4 4 0 01-4 4z"
-      />
-    </svg>
-  ),
-  secretary: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M9 17v-2a4 4 0 014-4h4M9 17H5a2 2 0 01-2-2V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v2"
-      />
-    </svg>
-  ),
-  feedback: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M8 10h.01M12 10h.01M16 10h.01M21 12a8 8 0 01-11.5 7.16L3 20l1.05-3.5A8 8 0 1121 12z"
-      />
-    </svg>
-  ),
-  pilot: (
-    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-        d="M3 3v18h18M9 17V9m4 8V5m4 12v-6"
       />
     </svg>
   ),
@@ -128,15 +90,9 @@ export default function Sidebar({ onClose, userRole }: SidebarProps) {
   const t        = useTranslations('navigation')
   const pathname = usePathname()   // locale-stripped, e.g. /dashboard
 
-  const visibleNav = navigation
-    .filter((group) => !group.roles || (userRole && group.roles.includes(userRole)))
-    .map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) => !item.roles || (userRole && item.roles.includes(userRole))
-      ),
-    }))
-    .filter((group) => group.items.length > 0)
+  // R2.1 — the visible surface is decided once, in config/navigation.ts, which
+  // derives from the product-scope contract. The sidebar only renders it.
+  const visibleNav = visibleNavigation(userRole ?? null)
 
   return (
     <aside className="h-full w-64 bg-white border-r border-gray-200 flex flex-col">
@@ -172,14 +128,29 @@ export default function Sidebar({ onClose, userRole }: SidebarProps) {
       <nav className="flex-1 overflow-y-auto px-3 py-4">
         {visibleNav.map((group, i) => (
           <div key={i} className={i > 0 ? 'mt-6' : ''}>
-            {group.title && (
+            {group.titleKey && (
               <p className="px-3 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                {t('adminSection')}
+                {t(group.titleKey)}
               </p>
             )}
             <ul className="space-y-0.5">
               {group.items.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+                // The primary action reads as a button, not a nav row.
+                if (item.primary) {
+                  return (
+                    <li key={item.href} className="mb-3">
+                      <Link
+                        href={item.href}
+                        onClick={() => onClose?.()}
+                        className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700"
+                      >
+                        <span className="flex-shrink-0">{icons[item.icon]}</span>
+                        {t(item.icon as Parameters<typeof t>[0])}
+                      </Link>
+                    </li>
+                  )
+                }
                 return (
                   <li key={item.href}>
                     <Link
