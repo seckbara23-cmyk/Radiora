@@ -9,6 +9,9 @@ import {
   addDaysISO,
   deliveryState,
   isDeliveryOpenable,
+  resolveExpiryDays,
+  DEFAULT_EXPIRY_DAYS,
+  MAX_EXPIRY_DAYS,
 } from './policy'
 
 describe('auditActionForChannel', () => {
@@ -92,5 +95,34 @@ describe('deliveryState / isDeliveryOpenable', () => {
   it('with no expiry, stays active unless revoked', () => {
     expect(deliveryState(null, null, now)).toBe('active')
     expect(deliveryState(null, '2026-06-18T08:00:00Z', now)).toBe('revoked')
+  })
+})
+
+// R0.5 — a delivery link carries a frozen copy of a patient's report, so an
+// unbounded link means a token leaked over WhatsApp stays live forever.
+// "No expiry" is no longer expressible.
+describe('resolveExpiryDays', () => {
+  it('defaults when the caller supplies nothing', () => {
+    expect(resolveExpiryDays(null)).toBe(DEFAULT_EXPIRY_DAYS)
+    expect(resolveExpiryDays(undefined)).toBe(DEFAULT_EXPIRY_DAYS)
+  })
+
+  it('never returns a value that would mean "never expires"', () => {
+    for (const bad of [0, -1, -9999, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const days = resolveExpiryDays(bad)
+      expect(days).toBeGreaterThan(0)
+      expect(days).toBeLessThanOrEqual(MAX_EXPIRY_DAYS)
+    }
+  })
+
+  it('caps an over-long request at the maximum', () => {
+    expect(resolveExpiryDays(3650)).toBe(MAX_EXPIRY_DAYS)
+    expect(resolveExpiryDays(MAX_EXPIRY_DAYS + 1)).toBe(MAX_EXPIRY_DAYS)
+  })
+
+  it('honours a sensible request', () => {
+    expect(resolveExpiryDays(7)).toBe(7)
+    expect(resolveExpiryDays(MAX_EXPIRY_DAYS)).toBe(MAX_EXPIRY_DAYS)
+    expect(resolveExpiryDays(7.9)).toBe(7)
   })
 })

@@ -1614,7 +1614,8 @@
       "dobPlaceholder": "e.g. 02071990",
       "submit": "Unlock",
       "checking": "Checking…",
-      "wrong": "Incorrect password."
+      "wrong": "Incorrect password.",
+      "locked": "Too many attempts. Please try again in a few minutes."
     },
     "download": {
       "pdf": "Download PDF",

@@ -11,14 +11,17 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import type { DeliveryChannel, PasswordKind } from '@/lib/delivery/policy'
 import type { ReportDelivery, PublicDelivery } from '@/types/delivery'
 
+// R0.5 — password_hash is deliberately NOT selected for staff: the UI only ever
+// needed a boolean, and shipping a scrypt hash of a (guessable) date of birth to
+// every clinic screen handed out an offline-crackable secret for free.
 const STAFF_COLS =
-  'id, clinic_id, report_id, channel, recipient_label, token, password_kind, password_hash, filename_base, header_choice, expires_at, opened_count, download_count, last_accessed_at, revoked_at, created_by, created_at, updated_at'
+  'id, clinic_id, report_id, channel, recipient_label, token, password_kind, filename_base, header_choice, expires_at, opened_count, download_count, last_accessed_at, revoked_at, created_by, created_at, updated_at'
 
 const PUBLIC_COLS =
-  'id, clinic_id, report_id, channel, password_kind, password_hash, pdf_path, docx_path, filename_base, expires_at, revoked_at'
+  'id, clinic_id, report_id, channel, password_kind, password_hash, pdf_path, docx_path, filename_base, expires_at, revoked_at, failed_attempts, locked_until'
 
 function mapStaffRow(row: Record<string, unknown>): ReportDelivery {
-  const passwordHash = (row.password_hash as string | null) ?? null
+  const passwordKind = (row.password_kind as PasswordKind) ?? 'none'
   return {
     id: row.id as string,
     clinicId: row.clinic_id as string,
@@ -26,8 +29,8 @@ function mapStaffRow(row: Record<string, unknown>): ReportDelivery {
     channel: row.channel as DeliveryChannel,
     recipientLabel: (row.recipient_label as string) ?? '',
     token: row.token as string,
-    passwordKind: (row.password_kind as PasswordKind) ?? 'none',
-    hasPassword: Boolean(passwordHash),
+    passwordKind,
+    hasPassword: passwordKind !== 'none',
     filenameBase: (row.filename_base as string) ?? 'compte-rendu',
     headerChoice: (row.header_choice as string) ?? '',
     expiresAt: (row.expires_at as string | null) ?? null,
@@ -87,5 +90,7 @@ export async function getPublicDeliveryByToken(token: string): Promise<PublicDel
     filenameBase: (row.filename_base as string) ?? 'compte-rendu',
     expiresAt: (row.expires_at as string | null) ?? null,
     revokedAt: (row.revoked_at as string | null) ?? null,
+    failedAttempts: Number(row.failed_attempts ?? 0),
+    lockedUntil: (row.locked_until as string | null) ?? null,
   }
 }

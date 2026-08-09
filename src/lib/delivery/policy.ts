@@ -63,6 +63,24 @@ export function addDaysISO(fromISO: string, days: number): string {
   return new Date(base.getTime() + days * 86_400_000).toISOString()
 }
 
+// ── R0.5 — expiry is mandatory ────────────────────────────────────────────────
+// A delivery link carries a frozen copy of a patient's report. An unbounded
+// link means a token leaked through WhatsApp/SMS/email stays live forever, so
+// "no expiry" is no longer expressible: an omitted or out-of-range value is
+// clamped into [1, MAX_EXPIRY_DAYS] instead of becoming NULL.
+
+export const DEFAULT_EXPIRY_DAYS = 30
+export const MAX_EXPIRY_DAYS = 90
+
+export function resolveExpiryDays(requested: number | null | undefined): number {
+  if (requested === null || requested === undefined || !Number.isFinite(requested)) {
+    return DEFAULT_EXPIRY_DAYS
+  }
+  const whole = Math.floor(requested)
+  if (whole < 1) return DEFAULT_EXPIRY_DAYS
+  return Math.min(whole, MAX_EXPIRY_DAYS)
+}
+
 // Resolve the current state of a delivery link. revoked wins over expired.
 export function deliveryState(
   expiresAtISO: string | null | undefined,

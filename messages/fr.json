@@ -1614,7 +1614,8 @@
       "dobPlaceholder": "ex. : 02071990",
       "submit": "Déverrouiller",
       "checking": "Vérification…",
-      "wrong": "Mot de passe incorrect."
+      "wrong": "Mot de passe incorrect.",
+      "locked": "Trop de tentatives. Veuillez réessayer dans quelques minutes."
     },
     "download": {
       "pdf": "Télécharger le PDF",

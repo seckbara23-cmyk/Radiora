@@ -36,4 +36,7 @@ export interface PublicDelivery {
   filenameBase: string
   expiresAt: string | null
   revokedAt: string | null
+  /** R0.5 — durable brute-force counters (migration 040). */
+  failedAttempts: number
+  lockedUntil: string | null
 }

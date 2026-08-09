@@ -55,3 +55,24 @@ export function canDoClericalWork(role: UserRole): boolean {
 export function canManageClinicSettings(role: UserRole): boolean {
   return role === 'clinic_admin' || role === 'super_admin'
 }
+
+/**
+ * Roles a clinic_admin may assign when inviting a colleague.
+ *
+ * super_admin is excluded deliberately — a clinic administrator must never be
+ * able to mint platform-level access. 'secretary' belongs here: it is the role
+ * the entire dictation workflow (audio upload → transcript review → hand-off to
+ * the radiologist) is built around, and omitting it left clinics unable to
+ * provision the staff the product is designed for (R0.7).
+ */
+export const ASSIGNABLE_CLINIC_ROLES: UserRole[] = [
+  'clinic_admin',
+  'radiologist',
+  'secretary',
+  'technician',
+  'viewer',
+]
+
+export function isAssignableClinicRole(role: string): role is UserRole {
+  return (ASSIGNABLE_CLINIC_ROLES as readonly string[]).includes(role)
+}

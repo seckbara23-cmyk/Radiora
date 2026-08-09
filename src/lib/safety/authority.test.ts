@@ -6,6 +6,8 @@ import {
   canEditClinicalContent,
   canManageClinicSettings,
   canDoClericalWork,
+  ASSIGNABLE_CLINIC_ROLES,
+  isAssignableClinicRole,
 } from '@/lib/safety/authority'
 import type { UserRole } from '@/types/user'
 
@@ -52,5 +54,31 @@ describe('signing authority', () => {
   it('clerical work includes the secretary but not signing', () => {
     expect(canDoClericalWork('secretary')).toBe(true)
     expect(canManageClinicSettings('secretary')).toBe(false)
+  })
+})
+
+// R0.7 — 'secretary' was added to the user_role enum in migration 016 but never
+// to the invite allowlist, so a clinic literally could not create the role the
+// dictation workflow is built around.
+describe('assignable clinic roles', () => {
+  it('includes secretary — the dictation workflow depends on it', () => {
+    expect(ASSIGNABLE_CLINIC_ROLES).toContain('secretary')
+    expect(isAssignableClinicRole('secretary')).toBe(true)
+  })
+
+  it('never lets a clinic_admin mint platform-level access', () => {
+    expect(ASSIGNABLE_CLINIC_ROLES).not.toContain('super_admin')
+    expect(isAssignableClinicRole('super_admin')).toBe(false)
+  })
+
+  it('covers every clinic-level role the product uses', () => {
+    for (const role of ['clinic_admin', 'radiologist', 'secretary', 'technician', 'viewer'] as UserRole[]) {
+      expect(isAssignableClinicRole(role)).toBe(true)
+    }
+  })
+
+  it('rejects unknown strings', () => {
+    expect(isAssignableClinicRole('administrator')).toBe(false)
+    expect(isAssignableClinicRole('')).toBe(false)
   })
 })

@@ -4,8 +4,11 @@ import { Link } from '@/i18n/navigation'
 import { useActionState } from 'react'
 import { inviteUser } from '@/lib/actions/users'
 
+// Must stay in sync with ASSIGNABLE_ROLES in lib/actions/users.ts (the server
+// re-validates every submission against that list).
 const ROLE_OPTIONS = [
   { value: 'radiologist',  label: 'Radiologist'  },
+  { value: 'secretary',    label: 'Secretary'    },
   { value: 'technician',   label: 'Technician'   },
   { value: 'clinic_admin', label: 'Admin'         },
   { value: 'viewer',       label: 'Viewer'        },

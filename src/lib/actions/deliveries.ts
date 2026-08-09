@@ -25,6 +25,7 @@ import {
   auditActionForChannel,
   dobToPassword,
   addDaysISO,
+  resolveExpiryDays,
   type DeliveryChannel,
   type PasswordKind,
 } from '@/lib/delivery/policy'
@@ -108,10 +109,10 @@ export async function createDelivery(input: CreateDeliveryInput): Promise<Delive
     return { ok: false, error: 'storage_failed' }
   }
 
-  const expiresAt =
-    input.expiresInDays && input.expiresInDays > 0
-      ? addDaysISO(new Date().toISOString(), input.expiresInDays)
-      : null
+  // R0.5 — expiry is mandatory: a link carrying a frozen copy of a patient's
+  // report must never live forever. An omitted or out-of-range value is clamped
+  // to the default/maximum rather than becoming NULL.
+  const expiresAt = addDaysISO(new Date().toISOString(), resolveExpiryDays(input.expiresInDays))
 
   // ── Insert the delivery row under RLS (clinic + role enforced) ─────────────
   const supabase = await createClient()

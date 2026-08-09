@@ -13,6 +13,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getPublicDeliveryByToken } from '@/lib/data/deliveries'
 import { isDeliveryOpenable, normalizeDigits, type PasswordKind } from './policy'
 import { verifyDeliveryPassword } from './secure'
+import {
+  evaluateLock,
+  registerFailure,
+  registerSuccess,
+  type AttemptState,
+  type LockStatus,
+} from './lockout'
 import type { PublicDelivery } from '@/types/delivery'
 
 const BUCKET = 'report-deliveries'
@@ -21,7 +28,7 @@ export type DeliveryFormat = 'pdf' | 'docx'
 
 // Audit a public access event. Best-effort: never throws.
 async function auditPublicAccess(
-  action: 'report_opened' | 'report_downloaded',
+  action: 'report_opened' | 'report_downloaded' | 'report_unlock_failed',
   delivery: Pick<PublicDelivery, 'id' | 'clinicId' | 'reportId'>,
   metadata: Record<string, unknown>,
 ): Promise<void> {
@@ -96,6 +103,64 @@ export function verifyDeliveryAccess(delivery: PublicDelivery, rawPassword: stri
   const candidate =
     delivery.passwordKind === 'dob' ? normalizeDigits(rawPassword ?? '') : (rawPassword ?? '')
   return verifyDeliveryPassword(candidate, delivery.passwordHash)
+}
+
+// ── R0.5 — brute-force lockout (durable, service-role) ────────────────────────
+
+/** Current lock status of a delivery's public password gate. */
+export function deliveryLockStatus(delivery: PublicDelivery, nowISO: string): LockStatus {
+  return evaluateLock(
+    { failedAttempts: delivery.failedAttempts, lockedUntil: delivery.lockedUntil },
+    nowISO,
+  )
+}
+
+async function persistAttemptState(deliveryId: string, next: AttemptState): Promise<void> {
+  try {
+    const admin = createAdminClient()
+    await admin
+      .from('report_deliveries')
+      .update({ failed_attempts: next.failedAttempts, locked_until: next.lockedUntil })
+      .eq('id', deliveryId)
+  } catch {
+    // Counter persistence is best-effort; a storage blip must not hand the
+    // caller a free pass, but it must also not break a legitimate unlock.
+  }
+}
+
+/**
+ * Verify a password attempt AND maintain the lockout counters. Returns the
+ * outcome so the route can answer 423 (locked) distinctly from 401 (wrong).
+ */
+export async function attemptDeliveryUnlock(
+  delivery: PublicDelivery,
+  rawPassword: string,
+  nowISO: string,
+): Promise<{ ok: boolean; lock: LockStatus }> {
+  const lock = deliveryLockStatus(delivery, nowISO)
+  if (lock.locked) return { ok: false, lock }
+
+  const ok = verifyDeliveryAccess(delivery, rawPassword)
+  const state: AttemptState = {
+    failedAttempts: delivery.failedAttempts,
+    lockedUntil: delivery.lockedUntil,
+  }
+
+  if (ok) {
+    if (state.failedAttempts !== 0 || state.lockedUntil !== null) {
+      await persistAttemptState(delivery.id, registerSuccess())
+    }
+    return { ok: true, lock: { locked: false, retryAfterSeconds: 0 } }
+  }
+
+  const next = registerFailure(state, nowISO)
+  await persistAttemptState(delivery.id, next)
+  await auditPublicAccess('report_unlock_failed', delivery, {
+    channel: delivery.channel,
+    failedAttempts: next.failedAttempts,
+    locked: Boolean(next.lockedUntil),
+  })
+  return { ok: false, lock: evaluateLock(next, nowISO) }
 }
 
 // Download the frozen export file for a delivery from the private bucket.

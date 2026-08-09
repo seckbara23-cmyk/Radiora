@@ -7,12 +7,17 @@ import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { logAudit } from '@/lib/actions/audit'
+import { ASSIGNABLE_CLINIC_ROLES } from '@/lib/safety/authority'
 import type { UserRole } from '@/types/user'
 
 export type FormState = { error: string | null; submitted?: boolean }
 
-// Roles a clinic_admin is permitted to assign — super_admin is excluded
-const ASSIGNABLE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'technician', 'viewer']
+// Roles a clinic_admin is permitted to assign — super_admin is excluded.
+// R0.7: the list moved to lib/safety/authority.ts (the pure single source of
+// truth for role rules) so it is unit-testable and cannot drift from the UI.
+// 'secretary' had been missing since migration 016 added it to the enum, which
+// left clinics unable to provision the role the dictation workflow depends on.
+const ASSIGNABLE_ROLES: UserRole[] = ASSIGNABLE_CLINIC_ROLES
 
 // Where Supabase should send the invitee after they click the email link. This
 // MUST be the dedicated invite-acceptance route (NOT /login): /login bounces an

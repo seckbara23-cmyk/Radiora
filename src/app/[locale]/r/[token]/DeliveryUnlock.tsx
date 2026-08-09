@@ -1,8 +1,11 @@
 'use client'
 
 // F17 — public client island: optional password gate + download buttons.
-// The secret token already lives in the URL; once unlocked we pass the password
-// as a query param to the file route, which re-verifies it on every download.
+//
+// R0.5 — the password is submitted ONCE to /unlock, which replies with a
+// short-lived HttpOnly grant cookie scoped to this delivery. Download links no
+// longer carry `?pw=`, so the patient's date of birth never reaches a server
+// log, a proxy, the browser history or a Referer header.
 
 import { useState } from 'react'
 import { useTranslations } from 'next-intl'
@@ -22,9 +25,8 @@ export function DeliveryUnlock({ token, requiresPassword, passwordKind }: Props)
   const [busy, setBusy] = useState(false)
 
   const base = `/api/delivery/${encodeURIComponent(token)}/file`
-  const pwQs = password ? `&pw=${encodeURIComponent(password)}` : ''
-  const pdfHref = `${base}?format=pdf${pwQs}`
-  const docxHref = `${base}?format=docx${pwQs}`
+  const pdfHref = `${base}?format=pdf`
+  const docxHref = `${base}?format=docx`
 
   async function handleUnlock(e: React.FormEvent) {
     e.preventDefault()
@@ -37,7 +39,12 @@ export function DeliveryUnlock({ token, requiresPassword, passwordKind }: Props)
         body: JSON.stringify({ password }),
       })
       if (res.ok) {
+        // The grant cookie is set by the response; clear the password from
+        // client state so it does not linger in memory or a form value.
+        setPassword('')
         setUnlocked(true)
+      } else if (res.status === 429) {
+        setError(t('unlock.locked'))
       } else {
         setError(t('unlock.wrong'))
       }

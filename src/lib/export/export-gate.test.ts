@@ -53,3 +53,31 @@ describe('export watermark gate', () => {
     expect(labels).toEqual(['RÉSULTATS', 'CONCLUSION'])
   })
 })
+
+// R0.4 — the browser print page used to build its own layout from raw report
+// fields, so it rendered a draft with NO watermark and an unconditional
+// signature block. It is now driven by this same model; these pin the two
+// properties the print view depends on.
+describe('print view derives from the export model', () => {
+  it('a draft carries a watermark and no signing date to render', () => {
+    const m = buildReportExportModel(input({ status: 'draft' }))
+    expect(m.isDraft).toBe(true)
+    expect(m.watermark).toBe('BROUILLON')
+    // The print page hides the whole signature block when isDraft; the model
+    // must not hand it a date that would imply the report was signed.
+    expect(m.signature.signedDate).toBe('')
+  })
+
+  it('an amended (re-opened) report reverts to draft presentation', () => {
+    const m = buildReportExportModel(input({ status: 'amended' }))
+    expect(m.isDraft).toBe(true)
+    expect(m.watermark).toBe('BROUILLON')
+  })
+
+  it('a validated report exposes the full signature block', () => {
+    const m = buildReportExportModel(input({ status: 'finalized', signedAt: '2026-06-18T11:00:00.000Z' }))
+    expect(m.isDraft).toBe(false)
+    expect(m.signature.name).toContain('BA')
+    expect(m.signature.signedDate).toBe('2026-06-18')
+  })
+})
