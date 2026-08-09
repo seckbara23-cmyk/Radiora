@@ -4,15 +4,16 @@ import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
 import { runStructuring } from '@/lib/ai/structuring-engine'
+import { evaluateReportWrite } from '@/lib/safety/immutability'
+import { createReportVersion, type VersionDb } from '@/lib/reports/versioning'
 import type { StructuringResult } from '@/types/structuring'
 import type { StructuredReportData } from '@/types/report'
 import type { UserRole } from '@/types/user'
 
 const STRUCTURE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'super_admin']
 // Pushing the structured draft into the clinical report is an editorial act on
-// diagnostic content — restrict it to the radiologist side. (Validation/signing
-// remains a separate, radiologist-only step in the workflow state machine.)
-const ACCEPT_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'super_admin']
+// diagnostic content — radiologist ONLY (R0.2: the role gate now matches this
+// contract via evaluateReportWrite kind 'structuring_accept').
 
 function ageFromDob(dob: string): string {
   const d = new Date(dob)
@@ -97,16 +98,21 @@ export async function structureTranscript(itemId: string): Promise<StructureResu
     structured_by:     user.id,
   }
 
+  // R0.2 — supabase-js does not throw; check the returned error so a failed
+  // persist is never reported as success.
   if (trans?.id) {
-    await supabase.from('transcriptions').update(payload).eq('id', trans.id as string)
+    const { error: persistError } = await supabase
+      .from('transcriptions').update(payload).eq('id', trans.id as string)
+    if (persistError) return { error: `Could not save the structuring result: ${persistError.message}` }
   } else {
-    await supabase.from('transcriptions').insert({
+    const { error: persistError } = await supabase.from('transcriptions').insert({
       clinic_id:        user.clinicId,
       vacation_item_id: itemId,
       raw_text:         source,
       created_by:       user.id,
       ...payload,
     })
+    if (persistError) return { error: `Could not save the structuring result: ${persistError.message}` }
   }
 
   try {
@@ -139,62 +145,65 @@ export async function acceptStructuredReport(
   structured: StructuredReportData,
 ): Promise<{ error: string | null; reportId?: string }> {
   const user = await requireCurrentUser()
-  if (!ACCEPT_ROLES.includes(user.role)) return { error: 'Only a radiologist can apply the structured report.' }
+
+  // R0.2 — role pre-check (radiologist only) before any write.
+  const roleGate = evaluateReportWrite({
+    kind: 'structuring_accept', currentStatus: null, actorRole: user.role,
+  })
+  if (!roleGate.allowed) return { error: roleGate.reason }
 
   const supabase = await createClient()
 
-  const { data: item } = await supabase
+  const { data: item, error: itemError } = await supabase
     .from('vacation_items')
     .select('report_id, clinic_id')
     .eq('id', itemId)
     .maybeSingle()
-  if (!item) return { error: 'Queue item not found.' }
+  if (itemError || !item) return { error: 'Queue item not found.' }
 
   // Keep the approved draft on the transcription regardless.
-  await supabase
+  const { error: transError } = await supabase
     .from('transcriptions')
     .update({ structured_json: structured as unknown as Record<string, unknown> })
     .eq('vacation_item_id', itemId)
+  if (transError) return { error: `Could not store the approved draft: ${transError.message}` }
 
   const reportId = item.report_id as string | null
   if (!reportId) {
     return { error: 'Match this item to a patient report first, then apply the structured draft.' }
   }
 
-  // Snapshot the report before overwriting (best-effort).
-  const { data: report } = await supabase
+  const { data: report, error: reportError } = await supabase
     .from('reports')
-    .select('findings, impression, recommendations, status, clinic_id')
+    .select('findings, impression, recommendations, status, clinic_id, signed_at, structured_data')
     .eq('id', reportId)
     .single()
+  if (reportError || !report) return { error: 'Report not found.' }
 
-  if (report) {
-    try {
-      const { data: maxRow } = await supabase
-        .from('report_versions')
-        .select('version_number')
-        .eq('report_id', reportId)
-        .order('version_number', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-      const versionNumber = ((maxRow?.version_number as number | null) ?? 0) + 1
-      await supabase.from('report_versions').insert({
-        report_id:       reportId,
-        clinic_id:       report.clinic_id,
-        version_number:  versionNumber,
-        findings:        report.findings,
-        impression:      report.impression,
-        recommendations: report.recommendations,
-        status:          report.status,
-        created_by:      user.id,
-        change_reason:   'Pre-structuring-accept snapshot',
-      })
-    } catch {
-      // Version failures must never block the clinical operation.
-    }
+  // R0.2 — a finalized report is immutable: route through the amendment flow.
+  const statusGate = evaluateReportWrite({
+    kind: 'structuring_accept', currentStatus: report.status as string, actorRole: user.role,
+  })
+  if (!statusGate.allowed) return { error: statusGate.reason }
+
+  // Snapshot the report before overwriting — abort if it cannot be preserved.
+  const snapshot = await createReportVersion(supabase as unknown as VersionDb, {
+    reportId,
+    clinicId:        report.clinic_id as string | null,
+    findings:        (report.findings as string) ?? '',
+    impression:      (report.impression as string) ?? '',
+    recommendations: (report.recommendations as string | null) ?? null,
+    structuredData:  report.structured_data ?? null,
+    signedAt:        (report.signed_at as string | null) ?? null,
+    status:          report.status as string,
+    createdBy:       user.id,
+    changeReason:    'Pre-structuring-accept snapshot',
+  })
+  if (snapshot.error) {
+    return { error: `The report could not be snapshotted before applying the draft. ${snapshot.error}` }
   }
 
-  await supabase
+  const { error: updateError } = await supabase
     .from('reports')
     .update({
       structured_data: structured as unknown as Record<string, unknown>,
@@ -204,6 +213,7 @@ export async function acceptStructuredReport(
       recommendations: structured.recommendations ?? null,
     })
     .eq('id', reportId)
+  if (updateError) return { error: updateError.message }
 
   try {
     await logAudit({

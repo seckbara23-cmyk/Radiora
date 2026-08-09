@@ -5,6 +5,7 @@ import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getQueueItem } from '@/lib/data/vacations'
 import { getReport } from '@/lib/data/reports'
 import { getReportSections, type SectionTextMap } from '@/lib/safety/sections'
+import { canSignReports } from '@/lib/safety/authority'
 import {
   getAudioAsset,
   getTranscription,
@@ -25,7 +26,6 @@ import type { StructuringResult } from '@/types/structuring'
 
 const VIEW_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'technician', 'super_admin']
 const MANAGE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'super_admin']
-const ACCEPT_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'super_admin']
 
 type Props = { params: Promise<{ itemId: string; locale: string }> }
 
@@ -74,11 +74,15 @@ export default async function ItemWorkspacePage({ params }: Props) {
         removedTokens:     [],
         structured:        transcription.structuredJson,
         confidence:        transcription.confidence ?? [],
-        reviewRequired:    (transcription.confidence ?? []).some((c) => c.reviewRequired),
+        reviewRequired:
+          (transcription.confidence ?? []).some((c) => c.reviewRequired) ||
+          (transcription.correctionEvents ?? []).some((e) => e.applied === false),
       }
     : null
 
-  const canAccept = ACCEPT_ROLES.includes(user.role)
+  // R0.2 — applying the structured draft to the clinical report is radiologist
+  // authority (see lib/safety/immutability.ts); the server action enforces it.
+  const canAccept = canSignReports(user.role)
 
   const patientDisplay = item.patientName ?? item.patientLabel ?? tq('unmatched')
 

@@ -5,6 +5,8 @@ import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
 import { mockStructureText } from '@/lib/ai/mock-engine'
 import { parseStructuredText } from '@/lib/ai/hpd-engine'
+import { evaluateReportWrite } from '@/lib/safety/immutability'
+import { createReportVersion, type VersionDb } from '@/lib/reports/versioning'
 import type { StructuredDraft } from '@/lib/ai/mock-engine'
 import type { StructuredReportData } from '@/types/report'
 
@@ -205,45 +207,43 @@ export async function acceptAiOutput(
 
   const { data: report } = await supabase
     .from('reports')
-    .select('findings, impression, recommendations, status, clinic_id')
+    .select('findings, impression, recommendations, status, clinic_id, signed_at, structured_data')
     .eq('id', reportId)
     .single()
 
+  // This legacy action records the review decision only — it never writes
+  // report content — so a snapshot failure degrades with an audit entry
+  // instead of blocking (R0.2: checked, not silent).
   if (report) {
-    try {
-      const { data: maxRow } = await supabase
-        .from('report_versions')
-        .select('version_number')
-        .eq('report_id', reportId)
-        .order('version_number', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      const versionNumber = ((maxRow?.version_number as number | null) ?? 0) + 1
-
-      await supabase.from('report_versions').insert({
-        report_id:       reportId,
-        clinic_id:       report.clinic_id,
-        version_number:  versionNumber,
-        findings:        report.findings,
-        impression:      report.impression,
-        recommendations: report.recommendations,
-        status:          report.status,
-        created_by:      user.id,
-        change_reason:   'Pre-AI-accept snapshot',
+    const snapshot = await createReportVersion(supabase as unknown as VersionDb, {
+      reportId,
+      clinicId:        report.clinic_id as string | null,
+      findings:        (report.findings as string) ?? '',
+      impression:      (report.impression as string) ?? '',
+      recommendations: (report.recommendations as string | null) ?? null,
+      structuredData:  report.structured_data ?? null,
+      signedAt:        (report.signed_at as string | null) ?? null,
+      status:          report.status as string,
+      createdBy:       user.id,
+      changeReason:    'Pre-AI-accept snapshot',
+    })
+    if (snapshot.error) {
+      await logAudit({
+        userId: user.id, clinicId: user.clinicId,
+        action: 'report.version_snapshot_failed', entityType: 'report', entityId: reportId,
+        metadata: { jobId, error: snapshot.error },
       })
-    } catch {
-      // Version failures must never block the primary clinical operation.
     }
   }
 
-  await supabase.from('ai_reviews').insert({
+  const { error: reviewError } = await supabase.from('ai_reviews').insert({
     job_id:      jobId,
     clinic_id:   user.clinicId,
     report_id:   reportId,
     decision:    'accepted',
     reviewer_id: user.id,
   })
+  if (reviewError) return { error: reviewError.message }
 
   await logAudit({
     userId:     user.id,
@@ -274,43 +274,41 @@ export async function acceptHPDDraft(
 
   const supabase = await createClient()
 
-  // Snapshot current state before overwriting
-  const { data: report } = await supabase
+  const { data: report, error: reportError } = await supabase
     .from('reports')
-    .select('findings, impression, recommendations, status, clinic_id')
+    .select('findings, impression, recommendations, status, clinic_id, signed_at, structured_data')
     .eq('id', reportId)
     .single()
 
-  if (report) {
-    try {
-      const { data: maxRow } = await supabase
-        .from('report_versions')
-        .select('version_number')
-        .eq('report_id', reportId)
-        .order('version_number', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+  if (reportError || !report) return { error: 'Report not found.' }
 
-      const versionNumber = ((maxRow?.version_number as number | null) ?? 0) + 1
+  // R0.2 — a finalized report is immutable: an AI draft can never overwrite a
+  // signed document. Route through the amendment workflow first.
+  const gate = evaluateReportWrite({
+    kind: 'ai_accept', currentStatus: report.status as string, actorRole: user.role,
+  })
+  if (!gate.allowed) return { error: gate.reason }
 
-      await supabase.from('report_versions').insert({
-        report_id:       reportId,
-        clinic_id:       report.clinic_id,
-        version_number:  versionNumber,
-        findings:        report.findings,
-        impression:      report.impression,
-        recommendations: report.recommendations,
-        status:          report.status,
-        created_by:      user.id,
-        change_reason:   'Pre-HPD-AI-accept snapshot',
-      })
-    } catch {
-      // Version failures must never block the primary clinical operation.
-    }
+  // Snapshot current state before overwriting — abort if it cannot be preserved.
+  const snapshot = await createReportVersion(supabase as unknown as VersionDb, {
+    reportId,
+    clinicId:        report.clinic_id as string | null,
+    findings:        (report.findings as string) ?? '',
+    impression:      (report.impression as string) ?? '',
+    recommendations: (report.recommendations as string | null) ?? null,
+    structuredData:  report.structured_data ?? null,
+    signedAt:        (report.signed_at as string | null) ?? null,
+    status:          report.status as string,
+    createdBy:       user.id,
+    changeReason:    'Pre-HPD-AI-accept snapshot',
+  })
+  if (snapshot.error) {
+    return { error: `The report could not be snapshotted before applying the draft. ${snapshot.error}` }
   }
 
-  // Autosave structured data + sync legacy columns for backward compat
-  await supabase
+  // Autosave structured data + sync legacy columns for backward compat.
+  // supabase-js does not throw — check the returned error explicitly (R0.2).
+  const { error: updateError } = await supabase
     .from('reports')
     .update({
       structured_data: structuredData as unknown as Record<string, unknown>,
@@ -320,14 +318,23 @@ export async function acceptHPDDraft(
       recommendations: structuredData.recommendations ?? null,
     })
     .eq('id', reportId)
+  if (updateError) return { error: updateError.message }
 
-  await supabase.from('ai_reviews').insert({
+  const { error: reviewError } = await supabase.from('ai_reviews').insert({
     job_id:      jobId,
     clinic_id:   user.clinicId,
     report_id:   reportId,
     decision:    'accepted',
     reviewer_id: user.id,
   })
+  if (reviewError) {
+    // The clinical write succeeded; record that the review bookkeeping failed.
+    await logAudit({
+      userId: user.id, clinicId: user.clinicId,
+      action: 'ai.review_record_failed', entityType: 'report', entityId: reportId,
+      metadata: { jobId, error: reviewError.message },
+    })
+  }
 
   await logAudit({
     userId:     user.id,

@@ -133,6 +133,10 @@ export function runStructuring(input: StructuringInput): StructuringResult {
     removedTokens:     removed,
     structured,
     confidence,
-    reviewRequired:    confidence.some((c) => c.reviewRequired),
+    // R0.3 — a preserved-for-review suggestion (an ambiguous self-correction
+    // the engine refused to apply) always forces human review.
+    reviewRequired:
+      confidence.some((c) => c.reviewRequired) ||
+      events.some((e) => e.applied === false),
   }
 }

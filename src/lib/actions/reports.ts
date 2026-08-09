@@ -7,6 +7,8 @@ import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
 import { clinicCanWrite, READ_ONLY_MESSAGE } from '@/lib/billing/access'
 import { canSignReports } from '@/lib/safety/authority'
+import { evaluateReportWrite } from '@/lib/safety/immutability'
+import { createReportVersion, type VersionDb, type VersionSnapshotInput } from '@/lib/reports/versioning'
 import { evaluateSigningReadiness, describeBlockers } from '@/lib/safety/signing-gate'
 import { getReportSafetyContext } from '@/lib/data/safety'
 import { enqueueWhatsAppNotification } from '@/lib/notifications/enqueue'
@@ -24,56 +26,26 @@ type AmendRole = typeof AMEND_ROLES[number]
 
 type SB = Awaited<ReturnType<typeof createClient>>
 
-async function createVersion(
+// R0.2 — snapshots go through the shared, error-checked writer. supabase-js
+// never throws, so failures are returned, not caught. Routine save/sign
+// snapshots degrade with an audit entry; the pre-amendment snapshot ABORTS
+// the amendment (see amendReport) because it is the only preserved copy of
+// the signed document.
+async function snapshotVersion(
   supabase: SB,
-  opts: {
-    reportId: string
-    clinicId: string | null
-    findings: string
-    impression: string
-    recommendations: string | null
-    status: string
-    createdBy: string
-    /** What triggered the snapshot: saved | finalized | amended. */
-    action?: string
-    changeReason?: string | null
-  }
-): Promise<void> {
-  try {
-    // Fetch the latest version both for numbering and to compute a diff.
-    const { data: prev } = await supabase
-      .from('report_versions')
-      .select('version_number, findings, impression, recommendations')
-      .eq('report_id', opts.reportId)
-      .order('version_number', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const versionNumber = ((prev?.version_number as number | null) ?? 0) + 1
-
-    // Diff metadata: which clinical sections changed since the previous snapshot.
-    const changed: string[] = []
-    if ((prev?.findings as string | null ?? '')        !== opts.findings)              changed.push('results')
-    if ((prev?.impression as string | null ?? '')      !== opts.impression)            changed.push('conclusion')
-    if ((prev?.recommendations as string | null ?? '') !== (opts.recommendations ?? '')) changed.push('recommendations')
-    const diff = { changedSections: prev ? changed : ['results', 'conclusion', 'recommendations'], previousVersion: (prev?.version_number as number | null) ?? null }
-
-    await supabase.from('report_versions').insert({
-      report_id:       opts.reportId,
-      clinic_id:       opts.clinicId,
-      version_number:  versionNumber,
-      findings:        opts.findings,
-      impression:      opts.impression,
-      recommendations: opts.recommendations,
-      status:          opts.status,
-      created_by:      opts.createdBy,
-      action:          opts.action ?? null,
-      diff,
-      change_reason:   opts.changeReason ?? null,
+  userId: string,
+  clinicId: string | null,
+  opts: VersionSnapshotInput,
+): Promise<{ error: string | null }> {
+  const result = await createReportVersion(supabase as unknown as VersionDb, opts)
+  if (result.error) {
+    await logAudit({
+      userId, clinicId,
+      action: 'report.version_snapshot_failed', entityType: 'report', entityId: opts.reportId,
+      metadata: { action: opts.action ?? null, error: result.error },
     })
-  } catch {
-    // Version failures must never block the primary clinical operation.
   }
+  return result
 }
 
 // ─── Structured data helper ───────────────────────────────────────────────────
@@ -162,16 +134,19 @@ export async function saveDraftReport(
 
   const supabase = await createClient()
 
-  const { data: existing } = await supabase
+  const { data: existing, error: readError } = await supabase
     .from('reports')
     .select('status, clinic_id')
     .eq('id', id)
     .single()
 
-  if (!existing) return { error: 'Report not found.' }
-  if (existing.status === 'finalized') {
-    return { error: 'Finalized reports cannot be edited directly. Use "Amend Report" to re-open.' }
-  }
+  if (readError || !existing) return { error: 'Report not found.' }
+
+  // R0.2 — finalized content is immutable outside the amendment workflow.
+  const gate = evaluateReportWrite({
+    kind: 'draft_save', currentStatus: existing.status as string, actorRole: user.role,
+  })
+  if (!gate.allowed) return { error: gate.reason }
 
   const updatePayload: Record<string, unknown> = { findings, impression, recommendations }
   if (structuredData) {
@@ -186,12 +161,13 @@ export async function saveDraftReport(
 
   if (error) return { error: error.message }
 
-  await createVersion(supabase, {
+  await snapshotVersion(supabase, user.id, user.clinicId, {
     reportId:        id,
     clinicId:        user.clinicId,
     findings,
     impression,
     recommendations,
+    structuredData:  structuredData ?? null,
     status:          existing.status as string,
     createdBy:       user.id,
     action:          'saved',
@@ -256,16 +232,18 @@ export async function finalizeReport(
 
   const supabase = await createClient()
 
-  const { data: existing } = await supabase
+  const { data: existing, error: readError } = await supabase
     .from('reports')
     .select('status')
     .eq('id', id)
     .single()
 
-  if (!existing) return { error: 'Report not found.' }
-  if (existing.status === 'finalized') {
-    return { error: 'Report is already finalized.' }
-  }
+  if (readError || !existing) return { error: 'Report not found.' }
+
+  const gate = evaluateReportWrite({
+    kind: 'finalize', currentStatus: existing.status as string, actorRole: user.role,
+  })
+  if (!gate.allowed) return { error: gate.reason }
 
   const updatePayload: Record<string, unknown> = {
     findings,
@@ -288,12 +266,13 @@ export async function finalizeReport(
   // DB trigger (handle_report_finalized) sets signed_at automatically.
   // DB trigger (on_report_finalized_sync_study) advances study status to 'reported'.
 
-  await createVersion(supabase, {
+  await snapshotVersion(supabase, user.id, user.clinicId, {
     reportId:        id,
     clinicId:        user.clinicId,
     findings,
     impression,
     recommendations,
+    structuredData:  structuredData ?? null,
     status:          'finalized',
     createdBy:       user.id,
     action:          'signed',
@@ -339,26 +318,43 @@ export async function amendReport(
 
   const supabase = await createClient()
 
-  const { data: current } = await supabase
+  const { data: current, error: readError } = await supabase
     .from('reports')
-    .select('findings, impression, recommendations, status')
+    .select('findings, impression, recommendations, status, signed_at, structured_data')
     .eq('id', id)
     .eq('status', 'finalized')
     .single()
 
-  if (!current) return { error: 'Report not found or is not in a finalized state.' }
+  if (readError || !current) return { error: 'Report not found or is not in a finalized state.' }
 
-  await createVersion(supabase, {
+  // R0.2 — the pre-amendment snapshot is the only preserved copy of the signed
+  // document (the DB trigger clears signed_at when the status leaves
+  // 'finalized'). If it cannot be written, the amendment MUST NOT proceed.
+  const snapshot = await snapshotVersion(supabase, user.id, user.clinicId, {
     reportId:        id,
     clinicId:        user.clinicId,
     findings:        current.findings as string,
     impression:      current.impression as string,
     recommendations: (current.recommendations as string | null) ?? null,
+    structuredData:  current.structured_data ?? null,
+    signedAt:        (current.signed_at as string | null) ?? null,
     status:          'finalized',
     createdBy:       user.id,
     action:          'amended',
     changeReason,
+    extraDiff: {
+      previousStatus:   'finalized',
+      previousSignedAt: (current.signed_at as string | null) ?? null,
+    },
   })
+
+  if (snapshot.error) {
+    return {
+      error:
+        'Amendment aborted: the signed report could not be snapshotted, so the original would be lost. ' +
+        snapshot.error,
+    }
+  }
 
   const { error } = await supabase
     .from('reports')

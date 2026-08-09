@@ -71,6 +71,28 @@ describe('parseStructuredText — accented/unaccented section headers', () => {
     expect(sd.conclusion).toBe('aspect évocateur d’une pneumopathie.')
   })
 
+  it('R0.3 — repeated conclusion aliases never discard the LAST dictated content', () => {
+    // "Impression" and "Conclusion" are aliases of the same section. The old
+    // parser kept only the FIRST match, silently deleting the doctor's final
+    // (corrected, negative) conclusion — inverting the report's meaning.
+    const sd = parseStructuredText(
+      'Impression : doute sur une lésion focale. Conclusion : pas de lésion focale décelable.',
+      ctx,
+    )
+    expect(sd.conclusion).toContain('pas de lésion focale décelable')
+    // Nothing is silently dropped: the earlier impression text survives too.
+    expect(sd.conclusion).toContain('doute sur une lésion focale')
+  })
+
+  it('R0.3 — a repeated identical header appends instead of dropping', () => {
+    const sd = parseStructuredText(
+      ['Résultats : foie homogène.', 'Résultats : rate normale.', 'Conclusion : examen normal.'].join('\n'),
+      ctx,
+    )
+    expect(sd.results).toContain('foie homogène')
+    expect(sd.results).toContain('rate normale')
+  })
+
   it('5. accent handling does not change the clinical content between headers', () => {
     // The exact same report, dictated with vs without accents on the HEADERS
     // only, must yield identical section bodies (content is preserved verbatim).

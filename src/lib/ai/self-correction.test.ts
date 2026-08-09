@@ -42,3 +42,78 @@ describe('detectSelfCorrections', () => {
     expect(preservesUncertainty('Nodule probable', corrected)).toBe(true)
   })
 })
+
+// R0.3 — preservation-first regressions. The audit executed the previous
+// pipeline and proved it corrupted measurements, deleted surgical history and
+// erased dictated negative findings. Each case below is an exact audit input.
+
+const destructive = (events: { applied?: boolean }[]) =>
+  events.filter((e) => e.applied !== false)
+
+describe('detectSelfCorrections — R0.3 preservation-first', () => {
+  it('leaves legitimate medical use of "correction" untouched (surgical history)', () => {
+    const raw = 'Patient opéré pour correction de scoliose.'
+    const { corrected, events } = detectSelfCorrections(raw)
+    expect(corrected).toBe('Patient opéré pour correction de scoliose.')
+    expect(destructive(events).length).toBe(0)
+  })
+
+  it('never splits a decimal measurement: retraction keeps "4.5 cm" intact', () => {
+    const raw = 'Kyste de 3.5 cm. Non. Kyste de 4.5 cm.'
+    const { corrected } = detectSelfCorrections(raw)
+    expect(corrected).toBe('Kyste de 4.5 cm.')
+    expect(corrected).not.toContain('Kyste de 3. Kyste de 4. 5 cm.')
+  })
+
+  it('preserves "12.5 mm" verbatim when there is no correction at all', () => {
+    const raw = 'Le nodule mesure 12.5 mm.'
+    const { corrected, events } = detectSelfCorrections(raw)
+    expect(corrected).toBe('Le nodule mesure 12.5 mm.')
+    expect(events.length).toBe(0)
+  })
+
+  it('"Question ? Non." is an answer, not a retraction — the negative finding survives', () => {
+    const raw = 'Anomalie de perfusion ? Non. Parenchyme homogène.'
+    const { corrected, events } = detectSelfCorrections(raw)
+    expect(corrected).toContain('Anomalie de perfusion ?')
+    expect(corrected).toContain('Non.')
+    expect(corrected).toContain('Parenchyme homogène.')
+    expect(destructive(events).length).toBe(0)
+  })
+
+  it('"ou plutôt" swaps only the measurement — lesion identity, location and laterality survive', () => {
+    const raw = 'Nodule du lobe supérieur droit mesurant 12 mm, ou plutôt 14 mm.'
+    const { corrected, events } = detectSelfCorrections(raw)
+    expect(corrected).toContain('Nodule du lobe supérieur droit')
+    expect(corrected).toContain('14 mm')
+    expect(corrected).not.toContain('12 mm')
+    expect(events.length).toBe(1)
+    expect(events[0].applied).toBe(true)
+    expect(events[0].removed).toBe('12 mm')
+  })
+
+  it('a multi-finding sentence is never deleted by a standalone "Non." — preserved + flagged', () => {
+    const raw = 'Foie normal, pas de lésion focale, vésicule alithiasique. Non. Vésicule lithiasique.'
+    const { corrected, events } = detectSelfCorrections(raw)
+    expect(corrected).toContain('Foie normal')
+    expect(corrected).toContain('pas de lésion focale')
+    expect(corrected).toContain('Vésicule lithiasique.')
+    const suggestions = events.filter((e) => e.applied === false)
+    expect(suggestions.length).toBe(1)
+    expect(suggestions[0].removed).toContain('Foie normal')
+  })
+
+  it('an unlocalizable "ou plutôt" replacement preserves the text and emits a review suggestion', () => {
+    const raw = 'Radiographie du genou droit, ou plutôt il faut revoir le protocole complet.'
+    const { corrected, events } = detectSelfCorrections(raw)
+    expect(corrected).toBe(raw) // verbatim — nothing deleted
+    const suggestions = events.filter((e) => e.applied === false)
+    expect(suggestions.length).toBe(1)
+  })
+
+  it('single-word laterality swap remains localized: droit → gauche', () => {
+    const raw = 'Nodule du lobe droit, ou plutôt gauche.'
+    const { corrected } = detectSelfCorrections(raw)
+    expect(corrected).toBe('Nodule du lobe gauche.')
+  })
+})

@@ -22,6 +22,10 @@ export interface CorrectionEvent {
   removed: string   // the superseded text the doctor retracted
   kept:    string   // the replacement the doctor settled on
   index:   number   // character offset in the source transcript
+  /** R0.3 — false when the correction could NOT be safely localized: the text
+   *  was left verbatim and this event is a review suggestion, not an applied
+   *  edit. Absent/undefined means applied (backward compat with stored rows). */
+  applied?: boolean
 }
 
 /** A token removed by the French cleanup pass, kept for transparency. */

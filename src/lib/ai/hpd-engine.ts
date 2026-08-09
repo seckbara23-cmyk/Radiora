@@ -272,11 +272,16 @@ export function parseStructuredText(freeText: string, context: HpdContext): Stru
 
   for (const part of parts) {
     const key = matchSectionKey(part)
-    if (key && !sections[key]) {
+    if (key) {
       foundSections = true
       // Strip header + colon/newline + leading whitespace
       const stripped = part.replace(/^[^\n:]+[:\n]\s*/i, '').trim()
-      sections[key] = stripped
+      if (!stripped) continue
+      // R0.3 — repeated section aliases ("Impression : … Conclusion : …") must
+      // never silently discard later dictated content: append, don't drop. The
+      // LAST dictated conclusion is a corrected negative finding more often
+      // than not — losing it would invert the report's meaning.
+      sections[key] = sections[key] ? `${sections[key]}\n${stripped}` : stripped
     }
   }
 
