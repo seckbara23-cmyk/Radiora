@@ -24,8 +24,8 @@ or patient information.
 | 039 | R0.2 | Finalized-report immutability; version snapshot columns | **Applied** |
 | 040 | R0.5 | Delivery lockout columns; restricted delivery policies | **Applied** |
 | 041 | R0.7 | Vacation authority: `printed` guard, fail-closed role check | **Applied** |
-| 042 | R0.8A | Radiologist-only clinical authority | **Awaiting operator activation** |
-| 043 | R0.8B | Database-enforced delivery expiry | **Awaiting operator activation** |
+| 042 | R0.8A | Radiologist-only clinical authority | **Awaiting re-run** (first attempt rolled back — see below) |
+| 043 | R0.8B | Database-enforced delivery expiry | **Blocked** until 042 + its verification pass |
 
 ---
 
@@ -60,8 +60,28 @@ Applied successfully. Production inspection confirmed:
 
 ### Migration 042 — radiologist-only clinical authority (R0.8A)
 
+> **First attempt rolled back — the file has been corrected and must be re-run.**
+>
+> Production inspection after the attempt showed the authority function still
+> carrying the 041 three-role predicate, with the trigger wiring correct and a
+> single zero-argument signature present. Cause: the migration's own final
+> self-check used a substring test that matched its own *correct* replacement
+> body — that body legitimately contains `in ('validated', 'signed')` and
+> mentioned `clinic_admin` in an explanatory comment. The check raised, and
+> because the SQL editor runs the batch as one transaction, the
+> `CREATE OR REPLACE` was rolled back with it.
+>
+> Statement order was never at fault: `CREATE OR REPLACE FUNCTION` has always
+> preceded the self-check. The corrected file replaces the substring matching
+> with targeted assertions on the installed state — the radiologist-only
+> predicate must be present, the superseded three-role allowlist must be absent,
+> the zero-argument trigger signature must be intact, and the trigger must be
+> `BEFORE INSERT OR UPDATE ... FOR EACH ROW`. Nothing else about the migration
+> changed, and no database object was left modified by the failed attempt.
+
 Supersedes the authority function forward-only. Migration 041 is left exactly as
-applied; 042 replaces the function body with `CREATE OR REPLACE`.
+applied; 042 replaces the function body with `CREATE OR REPLACE`, keeping the
+exact zero-argument signature the existing trigger calls.
 
 What changes: `validated` and `signed` become **radiologist only**. The previous
 function also accepted `clinic_admin` and `super_admin`, which contradicted the
@@ -125,26 +145,43 @@ recipient value is read, written or logged.
 
 ## Activation procedure
 
-Apply in the Supabase SQL editor, in this order, checking the output of each
-before continuing:
+Run these in the Supabase SQL editor **strictly in order**, checking the output
+of each step before starting the next. Do not batch them together.
 
-1. `supabase/migrations/042_clinical_authority.sql`
-2. `supabase/migrations/043_delivery_expiry_enforced.sql`
+**Step 1 — re-run the corrected authority migration.**
+`supabase/migrations/042_clinical_authority.sql`
 
-Each migration ends with a self-verification block that raises an exception if
-its own wiring is missing, so a failed apply is loud rather than silent. 043
-additionally emits pre-flight notices with the **count** of rows to backfill and
-the count already outside the new window — counts only, never row contents.
+Expected on success: a notice reading
+`R0.8A: radiologist-only clinical authority installed; trigger BEFORE INSERT OR UPDATE FOR EACH ROW.`
+Re-running is safe — the migration is idempotent (`CREATE OR REPLACE` plus
+`DROP TRIGGER IF EXISTS` / `CREATE TRIGGER`) and touches no row data.
 
-Then run the verification scripts, which are attack simulations wrapped in a
-transaction that **rolls back**, leaving no fixtures:
+**Step 2 — verify the authority gate.**
+`supabase/verify/R0_8A_clinical_authority.sql` — expect **10 `PASS` notices**.
+It is an attack simulation wrapped in a transaction that **rolls back**, so it
+leaves no fixtures behind.
 
-3. `supabase/verify/R0_8A_clinical_authority.sql` — expect 10 `PASS` notices.
-4. `supabase/verify/R0_8B_delivery_expiry.sql` — expect 7 `PASS` notices.
+**Stop here if step 1 or step 2 did not pass.** Migration 043 must not be run
+until the authority gate is confirmed installed: the two are independent
+controls, and applying the delivery-expiry constraint while the authority gate
+is still open would leave the more serious clinical gap unaddressed while
+implying the R0.8 slice is complete.
+
+**Step 3 — only after steps 1 and 2 pass — apply the delivery-expiry migration.**
+`supabase/migrations/043_delivery_expiry_enforced.sql`
+
+It emits pre-flight notices with the **count** of rows to backfill and the count
+already outside the new window (counts only, never row contents), then enforces
+`NOT NULL` and the window constraint.
+
+**Step 4 — verify the expiry constraint.**
+`supabase/verify/R0_8B_delivery_expiry.sql` — expect **7 `PASS` notices**; also
+transaction-wrapped and rolled back.
 
 Any `FAIL` notice, or an exception whose message begins with
 `MIGRATION SELF-CHECK FAILED`, means the control is not in place — stop and
-investigate before relying on it.
+investigate before relying on it. A self-check exception rolls back the whole
+migration, so the database is left in its previous state rather than half-applied.
 
 Earlier slices ship the same way; their scripts remain available and are
 unaffected by this activation:
