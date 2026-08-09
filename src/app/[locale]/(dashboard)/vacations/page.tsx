@@ -20,10 +20,10 @@ import {
   type VacationStatus,
   type VacationWorkflowStatus,
 } from '@/types/vacation'
+import { canValidateQueueItem } from '@/lib/safety/workflow-authority'
 import type { UserRole } from '@/types/user'
 
 const VIEW_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'technician', 'super_admin']
-const VALIDATE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'super_admin']
 const MODALITIES: Modality[] = ['CT', 'MRI', 'XR', 'US', 'NM', 'PT', 'MG', 'DX', 'CR']
 
 type Props = {
@@ -67,7 +67,8 @@ export default async function VacationsPage({ params, searchParams }: Props) {
     getQueueItems(filters),
   ])
 
-  const canValidate = VALIDATE_ROLES.includes(user.role)
+  // R0.8A — radiologist only; the server action re-checks this on every write.
+  const canValidate = canValidateQueueItem(user.role)
   const hasFilters  = Boolean(date || modality || radiologistId || status)
 
   return (

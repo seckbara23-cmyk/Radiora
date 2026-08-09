@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
+import { evaluateQueueTransition } from '@/lib/safety/workflow-authority'
 import type { Modality } from '@/types/study'
 import type { UserRole } from '@/types/user'
 import type { VacationWorkflowStatus } from '@/types/vacation'
@@ -12,12 +13,14 @@ export type VacationActionResult = { error: string | null; id?: string }
 
 // Clerical staff who can run the queue (create sessions/items, move clerical states).
 const MANAGE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'super_admin']
-// Only these may move an item to validated/signed — physician authority.
-const VALIDATE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'super_admin']
+
+// R0.8A — clinical authority (validate/sign) and the validation-before-export
+// ordering now come from lib/safety/workflow-authority.ts. The previous local
+// VALIDATE_ROLES list also granted clinic_admin and super_admin, contradicting
+// canValidateReports(): the queue's "signed" state gates distribution, so an
+// administrative role could push unvalidated clinical content downstream.
 
 const MODALITIES: Modality[] = ['CT', 'MRI', 'XR', 'US', 'NM', 'PT', 'MG', 'DX', 'CR']
-// An item must be at/after 'signed' before it can be printed or exported.
-const POST_SIGN: VacationWorkflowStatus[] = ['signed', 'printed', 'exported']
 
 function canManage(role: UserRole): boolean {
   return MANAGE_ROLES.includes(role)
@@ -153,14 +156,25 @@ export async function setItemStatus(input: {
 
   const current = item.workflow_status as VacationWorkflowStatus
 
-  // Physician authority: only radiologists/admins may validate or sign.
-  if ((input.status === 'validated' || input.status === 'signed') && !VALIDATE_ROLES.includes(user.role)) {
-    return { error: 'Only a radiologist can validate or sign a report.' }
-  }
-
-  // Validation-before-export: printing/exporting requires a signed report.
-  if ((input.status === 'printed' || input.status === 'exported') && !POST_SIGN.includes(current)) {
-    return { error: 'The report must be signed by a radiologist before it can be printed or exported.' }
+  // Clinical authority + validation-before-distribution. `user.role` is the
+  // SERVER-RESOLVED role from the caller's profile row (requireCurrentUser),
+  // never a client-supplied value; `current` is the persisted status, so a
+  // client cannot claim a signed predecessor it does not have.
+  const gate = evaluateQueueTransition({
+    from: current,
+    to: input.status,
+    actorRole: user.role,
+  })
+  if (!gate.allowed) {
+    await logAudit({
+      userId:     user.id,
+      clinicId:   user.clinicId,
+      action:     'vacation.status_change_blocked',
+      entityType: 'vacation_item',
+      entityId:   input.itemId,
+      metadata:   { from: current, to: input.status, reason: gate.reason },
+    })
+    return { error: gate.reason }
   }
 
   const { error } = await supabase

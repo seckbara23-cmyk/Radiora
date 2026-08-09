@@ -4,10 +4,12 @@ import { useState, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
 import { useRouter } from '@/i18n/navigation'
 import { setItemStatus } from '@/lib/actions/vacations'
+import {
+  CLINICAL_AUTHORITY_STATES,
+  POST_SIGN_STATES,
+  DISTRIBUTION_STATES,
+} from '@/lib/safety/workflow-authority'
 import { VACATION_WORKFLOW_ORDER, type VacationWorkflowStatus } from '@/types/vacation'
-
-const POST_SIGN: VacationWorkflowStatus[] = ['signed', 'printed', 'exported']
-const VALIDATE_ONLY: VacationWorkflowStatus[] = ['validated', 'signed']
 
 export function ItemStatusControl({
   itemId,
@@ -42,11 +44,13 @@ export function ItemStatusControl({
         className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs font-medium text-gray-700 outline-none focus:border-blue-400 disabled:opacity-50"
       >
         {VACATION_WORKFLOW_ORDER.map((s) => {
-          // Physician authority: secretaries can't pick validated/signed.
-          const blockedByRole = VALIDATE_ONLY.includes(s) && !canValidate
-          // Validation-before-export: print/export only once signed.
+          // Clinical authority: only a radiologist can pick validated/signed
+          // (the server action enforces the same rule — this just avoids
+          // offering an option that would be rejected).
+          const blockedByRole = CLINICAL_AUTHORITY_STATES.includes(s) && !canValidate
+          // Validation-before-distribution: print/export only once signed.
           const blockedByOrder =
-            (s === 'printed' || s === 'exported') && !POST_SIGN.includes(status)
+            DISTRIBUTION_STATES.includes(s) && !POST_SIGN_STATES.includes(status)
           return (
             <option key={s} value={s} disabled={blockedByRole || blockedByOrder}>
               {t(`status.${s}` as Parameters<typeof t>[0])}

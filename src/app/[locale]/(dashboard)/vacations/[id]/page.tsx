@@ -8,10 +8,10 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { ItemStatusControl } from '../ItemStatusControl'
 import { AddItemForm } from './AddItemForm'
 import { BatchExportControl, type BatchExportItem } from './BatchExportControl'
+import { canValidateQueueItem } from '@/lib/safety/workflow-authority'
 import type { UserRole } from '@/types/user'
 
 const VIEW_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'technician', 'super_admin']
-const VALIDATE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'super_admin']
 const MANAGE_ROLES: UserRole[] = ['clinic_admin', 'radiologist', 'secretary', 'super_admin']
 
 type Props = { params: Promise<{ id: string; locale: string }> }
@@ -30,7 +30,8 @@ export default async function VacationDetailPage({ params }: Props) {
 
   const items = await getQueueItems({ vacationId: id })
 
-  const canValidate = VALIDATE_ROLES.includes(user.role)
+  // R0.8A — radiologist only; the server action re-checks this on every write.
+  const canValidate = canValidateQueueItem(user.role)
   const canManage   = MANAGE_ROLES.includes(user.role)
   const done = items.filter((i) => ['signed', 'printed', 'exported'].includes(i.workflowStatus)).length
 
