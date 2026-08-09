@@ -24,8 +24,12 @@ or patient information.
 | 039 | R0.2 | Finalized-report immutability; version snapshot columns | **Applied** |
 | 040 | R0.5 | Delivery lockout columns; restricted delivery policies | **Applied** |
 | 041 | R0.7 | Vacation authority: `printed` guard, fail-closed role check | **Applied** |
-| 042 | R0.8A | Radiologist-only clinical authority | **Awaiting re-run** (first attempt rolled back — see below) |
-| 043 | R0.8B | Database-enforced delivery expiry | **Blocked** until 042 + its verification pass |
+| 042 | R0.8A | Radiologist-only clinical authority | **Applied** (succeeded on re-run) |
+| 043 | R0.8B | Database-enforced delivery expiry | **Blocked** until R0_8A verification passes |
+
+**Next operator action:** run `supabase/verify/R0_8A_clinical_authority.sql`
+(expect 11 `PASS` notices, zero `FAIL`). Migration 043 must not be run until it
+passes.
 
 ---
 
@@ -60,9 +64,10 @@ Applied successfully. Production inspection confirmed:
 
 ### Migration 042 — radiologist-only clinical authority (R0.8A)
 
-> **First attempt rolled back — the file has been corrected and must be re-run.**
+> **Applied on re-run.** The first attempt rolled back; the file was corrected
+> and re-applied successfully. Retained here as a record of the failure mode.
 >
-> Production inspection after the attempt showed the authority function still
+> Production inspection after the failed attempt showed the authority function still
 > carrying the 041 three-role predicate, with the trigger wiring correct and a
 > single zero-argument signature present. Cause: the migration's own final
 > self-check used a substring test that matched its own *correct* replacement
@@ -148,26 +153,32 @@ recipient value is read, written or logged.
 Run these in the Supabase SQL editor **strictly in order**, checking the output
 of each step before starting the next. Do not batch them together.
 
-**Step 1 — re-run the corrected authority migration.**
-`supabase/migrations/042_clinical_authority.sql`
+**Step 1 — apply the authority migration. ✅ DONE.**
+`supabase/migrations/042_clinical_authority.sql` — applied successfully.
+Re-running is safe if ever needed: the migration is idempotent
+(`CREATE OR REPLACE` plus `DROP TRIGGER IF EXISTS` / `CREATE TRIGGER`) and
+touches no row data.
 
-Expected on success: a notice reading
-`R0.8A: radiologist-only clinical authority installed; trigger BEFORE INSERT OR UPDATE FOR EACH ROW.`
-Re-running is safe — the migration is idempotent (`CREATE OR REPLACE` plus
-`DROP TRIGGER IF EXISTS` / `CREATE TRIGGER`) and touches no row data.
+**Step 2 — verify the authority gate. ← NEXT**
+`supabase/verify/R0_8A_clinical_authority.sql` — expect **11 `PASS` notices**,
+numbered 1 to 11, and zero `FAIL`. It is an attack simulation wrapped in a
+transaction that **rolls back**, so it leaves no fixtures behind.
 
-**Step 2 — verify the authority gate.**
-`supabase/verify/R0_8A_clinical_authority.sql` — expect **10 `PASS` notices**.
-It is an attack simulation wrapped in a transaction that **rolls back**, so it
-leaves no fixtures behind.
+> An earlier revision of this script aborted during fixture setup with
+> `22P02: invalid input syntax for type uuid`. Three synthetic ids used
+> mnemonic suffixes (`v1` for the vacation, `i1`/`i2` for queue items) and
+> `v`/`i` are not hexadecimal, so Postgres rejected the seed before any
+> authority test ran. The ids are now hex (`b1`, `e1`, `e2`) and every UUID
+> literal in every verification script has been statically validated. No test
+> was weakened or removed.
 
-**Stop here if step 1 or step 2 did not pass.** Migration 043 must not be run
+**Stop here if step 2 did not pass.** Migration 043 must not be run
 until the authority gate is confirmed installed: the two are independent
 controls, and applying the delivery-expiry constraint while the authority gate
 is still open would leave the more serious clinical gap unaddressed while
 implying the R0.8 slice is complete.
 
-**Step 3 — only after steps 1 and 2 pass — apply the delivery-expiry migration.**
+**Step 3 — only after step 2 passes — apply the delivery-expiry migration.**
 `supabase/migrations/043_delivery_expiry_enforced.sql`
 
 It emits pre-flight notices with the **count** of rows to backfill and the count
@@ -188,3 +199,7 @@ unaffected by this activation:
 
 - `supabase/verify/R0_1_profiles_guard.sql` — expect 8 `PASS` notices.
 - `supabase/verify/R0_2_report_immutability.sql` — expect 9 `PASS` notices.
+
+Every UUID literal in all four verification scripts is statically validated as
+hexadecimal before release, so a fixture can no longer abort a run the way the
+R0_8A seed did.
