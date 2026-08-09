@@ -64,7 +64,17 @@ function tidy(text: string): string {
     .replace(/([.!?])\s*,/g, '$1')        // drop comma right after a sentence end
     .replace(/,\s*([.!?])/g, '$1')        // drop comma right before a sentence end
     .replace(/(^|[.!?]\s*),\s*/g, '$1')   // drop comma at the start of a sentence
-    .replace(/([,.;:!?])(?=\S)/g, '$1 ')  // one space after punctuation
+    // One space after punctuation — EXCEPT a decimal separator. "3.5 cm" and
+    // the French "3,5 cm" are single measurements, not two sentences: splitting
+    // them silently rewrites a clinical value (R0.3 guarantees they stay
+    // intact, and self-correction.ts has always guarded this; tidy() did not).
+    .replace(/([,.;:!?])(?=\S)/g, (match, mark: string, offset: number, full: string) => {
+      const isDecimal =
+        (mark === '.' || mark === ',') &&
+        /\d/.test(full[offset - 1] ?? '') &&
+        /\d/.test(full[offset + 1] ?? '')
+      return isDecimal ? mark : `${mark} `
+    })
     .replace(/\s+\n/g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .replace(/ {2,}/g, ' ')

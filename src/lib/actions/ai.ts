@@ -4,11 +4,15 @@ import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
 import { mockStructureText } from '@/lib/ai/mock-engine'
-import { parseStructuredText } from '@/lib/ai/hpd-engine'
+// R2.0 — this module no longer reaches past the pipeline into
+// parseStructuredText. buildHpdDraft runs the canonical runStructuring chain.
+import { buildHpdDraft, type HpdStructuringMeta } from '@/lib/ai/hpd-draft'
 import { evaluateReportWrite } from '@/lib/safety/immutability'
 import { createReportVersion, type VersionDb } from '@/lib/reports/versioning'
 import type { StructuredDraft } from '@/lib/ai/mock-engine'
 import type { StructuredReportData } from '@/types/report'
+
+export type { HpdStructuringMeta } from '@/lib/ai/hpd-draft'
 
 type AiRole = 'clinic_admin' | 'radiologist' | 'super_admin'
 const AI_ROLES: AiRole[] = ['clinic_admin', 'radiologist', 'super_admin']
@@ -23,6 +27,8 @@ export type HpdGenerateResult = {
   error: string | null
   jobId?: string
   output?: StructuredReportData
+  /** R2.0 — present whenever a draft was produced. */
+  structuring?: HpdStructuringMeta
 }
 
 export type SimpleResult = { error: string | null }
@@ -94,10 +100,24 @@ export async function generateStructuredDraft(
 }
 
 // ─── generateHPDDraft ─────────────────────────────────────────────────────────
-// New HPD-format structuring engine.
-// Input:  raw dictation / free text + exam context
-// Output: StructuredReportData JSON following the HPD report template
-// Rules:  French-first, never invents clinical findings, always requires review
+// The radiologist-facing structuring entry point.
+//
+// R2.0 — this now runs the CANONICAL pipeline (runStructuring), the same one the
+// vacation queue and live preview already used:
+//
+//   raw transcript
+//     → detectSelfCorrections   (dictated retractions, preservation-first)
+//     → cleanupFrench           (fillers/terminology; uncertainty fail-safe)
+//     → parseStructuredText     (HPD sections)
+//     → confidence + reviewRequired
+//
+// It previously called parseStructuredText DIRECTLY, so the radiologist's own
+// surface was the only one that got no self-correction, no French cleanup and
+// no confidence scoring — the weakest of the three entry points. There is now
+// exactly one clinical structuring pipeline.
+//
+// Still local and deterministic: no external model, no network call.
+// Rules: French-first, never invents clinical findings, always requires review.
 
 export async function generateHPDDraft(
   reportId: string,
@@ -116,21 +136,28 @@ export async function generateHPDDraft(
 
   const supabase = await createClient()
 
-  // Fetch patient context so the PDF renderer has it ready
-  const { data: reportRow } = await supabase
+  // Fetch patient context so the PDF renderer has it ready.
+  // R2.0 — the error is inspected: supabase-js resolves rather than throwing, so
+  // an RLS-hidden or missing report used to fall through to an empty context.
+  const { data: reportRow, error: reportError } = await supabase
     .from('reports')
     .select('patient_id')
     .eq('id', reportId)
     .single()
 
+  if (reportError || !reportRow) return { error: 'Report not found.' }
+
   let patientName = '', patientAge = '', patientSex = ''
-  if (reportRow?.patient_id) {
-    const { data: p } = await supabase
+  if (reportRow.patient_id) {
+    const { data: p, error: patientError } = await supabase
       .from('patients')
       .select('first_name, last_name, date_of_birth, sex')
       .eq('id', reportRow.patient_id as string)
       .single()
-    if (p) {
+    // Patient identity is presentation-only (it fills the report header block),
+    // so a lookup failure degrades to an empty header rather than blocking the
+    // radiologist's structuring — but it is checked, never silently swallowed.
+    if (!patientError && p) {
       patientName = `${(p.last_name as string ?? '').toUpperCase()} ${p.first_name as string ?? ''}`.trim()
       patientSex  = (p.sex as string) ?? ''
       if (p.date_of_birth) {
@@ -159,16 +186,23 @@ export async function generateHPDDraft(
 
   if (jobError || !job) return { error: 'Failed to create AI job record.' }
 
-  const output = parseStructuredText(text, {
-    modality,
-    bodyPart,
-    patientName,
-    patientAge,
-    patientSex,
-    locale: 'fr',
-  })
+  // ── The canonical pipeline (pure, local, deterministic, synchronous) ────────
+  const { output, structuring }: { output: StructuredReportData; structuring: HpdStructuringMeta } =
+    buildHpdDraft({
+      rawTranscript: text,
+      modality,
+      bodyPart,
+      patientName,
+      patientAge,
+      patientSex,
+      locale: 'fr',
+    })
 
-  await supabase.from('ai_outputs').insert({
+  // ai_outputs.raw_response already exists for exactly this: the full engine
+  // output behind the flattened section columns. Persisting it here keeps the
+  // metadata auditable per job. NOTE: this is NOT what the signing gate reads —
+  // see docs/architecture/r1-radiologist-workflow.md §R2.0 for the gap.
+  const { error: outputError } = await supabase.from('ai_outputs').insert({
     job_id:              job.id,
     clinic_id:           user.clinicId,
     report_id:           reportId,
@@ -176,8 +210,13 @@ export async function generateHPDDraft(
     technique:           output.technique,
     findings:            output.results,
     impression:          output.conclusion,
-    recommendations:     output.recommendations ?? null,
+    // NOT NULL DEFAULT '' — an explicit null violates the constraint. The
+    // previous `?? null` made this insert fail for every report without
+    // recommendations, which went unnoticed because the error was never read.
+    recommendations:     output.recommendations ?? '',
+    raw_response:        structuring as unknown as Record<string, unknown>,
   })
+  if (outputError) return { error: `Failed to record the structuring result: ${outputError.message}` }
 
   await logAudit({
     userId:     user.id,
@@ -185,10 +224,20 @@ export async function generateHPDDraft(
     action:     'ai.hpd_draft_generated',
     entityType: 'report',
     entityId:   reportId,
-    metadata:   { provider: 'mock', jobId: job.id, modality, bodyPart, examType: output.examType },
+    metadata:   {
+      // Unchanged: provider configuration is out of scope for R2.0.
+      provider: 'mock',
+      jobId: job.id,
+      modality,
+      bodyPart,
+      examType: output.examType,
+      reviewRequired: structuring.reviewRequired,
+      corrections: structuring.correctionEvents.length,
+      warnings: structuring.warnings.length,
+    },
   })
 
-  return { error: null, jobId: job.id as string, output }
+  return { error: null, jobId: job.id as string, output, structuring }
 }
 
 // ─── acceptAiOutput (legacy) ──────────────────────────────────────────────────

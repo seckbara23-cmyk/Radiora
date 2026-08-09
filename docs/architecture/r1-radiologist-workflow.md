@@ -2,6 +2,11 @@
 
 **Status:** frozen for R2. **Date:** 2026-08-09. **Application SHA at audit:** `9cbba6e`.
 
+> **Implementation status — R2.0 COMPLETE.** See
+> [§R2.0 implementation status](#r20-implementation-status) at the end of this
+> document. The body below is the original audit and remains the frozen
+> architecture; only the status appendix is added.
+
 This document is the product-surface and architecture freeze that R2 implements
 against. It is the result of a full read-only audit of the repository — every
 claim below carries a `file:line` citation and was read from source, not
@@ -661,3 +666,101 @@ R1 did **not**, and R2's early gates must not:
 | `src/lib/reports/structured-patch.test.ts` | 16 tests pinning the safety rules |
 
 No schema change, no migration, no behavioural change to any deployed path.
+
+---
+
+## R2.0 implementation status
+
+**Gate R2.0 — unify the radiologist structuring pipeline. COMPLETE.**
+
+### What changed
+
+The radiologist-facing path now runs the **canonical pipeline**. §1.3 of this
+document recorded that `generateHPDDraft` called `parseStructuredText` directly
+and therefore skipped self-correction, French cleanup and confidence scoring.
+That bypass is closed:
+
+```
+before:  generateHPDDraft → parseStructuredText
+after:   generateHPDDraft → buildHpdDraft → runStructuring
+                              → detectSelfCorrections
+                              → cleanupFrench
+                              → parseStructuredText
+                              → confidence + reviewRequired
+                              → analyzeClinicalSafety
+```
+
+There is now **one clinical structuring pipeline** for every active entry point.
+Verified after the change: no active production path reaches
+`parseStructuredText` except through `runStructuring`. The two remaining direct
+callers are `runStructuring` itself and the test suite.
+
+The pure core was extracted to `src/lib/ai/hpd-draft.ts` (`buildHpdDraft`) so the
+clinically meaningful behaviour is unit-testable without a database. The server
+action keeps its IO: auth, `ai_jobs` / `ai_outputs`, audit.
+
+### A latent defect this surfaced
+
+Routing through the pipeline exposed a **pre-existing bug in `cleanupFrench`**:
+`tidy()`'s "one space after punctuation" rule rewrote `3.5 cm` as `3. 5 cm`.
+R0.3 guaranteed decimals are never split and enforced it in
+`detectSelfCorrections`, but `cleanupFrench` was never checked — so the queue
+and live-dictation paths have been corrupting decimal measurements since they
+were built. Fixed with a digit-flanked guard covering both `.` and the French
+decimal comma. Shipping R2.0 without this would have imported the corruption
+into the radiologist path, which previously preserved decimals.
+
+### Review metadata now available
+
+`HpdGenerateResult` gained one additive field, `structuring`, carrying:
+`rawTranscript`, `cleanedTranscript`, `correctionEvents` (including
+`applied: false` review suggestions), `removedTokens`, `confidence` (including
+`autoFilled`), `reviewRequired`, and advisory `warnings` from
+`analyzeClinicalSafety` (including `heavy_cleanup_drift`). `SmartStructuringPanel`
+surfaces the review-required flag, auto-filled notice, corrections and removed
+token count, reusing the existing `structuring` i18n namespace — no new keys.
+
+### Persistence limitations — READ THIS BEFORE R2.5
+
+Stated precisely, without overclaiming:
+
+- **In memory, per generation:** the full metadata above, for as long as the
+  panel holds it. Lost on reload.
+- **Persisted:** the metadata is written to `ai_outputs.raw_response` (an
+  existing column reserved for provider envelopes — no schema change). It is
+  therefore auditable per AI job.
+- **NOT persisted anywhere the signing gate reads.** `finalizeReport` obtains
+  confidence via `getReportSafetyContext`, which resolves
+  `report → vacation_items.report_id → transcriptions`. A report created
+  directly from a study has no queue item, so that lookup returns null and
+  `aiConfidence` is null at signing time. **`ai_outputs.raw_response` is not
+  consulted by the gate.** R2.0 does not change this and does not weaken the
+  gate to compensate.
+- **Consequence:** on the direct-from-study path the AI-review blocker still
+  cannot fire. The empty-section and low-confidence blockers, which are computed
+  from the report's own current content, are unaffected and still apply.
+
+**Exact fields needed later (migration 044+, not implemented):**
+
+| Table | Field | Purpose |
+|---|---|---|
+| `transcriptions` | `report_id uuid NULL REFERENCES reports(id) ON DELETE SET NULL` | let a transcript bind directly to a report |
+| `transcriptions` | relax `vacation_item_id` to `NULL` + CHECK exactly one owner | a transcript belongs to a queue item **or** a report |
+| `vacation_items` | `UNIQUE (report_id) WHERE report_id IS NOT NULL` | make the existing reverse lookup provably single-valued |
+
+With those, `getReportSafetyContext` becomes a two-branch lookup and the signing
+gate sees confidence on both paths.
+
+### Still not started
+
+- **Live structuring UI / live section population.** Unstable transcript
+  prefixes must still not drive automatic report mutation — `runStructuring` is
+  non-monotonic on partial input (§8.1), and `splitStableTranscript` (§8.2) is
+  the boundary that must gate any future live feed. R2.0 structures a
+  **complete** transcript submitted by the radiologist; nothing streams.
+- **Migration 044**, `dictation_sessions` / `transcriptions` schema changes,
+  report-linked QR dictation.
+- **Product Surface Freeze**, unified workspace shell, report-editor redesign,
+  navigation changes.
+- Template ingestion. Legacy code removal. The `external-ai.ts` append bug
+  (§12.1) remains open.

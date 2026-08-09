@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useTransition } from 'react'
 import { useTranslations } from 'next-intl'
-import { generateHPDDraft, acceptHPDDraft, rejectAiOutput } from '@/lib/actions/ai'
+import { generateHPDDraft, acceptHPDDraft, rejectAiOutput, type HpdStructuringMeta } from '@/lib/actions/ai'
 import type { StructuredReportData } from '@/types/report'
 
 interface Props {
@@ -20,9 +20,11 @@ interface PanelState {
   output: StructuredReportData | null
   jobId:  string | null
   error:  string | null
+  /** R2.0 — safety metadata from the canonical pipeline. */
+  meta:   HpdStructuringMeta | null
 }
 
-const IDLE: PanelState = { phase: 'idle', output: null, jobId: null, error: null }
+const IDLE: PanelState = { phase: 'idle', output: null, jobId: null, error: null, meta: null }
 
 // ─── Section preview ─────────────────────────────────────────────────────────
 
@@ -48,6 +50,9 @@ function SectionPreview({ label, content, empty }: { label: string; content: str
 
 export function SmartStructuringPanel({ reportId, modality, bodyPart, onAccept, voiceSignal }: Props) {
   const t = useTranslations('smartStructuring')
+  // Reuses the queue review panel's vocabulary — the same engine metadata is
+  // being described, so no new i18n keys are introduced.
+  const ts = useTranslations('structuring')
 
   const [open,     setOpen]     = useState(false)
   const [freeText, setFreeText] = useState('')
@@ -68,7 +73,13 @@ export function SmartStructuringPanel({ reportId, modality, bodyPart, onAccept, 
       if (result.error || !result.jobId || !result.output) {
         setState({ ...IDLE, error: result.error ?? 'Unknown error.' })
       } else {
-        setState({ phase: 'reviewing', output: result.output, jobId: result.jobId, error: null })
+        setState({
+          phase: 'reviewing',
+          output: result.output,
+          jobId: result.jobId,
+          error: null,
+          meta: result.structuring ?? null,
+        })
       }
     })
   }
@@ -215,6 +226,58 @@ export function SmartStructuringPanel({ reportId, modality, bodyPart, onAccept, 
                   />
                 )}
               </div>
+
+              {/* R2.0 — safety metadata from the canonical pipeline. Surfaced
+                  here so the radiologist sees what the engine changed and what
+                  still needs confirmation, rather than it being discarded. */}
+              {state.meta && (
+                <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
+                  {state.meta.reviewRequired && (
+                    <p className="text-xs font-semibold text-amber-700">
+                      ⚠ {ts('reviewRequired')}
+                    </p>
+                  )}
+
+                  {state.meta.confidence.some((c) => c.autoFilled) && (
+                    <p className="text-[11px] text-amber-700">
+                      {ts('autoFilled')}
+                    </p>
+                  )}
+
+                  {state.meta.correctionEvents.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                        {ts('corrections')}
+                      </p>
+                      <ul className="mt-1 space-y-0.5">
+                        {state.meta.correctionEvents.map((e, i) => (
+                          <li key={i} className="text-[11px] text-gray-600">
+                            <span className="rounded bg-gray-200 px-1 font-mono text-[10px] text-gray-700">
+                              {e.marker}
+                            </span>{' '}
+                            {e.applied === false ? (
+                              // Preserved, not applied — a review suggestion.
+                              <span className="text-amber-700">{e.removed || '—'}</span>
+                            ) : (
+                              <>
+                                <span className="text-red-500 line-through">{e.removed || '—'}</span>
+                                {' → '}
+                                <span className="text-green-700">{e.kept}</span>
+                              </>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {state.meta.removedTokens.length > 0 && (
+                    <p className="text-[11px] text-gray-500">
+                      {ts('removed')}: {state.meta.removedTokens.length}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {state.error && (
                 <p className="text-xs text-red-600">{state.error}</p>
