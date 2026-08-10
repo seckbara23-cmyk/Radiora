@@ -341,3 +341,133 @@ describe('fr/en parity for every namespace R2.8 touched', () => {
     }
   })
 })
+
+// ── Visual convergence pass: centered composition replaces the split screen ──
+
+describe('login: converged to a centered composition, split layout removed', () => {
+  it('the two-column split layout (BrandPanel) is gone', () => {
+    expect(LOGIN).not.toContain('lg:grid-cols-2')
+    expect(LOGIN).not.toContain('function BrandPanel')
+  })
+
+  it('the auth mechanism is STILL byte-identical after the visual pass', () => {
+    // Re-asserted here deliberately: the whole point of a "presentation-only"
+    // pass is that this line cannot move, even though the markup around it
+    // was rewritten from scratch.
+    expect(LOGIN).toContain('supabase.auth.signInWithPassword({ email, password })')
+    expect(LOGIN).toContain("router.push('/reports')")
+  })
+
+  it('the brand hero renders the wordmark and the tagline, in that order', () => {
+    const wordmarkAt = LOGIN.indexOf('RADIORA')
+    const taglineAt = LOGIN.indexOf("t('tagline')")
+    expect(wordmarkAt).toBeGreaterThan(-1)
+    expect(taglineAt).toBeGreaterThan(wordmarkAt)
+  })
+
+  it('the AI positioning line sits under the tagline, not inside the card', () => {
+    const taglineAt = LOGIN.indexOf("t('tagline')")
+    const aiAt = LOGIN.indexOf("t('aiPositioning')")
+    const cardAt = LOGIN.indexOf('rounded-2xl border border-gray-200 bg-white')
+    expect(aiAt).toBeGreaterThan(taglineAt)
+    expect(aiAt).toBeLessThan(cardAt)
+  })
+})
+
+describe('login: the provisional brand mark is isolated, not claimed as approved', () => {
+  const MARK = strip(read('src/components/brand/radiora-mark.tsx'))
+
+  it('login imports it from its own isolated module', () => {
+    expect(LOGIN).toContain("import { RadioraMark } from '@/components/brand/radiora-mark'")
+  })
+
+  it('the component documents itself as provisional, not an approved asset', () => {
+    const raw = read('src/components/brand/radiora-mark.tsx')
+    expect(raw).toMatch(/provisional/i)
+    expect(raw).toMatch(/not.*approved|no approved/i)
+  })
+
+  it('has no consumer outside the login page — a deliberate scope boundary', () => {
+    // The marketing header keeps its own existing icon; this pass is scoped
+    // to the login page, and adopting the mark elsewhere is a follow-up
+    // decision, not something this pass makes silently.
+    expect(MKT_LAYOUT).not.toContain('RadioraMark')
+    expect(MARK.length).toBeGreaterThan(0) // the file itself has content
+  })
+
+  it('is a pure presentational component — no data, no network, no auth import', () => {
+    expect(MARK).not.toContain('supabase')
+    expect(MARK).not.toContain('fetch(')
+    expect(MARK).not.toContain("from '@/lib")
+  })
+})
+
+describe('login: the password-visibility toggle is safe UI-only state', () => {
+  it('flips the input type, and nothing else reaches Supabase differently', () => {
+    expect(LOGIN).toContain("type={showPassword ? 'text' : 'password'}")
+    // The SAME value/onChange/name/autoComplete a plain password field would
+    // have — the toggle does not introduce a second source of truth.
+    expect(LOGIN).toContain('value={password}')
+    expect(LOGIN).toContain("onChange={(e) => setPassword(e.target.value)}")
+    expect(LOGIN).toContain('autoComplete="current-password"')
+  })
+
+  it('the toggle button cannot submit the form', () => {
+    const at = LOGIN.indexOf('setShowPassword((v) => !v)')
+    const before = LOGIN.slice(Math.max(0, at - 200), at)
+    expect(before).toMatch(/type="button"/)
+  })
+
+  it('the toggle has an accessible label that changes with its state', () => {
+    expect(LOGIN).toContain("aria-label={showPassword ? t('hidePassword') : t('showPassword')}")
+    expect(LOGIN).toContain('aria-pressed={showPassword}')
+  })
+
+  it('the accessible labels exist in both locales', () => {
+    for (const [locale, data] of [['fr', fr], ['en', en]] as const) {
+      const auth = (data as { auth: Record<string, string> }).auth
+      expect(auth.showPassword, locale).toBeTruthy()
+      expect(auth.hidePassword, locale).toBeTruthy()
+    }
+  })
+})
+
+describe('login: the secure-access note is short, with the fuller factual text kept as a tooltip', () => {
+  it('renders the short label', () => {
+    expect(LOGIN).toContain("t('secureAccessShort')")
+  })
+
+  it('the fuller existing sentence survives — as a title, not deleted', () => {
+    expect(LOGIN).toContain('title={t(\'secureNote\')}')
+  })
+
+  it('secureAccessShort makes no compliance claim beyond "secure access"', () => {
+    for (const [locale, data] of [['fr', fr], ['en', en]] as const) {
+      const v = (data as { auth: { secureAccessShort: string } }).auth.secureAccessShort
+      expect(v, locale).not.toMatch(/hipaa|certif|compliant|conforme/i)
+    }
+  })
+})
+
+describe('login: no clinical/dashboard dependency reaches the presentation layer', () => {
+  it('imports nothing from the authenticated workspace', () => {
+    for (const forbidden of [
+      "from '@/app/[locale]/(dashboard)",
+      "from '@/components/layout/topbar'",
+      "from '@/components/layout/sidebar'",
+      'lib/ai/', 'lib/safety/', 'lib/reports/', 'lib/dictation/',
+    ]) {
+      expect(LOGIN, forbidden).not.toContain(forbidden)
+    }
+  })
+
+  it('the dashboard Topbar/Sidebar were not touched by this pass', () => {
+    // git-independent structural check: the R2.8-established shared
+    // LocaleSwitch has exactly its two documented consumers (marketing
+    // layout + login) plus its own definition — Topbar keeps its own
+    // pre-R2.8 inline implementation, deliberately not deduplicated onto it.
+    const topbar = strip(read('src/components/layout/topbar.tsx'))
+    expect(topbar).not.toContain("from '@/components/marketing/locale-switch'")
+    expect(topbar).toContain('function handleLocaleSwitch')
+  })
+})
