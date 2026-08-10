@@ -29,6 +29,7 @@
 // stays absent.
 
 import { SECTION_ORDER, type SectionKey } from '@/lib/safety/sections'
+import { stableBoundary } from '@/lib/dictation/transcript-stability'
 import type { StructuredReportData } from '@/types/report'
 import type {
   LiveReportState,
@@ -262,34 +263,10 @@ export function applyStructuredPatch(
  * never observes a retraction without its replacement.
  */
 export function splitStableTranscript(transcript: string): { stable: string; tail: string } {
-  const text = transcript ?? ''
-  if (!text) return { stable: '', tail: '' }
-
-  let boundary = -1
-  for (let i = text.length - 1; i >= 0; i--) {
-    const ch = text[i]
-    if (ch !== '.' && ch !== '!' && ch !== '?' && ch !== '\n') continue
-    // A '.' between digits is a decimal separator, not a sentence end.
-    if (ch === '.' && /\d/.test(text[i - 1] ?? '') && /\d/.test(text[i + 1] ?? '')) continue
-    boundary = i
-    break
-  }
-
-  if (boundary < 0) return { stable: '', tail: text }
-
-  let stable = text.slice(0, boundary + 1)
-  let tail = text.slice(boundary + 1)
-
-  // A dangling retraction must not be structured without its replacement:
-  // move that whole sentence back into the tail.
-  const RETRACTION_TAIL =
-    /(^|[.!?\n])\s*(non|pardon|correction|erreur|je\s+corrige|je\s+me\s+corrige|je\s+reprends|c'est\s+faux)\s*[.!?]+\s*$/i
-  const dangling = stable.match(RETRACTION_TAIL)
-  if (dangling && dangling.index !== undefined) {
-    const cut = dangling.index + (dangling[1] ? dangling[1].length : 0)
-    tail = stable.slice(cut) + tail
-    stable = stable.slice(0, cut)
-  }
-
-  return { stable: stable.trim(), tail }
+  // R2.4 — one algorithm. This delegates to the transcript-stability engine so
+  // the R1 contract and the live dictation boundary can never diverge; that
+  // engine adds the measurement, negation and laterality guards on top of the
+  // decimal and dangling-retraction rules originally implemented here.
+  if (!transcript) return { stable: '', tail: '' }
+  return stableBoundary(transcript)
 }

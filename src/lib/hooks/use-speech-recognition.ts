@@ -13,12 +13,22 @@ export type DictationStatus = 'idle' | 'recording' | 'paused' | 'stopped'
 interface UseSpeechRecognitionOptions {
   lang?: string
   onError?: (error: string) => void
+  /**
+   * R2.4 — fires when the recogniser settles more speech, with the CUMULATIVE
+   * final text. Committing settled speech is an event, not a synchronisation,
+   * so callers reduce here instead of mirroring transcript state in an effect.
+   */
+  onFinalText?: (cumulativeFinalText: string) => void
 }
 
 export interface SpeechRecognitionState {
   supported: boolean | null
   status: DictationStatus
   transcript: string // final + interim, live
+  /** R2.4 — recogniser output split so the caller can tell settled speech from
+   *  a live guess. `transcript` stays the merged view for existing consumers. */
+  finalText: string
+  interimText: string
   elapsed: number // seconds recorded
   start: () => void
   pause: () => void
@@ -29,10 +39,12 @@ export interface SpeechRecognitionState {
   injectText: (text: string) => void
 }
 
-export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecognitionOptions = {}): SpeechRecognitionState {
+export function useSpeechRecognition({ lang = 'fr-FR', onError, onFinalText }: UseSpeechRecognitionOptions = {}): SpeechRecognitionState {
   const [supported, setSupported] = useState<boolean | null>(null)
   const [status, setStatus] = useState<DictationStatus>('idle')
   const [transcript, setTranscript] = useState('')
+  const [finalText, setFinalText] = useState('')
+  const [interimText, setInterimText] = useState('')
   const [elapsed, setElapsed] = useState(0)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -45,6 +57,8 @@ export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecog
   const stoppingRef = useRef(false)
   const onErrorRef = useRef(onError)
   onErrorRef.current = onError
+  const onFinalTextRef = useRef(onFinalText)
+  useEffect(() => { onFinalTextRef.current = onFinalText })
 
   useEffect(() => {
     setSupported(isSpeechRecognitionSupported(typeof window !== 'undefined' ? window : null))
@@ -79,8 +93,14 @@ export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecog
         if (res.isFinal) final += (final ? ' ' : '') + res[0].transcript.trim()
         else interim += res[0].transcript
       }
+      const settledMore = final !== finalRef.current
       finalRef.current = final
+      setFinalText(final)
+      setInterimText(interim)
       setTranscript(final + (interim ? (final ? ' ' : '') + interim : ''))
+      // Only on genuinely new settled speech — an interim-only tick must not
+      // re-run the caller's commit reducer.
+      if (settledMore) onFinalTextRef.current?.(final)
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -104,6 +124,8 @@ export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecog
     if (!isSpeechRecognitionSupported(typeof window !== 'undefined' ? window : null)) return
     finalRef.current = ''
     setTranscript('')
+    setFinalText('')
+    setInterimText('')
     setElapsed(0)
     pausedRef.current = false
     stoppingRef.current = false
@@ -145,6 +167,8 @@ export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecog
     stopTimer()
     finalRef.current = ''
     setTranscript('')
+    setFinalText('')
+    setInterimText('')
     setElapsed(0)
     setStatus('idle')
   }, [stopTimer])
@@ -158,6 +182,9 @@ export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecog
     stopTimer()
     finalRef.current = text
     setTranscript(text)
+    // Injected text is settled by definition — it is not a live guess.
+    setFinalText(text)
+    setInterimText('')
     setStatus('stopped')
   }, [stopTimer])
 
@@ -170,5 +197,5 @@ export function useSpeechRecognition({ lang = 'fr-FR', onError }: UseSpeechRecog
     }
   }, [])
 
-  return { supported, status, transcript, elapsed, start, pause, resume, stop, reset, injectText }
+  return { supported, status, transcript, finalText, interimText, elapsed, start, pause, resume, stop, reset, injectText }
 }

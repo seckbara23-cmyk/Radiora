@@ -40,6 +40,14 @@ import {
   type WorkspaceState,
   type DictationMethod,
 } from '@/lib/reports/workspace-state'
+import {
+  emptyTranscriptState,
+  commitFinalized,
+  setInterim,
+  finalizeRecording,
+  canonicalTranscript,
+  type TranscriptState,
+} from '@/lib/dictation/transcript-stability'
 import type { StructuredReportData } from '@/types/report'
 import type { HpdStructuringMeta } from '@/lib/ai/hpd-draft'
 
@@ -75,7 +83,20 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
   const send = (event: Parameters<typeof workspaceReducer>[1]) =>
     setState((s) => workspaceReducer(s, event))
 
-  const speech = useSpeechRecognition({ lang: 'fr-FR' })
+  // R2.4 — settled speech is separated from the live guess. `live` holds only
+  // COMMITTED segments; the interim guess stays in the recogniser hook, is
+  // display-only, and can never reach a clinical section.
+  const [live, setLive] = useState<TranscriptState>(emptyTranscriptState)
+
+  // Committing is an event (the recogniser settled more speech), not a
+  // synchronisation, so it reduces here rather than in an effect.
+  const speech = useSpeechRecognition({
+    lang: 'fr-FR',
+    onFinalText: (cumulative) =>
+      setLive((prev) =>
+        commitFinalized(prev, cumulative, { source: 'computer', now: new Date().toISOString() }),
+      ),
+  })
 
   // ── Workstation microphone ─────────────────────────────────────────────────
   function startComputer() {
@@ -85,6 +106,7 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
       setError(t('errors.unsupportedBrowser'))
       return
     }
+    setLive(emptyTranscriptState())
     send({ type: 'CHOOSE_METHOD', method: 'computer' })
     speech.start()
   }
@@ -92,9 +114,25 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
   function stopComputer() {
     speech.stop()
     send({ type: 'RECORDING_STOPPED' })
-    // The browser gives text, not audio: no audio asset is fabricated for this
-    // path. The transcript itself is the record.
-    const text = speech.transcript.trim()
+
+    // Flush: anything still settled becomes a committed segment; an unfinished
+    // clause (a dangling "Je corrige", an incomplete measurement) comes back as
+    // `pending` and is appended verbatim rather than frozen as clinical text or
+    // silently discarded. The doctor edits it in the transcript box.
+    const { state: flushed, pending } = finalizeRecording(
+      setInterim(
+        commitFinalized(live, speech.finalText, { source: 'computer', now: new Date().toISOString() }),
+        speech.interimText,
+      ),
+      { source: 'computer', now: new Date().toISOString() },
+    )
+    setLive(flushed)
+
+    const committed = canonicalTranscript(flushed)
+    const text = [committed, pending].filter(Boolean).join(' ').trim()
+
+    // The browser yields text, not audio: no audio asset is fabricated here.
+    // The transcript itself is the record.
     if (!text) { send({ type: 'FAIL' }); setError(t('errors.noSpeech')); return }
     setTranscript(text)
     startTransition(async () => {
@@ -200,7 +238,9 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
   }
 
   const busy = isBusy(state) || isPending
-  const liveText = state === 'recording' ? speech.transcript : transcript
+  const committedText = canonicalTranscript(live)
+  // Read straight from the recogniser: the guess is never mirrored into state.
+  const interimGuess = speech.interimText.trim()
   const elapsedLabel = `${String(Math.floor(speech.elapsed / 60)).padStart(2, '0')}:${String(speech.elapsed % 60).padStart(2, '0')}`
 
   return (
@@ -266,8 +306,22 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
               {t('stop')}
             </button>
           </div>
-          <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap text-sm text-gray-700">
-            {liveText || t('listening')}
+          {/* Settled speech reads as normal text; the live guess is muted and
+              labelled, so the doctor can see it is still being heard. */}
+          <p className="mt-2 max-h-32 overflow-y-auto whitespace-pre-wrap text-sm">
+            {committedText && <span className="text-gray-800">{committedText}</span>}
+            {interimGuess && (
+              <>
+                {committedText ? ' ' : ''}
+                <span className="text-gray-400 italic">{interimGuess}</span>
+                <span className="ml-1 align-middle text-[10px] uppercase tracking-wide text-gray-400">
+                  {t('inProgress')}
+                </span>
+              </>
+            )}
+            {!committedText && !interimGuess && (
+              <span className="text-gray-400">{t('listening')}</span>
+            )}
           </p>
           <p className="mt-1 text-[11px] text-blue-700">{t('interimNote')}</p>
         </div>

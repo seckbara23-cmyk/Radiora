@@ -482,6 +482,7 @@
     "recording": "Recording",
     "listening": "Listening…",
     "stop": "Finish",
+    "inProgress": "In progress…",
     "cancel": "Cancel",
     "interimNote": "Interim text is never written straight into the report.",
     "scanQr": "Scan this code with your phone",

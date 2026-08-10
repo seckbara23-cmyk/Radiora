@@ -955,3 +955,112 @@ transcript relationship and the signing-safety context together.
 
 Continuous live section mutation, `splitStableTranscript` UI, template
 ingestion, PACS/RIS integration. The external-AI append bug remains open.
+
+---
+
+## R2.4 implementation status
+
+**Gate R2.4 — stable live transcript boundary. COMPLETE.** No migration.
+
+> **R2.4 does NOT populate report sections live.** It establishes the boundary
+> that will make live structuring safe later; the doctor still presses
+> "Structure the report" on a complete transcript, exactly as in R2.3.
+
+### Three transcripts, deliberately not one string
+
+| | What it is | Persisted? | Structurable? |
+|---|---|---|---|
+| **Interim** | the recogniser's current guess | no | **never** |
+| **Stable** | finalized segments that passed the guards | in memory during recording | yes |
+| **Canonical** | ordered concatenation of committed segments | yes, on stop | **the only input** |
+| Structured state | derived from canonical, separate from provenance | yes | — |
+
+`src/lib/dictation/transcript-stability.ts` owns all four. It is pure — no DOM,
+no clock, no IO; timestamps are injected, and a test asserts the absence of
+`Date.now`, `Math.random` and `fetch`.
+
+### The stability algorithm
+
+Stability is **not** a timer. A boundary must be a real sentence terminator, and
+the text before it must survive every guard. The rule is fail-conservative:
+uncertain text stays interim, because a moment's delay costs the doctor nothing
+while a wrongly-frozen clause corrupts a clinical record.
+
+1. Scan backwards for `.`, `!`, `?` or newline.
+2. Skip a `.` flanked by digits — `3.5 cm` is one value, not two sentences.
+3. Skip a `.` that follows a digit with nothing after it yet — `12.` may still
+   become `12.5`.
+4. Walk the boundary back while the would-be stable text ends in an unfinished
+   clinical statement; everything pulled back rejoins the interim tail.
+
+Guards (each keeps text interim):
+
+- **Correction prefix** — `je corrige`, `correction`, `rectification`,
+  `non, plutôt`, `ou plutôt`, `remplacez (par)`, `supprimez`, `erreur`,
+  `pardon`, and a bare standalone `non`. The bare `non` alternative is
+  end-anchored so it matches `". Non."` but never `"non compliqué"`.
+- **Incomplete measurement** — a trailing number, a number plus a decimal
+  separator (`12 virgule`, `3 point`), or a partial unit (`14 millim`).
+- **Incomplete negation** — `pas de`, `absence de`, `sans`, `aucun`, `ni` with
+  nothing after them. Freezing `"Pas de."` would assert a finding nobody made.
+- **Incomplete laterality** — `du`, `de la`, `au niveau`, `lobe`, `segment`,
+  `côté` … Laterality is never inferred and never taken from a template.
+
+This directly closes the non-monotonic failure R1 found: a dictated retraction
+whose replacement has not arrived is held back rather than emptying the report.
+
+### Interim / final handling and deduplication
+
+The browser re-delivers finalized results and can repeat or reorder callbacks.
+`commitFinalized` takes the recogniser's **cumulative** final text and diffs it
+against what is already committed, appending only genuinely new text. On
+divergence — a restart, a reordered index — the existing record wins and only
+the unseen remainder is considered: **committed segments are never rewritten or
+removed.** Segment identity is deterministic (`seg-1`, `seg-2`, …) from the
+sequence, never random, and each segment carries its character range in the
+canonical transcript.
+
+`useSpeechRecognition` was extended additively with `finalText`, `interimText`
+and an `onFinalText` callback; `transcript` remains the merged view, so existing
+consumers (the queue's `LiveDictationPanel`) are unaffected. The hook still only
+recognises speech — a test asserts it never calls the structuring engine.
+
+Committing is wired to the **recognition event**, not to an effect: settling
+speech is something that happened, not state to be synchronised, so the
+workspace reduces inside `onFinalText` and the guess is never mirrored into
+component state. The callback fires only when the cumulative final text actually
+changed, so an interim-only tick cannot re-run the reducer. The workspace holds
+committed segments; interim is read straight off the hook for display.
+
+### One algorithm
+
+`splitStableTranscript` (the R1 contract) now delegates to `stableBoundary`, so
+the R1 helper and the live boundary cannot diverge. All R1 tests pass unchanged
+against the shared engine.
+
+### Phone and imported audio
+
+Neither has an interim phase. `commitCompleteTranscript` records their finished
+transcription as committed segment(s), so every source shares one transcript
+model without inventing fake segmentation for them.
+
+### Persistence — exactly what survives
+
+- **Refresh during active browser dictation:** stable segments are client state
+  and are **lost**. There is no active-session recovery in R2.4, and none is
+  claimed. The report itself is untouched.
+- **Stop:** stable segments are flushed to the canonical transcript and
+  persisted via `saveReportTranscript` (report-owned, migration 044). An
+  unfinished clause comes back as `pending` and is appended verbatim for the
+  doctor to edit — never frozen as clinical text, never silently discarded.
+- **Reload after a completed transcription:** the canonical transcript, the
+  report content, the transcript relationship and the signing-safety context all
+  reconstruct through `getReportSafetyContext`.
+
+Interim text is never durably persisted, by design.
+
+### The seam R2.5 will consume
+
+`structuringInput(state)` returns the canonical transcript and **excludes
+interim by construction**. That is the single function R2.5 calls to feed
+incremental structuring — the transcript model will not need redesigning again.

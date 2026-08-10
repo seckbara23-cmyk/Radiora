@@ -482,6 +482,7 @@
     "recording": "Enregistrement",
     "listening": "À l'écoute…",
     "stop": "Terminer",
+    "inProgress": "En cours…",
     "cancel": "Annuler",
     "interimNote": "Le texte provisoire n'est jamais écrit directement dans le compte rendu.",
     "scanQr": "Scannez ce code avec votre téléphone",
