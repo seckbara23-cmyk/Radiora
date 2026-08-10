@@ -13,10 +13,19 @@ export default defineConfig({
       // logic (e.g. the delivery download grant) WITHOUT removing the guard
       // from the source, which is what actually keeps it off the client.
       'server-only': fileURLToPath(new URL('./src/test/server-only-stub.ts', import.meta.url)),
+      // Same reasoning for `next/navigation`: Next resolves it through its own
+      // bundler alias, so `@/i18n/navigation` cannot be imported under vitest
+      // without it. Stubbing it lets the locale-path arithmetic that caused the
+      // R2.7C 404 be tested for real.
+      'next/navigation': fileURLToPath(new URL('./src/test/next-navigation-stub.ts', import.meta.url)),
     },
   },
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // next-intl ships ESM that imports `next/navigation` directly. Vite only
+    // applies `resolve.alias` to modules it transforms, so next-intl has to be
+    // inlined for the stub above to take effect.
+    server: { deps: { inline: ['next-intl'] } },
   },
 })

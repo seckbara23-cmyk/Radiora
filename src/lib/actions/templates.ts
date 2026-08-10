@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { getPathname } from '@/i18n/navigation'
+import { getLocale } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
@@ -91,7 +93,7 @@ export async function saveTemplate(
   }
 
   revalidatePath('/templates')
-  redirect('/templates')
+  redirect(getPathname({ href: '/templates', locale: await getLocale() }))
 }
 
 export async function toggleTemplate(

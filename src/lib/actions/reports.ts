@@ -2,6 +2,12 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+// `redirect` alone emits an UNPREFIXED path ('/reports/<id>'), and the App
+// Router has no route there — every page lives under /[locale] — so it 404s.
+// `getPathname` is the project's canonical next-intl helper for turning an
+// href + locale into the real path; Next's redirect keeps its `never` typing.
+import { getPathname } from '@/i18n/navigation'
+import { getLocale } from 'next-intl/server'
 import { createClient } from '@/lib/supabase/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { logAudit } from '@/lib/actions/audit'
@@ -105,7 +111,7 @@ export async function createReport(
   })
 
   revalidatePath(`/studies/${studyId}`)
-  redirect(`/reports/${data.id}`)
+  redirect(getPathname({ href: `/reports/${data.id}`, locale: await getLocale() }))
 }
 
 // ─── saveDraftReport ─────────────────────────────────────────────────────────
@@ -291,7 +297,7 @@ export async function finalizeReport(
   revalidatePath(`/reports/${id}`)
   revalidatePath(`/studies/${studyId}`)
   revalidatePath('/reports')
-  redirect(`/studies/${studyId}`)
+  redirect(getPathname({ href: `/studies/${studyId}`, locale: await getLocale() }))
 }
 
 // ─── amendReport ─────────────────────────────────────────────────────────────
@@ -371,7 +377,7 @@ export async function amendReport(
   })
 
   revalidatePath(`/reports/${id}`)
-  redirect(`/reports/${id}`)
+  redirect(getPathname({ href: `/reports/${id}`, locale: await getLocale() }))
 }
 
 // ─── handleReportForm ─────────────────────────────────────────────────────────

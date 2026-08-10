@@ -101,6 +101,26 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(`/${locale}${LANDING_ROUTE}`, request.url), { status: 307 })
     }
 
+    // A protected path that arrived WITHOUT a locale prefix would fall through
+    // to the App Router, where nothing is routed at '/reports/<id>' — every
+    // page lives under /[locale] — and 404. This branch returns before
+    // `handleI18n` ever runs, so next-intl never got the chance to add the
+    // prefix; the R2.7C "Commencer → 404" defect surfaced exactly here.
+    //
+    // The auth and freeze checks above have already run, so this only decides
+    // WHERE an allowed request goes, never WHETHER it is allowed. The session
+    // cookies refreshed by updateSession are copied onto the redirect so the
+    // round trip does not drop them.
+    if (!localeMatch) {
+      const target = new URL(`/${locale}${localelessPath}`, request.url)
+      target.search = request.nextUrl.search
+      const redirectResponse = NextResponse.redirect(target, { status: 307 })
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie)
+      })
+      return redirectResponse
+    }
+
     // MUST return supabaseResponse — it carries the refreshed session cookie.
     return supabaseResponse
   }
