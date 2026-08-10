@@ -1,10 +1,16 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { SenegalBar, SenegalStar } from '@/components/ui/senegal-accents'
+import { LocaleSwitch } from '@/components/marketing/locale-switch'
 
 // Phase 5H — public marketing site shell (nav + footer). Wraps Home, Features,
-// Pricing, Security and Contact. The primary CTA always points at the public
-// self-service onboarding (/signup → 30-day free trial).
+// Pricing, Security and Contact.
+//
+// R2.8 — the primary header action is now "Se connecter": most visitors to a
+// deployed Radiora instance are clinic staff who already have an
+// administrator-provisioned or trial account, not first-time shoppers. The
+// self-service trial (/signup) is real, working infrastructure — audited, not
+// invented — and stays one click away as a secondary link, never removed.
 
 export default async function MarketingLayout({
   children,
@@ -19,11 +25,11 @@ export default async function MarketingLayout({
   const tSupport = await getTranslations('support')
 
   const navLinks = [
-    { href: '/demo', label: t('nav.demo') },
+    { href: '/#workflow', label: t('nav.workflow') },
     { href: '/features', label: t('nav.features') },
     { href: '/pricing', label: t('nav.pricing') },
     { href: '/security', label: t('nav.security') },
-    { href: '/support', label: tSupport('title') },
+    { href: '/demo', label: t('nav.demo') },
     { href: '/contact', label: t('nav.contact') },
   ]
 
@@ -31,8 +37,9 @@ export default async function MarketingLayout({
     <div className="min-h-screen bg-white flex flex-col">
       <SenegalBar />
 
-      {/* Navigation */}
-      <header className="sticky top-0 z-30 border-b border-gray-100 bg-white/90 backdrop-blur">
+      {/* Navigation — calm, no blur/shadow; the accent bar above already marks
+          the page as Radiora, so the header itself stays quiet. */}
+      <header className="sticky top-0 z-30 border-b border-gray-100 bg-white">
         <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <Link href="/" className="flex items-center gap-2.5">
             <svg className="h-7 w-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,14 +58,17 @@ export default async function MarketingLayout({
           </div>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="hidden text-sm font-medium text-gray-600 transition hover:text-gray-900 sm:block">
-              {t('signIn')}
+            <LocaleSwitch className="hidden sm:inline-flex" />
+            <Link href="/signup" className="hidden text-sm font-medium text-gray-600 transition hover:text-gray-900 sm:block">
+              {t('ctaShort')}
             </Link>
+            {/* R2.8 — primary header action: most visitors already have an
+                account (administrator-provisioned or trial). */}
             <Link
-              href="/signup"
+              href="/login"
               className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
             >
-              {t('ctaShort')}
+              {t('signIn')}
             </Link>
           </div>
         </nav>

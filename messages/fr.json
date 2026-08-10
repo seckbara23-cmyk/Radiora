@@ -20,7 +20,6 @@
     "noData": "Aucune donnée",
     "required": "Requis",
     "optional": "Optionnel",
-    "hipaaCompliant": "Conforme HIPAA",
     "viewArrow": "Voir →",
     "viewAll": "Voir tout"
   },
@@ -57,9 +56,8 @@
     "password": "Mot de passe",
     "passwordPlaceholder": "••••••••",
     "rememberMe": "Se souvenir de moi",
-    "forgotPassword": "Mot de passe oublié ?",
     "signingIn": "Connexion en cours…",
-    "footer": "Radiora Medical © {year} — Conforme HIPAA",
+    "footer": "Radiora Medical © {year}",
     "builtBy": "Conçu par Teranga Tech",
     "invalidCredentials": "E-mail ou mot de passe incorrect.",
     "notifications": "Notifications",
@@ -1934,6 +1932,7 @@
     "ctaShort": "Essai gratuit",
     "signIn": "Se connecter",
     "nav": {
+      "workflow": "Fonctionnement",
       "demo": "Démo",
       "features": "Fonctionnalités",
       "pricing": "Tarifs",
@@ -1948,12 +1947,13 @@
       "builtBy": "Conçu par Teranga Tech"
     },
     "home": {
-      "badge": "Plateforme de radiologie assistée par IA",
-      "hero": "La radiologie moderne pour",
-      "heroHighlight": "le Sénégal et l'Afrique de l'Ouest",
-      "heroDesc": "Radiora aide les radiologues, centres d'imagerie, cliniques et hôpitaux à produire des comptes rendus structurés plus vite — avec dictée vocale, structuration assistée par IA et transmission sécurisée, dans une plateforme conçue pour le contexte local.",
-      "secondary": "Découvrir les fonctionnalités",
+      "badge": "Radiologie assistée par IA",
+      "hero": "Dictez. Radiora structure.",
+      "heroHighlight": "Vous validez.",
+      "heroDesc": "Transformez votre dictée en compte rendu radiologique structuré, relu et prêt à signer. L'IA assiste — le radiologue reste l'autorité médicale finale.",
+      "secondary": "Voir comment ça fonctionne",
       "trust": "Conçu pour les radiologues indépendants, les centres d'imagerie, les cliniques et les hôpitaux.",
+      "trialHint": "Nouveau sur Radiora ?",
       "highlightsHeading": "Pourquoi Radiora",
       "highlights": [
         { "title": "Comptes rendus plus rapides", "desc": "Modèles structurés et dictée vocale pour réduire le temps de rédaction." },
@@ -2012,7 +2012,7 @@
       "subtitle": "Radiora protège les données des patients et isole strictement chaque établissement.",
       "items": [
         { "title": "Isolation des données par établissement", "desc": "La sécurité au niveau des lignes (RLS) garantit qu'aucune clinique ne voit les données d'une autre." },
-        { "title": "Protections de type HIPAA", "desc": "Contrôles d'accès, chiffrement en transit et conservation maîtrisée des données." },
+        { "title": "Contrôles d'accès et chiffrement", "desc": "Contrôles d'accès stricts, chiffrement en transit et conservation maîtrisée des données." },
         { "title": "Piste d'audit complète", "desc": "Chaque action sensible est journalisée et consultable par les administrateurs." },
         { "title": "Accès basé sur les rôles", "desc": "Sept rôles, du radiologue au secrétaire, avec des permissions strictes." },
         { "title": "Aucun accès clinique pour la plateforme", "desc": "L'équipe Radiora accède uniquement aux données d'abonnement et d'usage, jamais aux comptes rendus." },
@@ -2195,9 +2195,57 @@
       "modalities": ["Scanner", "IRM", "Échographie", "Radiographie conventionnelle"],
       "footer": "Optimisé pour des vacations de 20 à 50 examens par jour."
     },
+    "workflow": {
+      "title": "Le parcours Radiora",
+      "subtitle": "Six étapes, de la dictée à l'envoi sécurisé.",
+      "steps": [
+        { "label": "Dictez", "desc": "Sur ordinateur, téléphone ou fichier importé." },
+        { "label": "Structuration IA", "desc": "Le texte libre devient un compte rendu structuré." },
+        { "label": "Relisez", "desc": "Vous corrigez et complétez à volonté." },
+        { "label": "Signez", "desc": "Seul le radiologue valide et signe." },
+        { "label": "Exportez", "desc": "PDF ou Word, prêts à l'emploi." },
+        { "label": "Envoyez", "desc": "Transmission sécurisée, traçable." }
+      ]
+    },
+    "modes": {
+      "heading": "Trois façons de dicter",
+      "computer": { "label": "Ordinateur", "desc": "Microphone du poste de travail, en direct." },
+      "phone": { "label": "Téléphone", "desc": "Connexion instantanée par QR code sécurisé, sans application." },
+      "import": { "label": "Fichier importé", "desc": "Importez un enregistrement existant." }
+    },
+    "aiAssist": {
+      "heading": "L'IA assiste, le radiologue décide",
+      "authority": "Le radiologue reste l'autorité médicale finale.",
+      "points": [
+        "Structure le texte libre en sections du compte rendu",
+        "Repère les corrections dictées et les incohérences",
+        "Prépare le compte rendu pour la relecture"
+      ],
+      "boundary": "L'IA ne pose pas de diagnostic, ne valide et ne signe jamais un compte rendu."
+    },
+    "output": {
+      "heading": "Un compte rendu prêt à l'emploi",
+      "items": [
+        { "label": "PDF", "desc": "Mise en page professionnelle, prête à imprimer." },
+        { "label": "Word (DOCX)", "desc": "Modifiable pour vos besoins internes." },
+        { "label": "Impression directe", "desc": "Depuis l'aperçu du compte rendu." },
+        { "label": "Envoi sécurisé", "desc": "Lien protégé, avec expiration et révocation." }
+      ]
+    },
+    "trustStrip": {
+      "heading": "Isolation stricte, traçabilité complète",
+      "points": [
+        "Isolation des données par établissement (RLS)",
+        "Accès basé sur les rôles, du radiologue au secrétariat",
+        "Piste d'audit complète sur chaque action sensible",
+        "Seul le radiologue valide et signe un compte rendu"
+      ],
+      "link": "En savoir plus sur la sécurité"
+    },
     "mobile": {
-      "title": "Comment fonctionne Radiora",
-      "subtitle": "Un seul flux, du téléphone à l'envoi sécurisé.",
+      "title": "La dictée, où que vous soyez",
+      "subtitle": "Ordinateur, téléphone ou fichier importé — un seul flux jusqu'à l'envoi sécurisé.",
+      "phoneExample": "Exemple : dictée par téléphone",
       "steps": [
         "Téléphone",
         "QR sécurisé",
@@ -2239,11 +2287,11 @@
       "note": "Témoignage recueilli dans le cadre du programme pilote."
     },
     "trial": {
-      "headline": "Essayez Radiora gratuitement pendant 30 jours",
-      "subtext1": "Aucune carte bancaire requise.",
-      "subtext2": "Configuration en moins de 10 minutes.",
-      "primary": "Créer mon compte",
-      "secondary": "Demander une démonstration"
+      "headline": "Votre dictée. Votre compte rendu. Votre validation.",
+      "subtext1": "Connectez-vous pour continuer votre travail.",
+      "subtext2": "Nouveau sur Radiora ? Essai gratuit de 30 jours, sans carte bancaire.",
+      "primary": "Se connecter à Radiora",
+      "secondary": "Créer un compte"
     },
     "why": {
       "heading": "Pourquoi Radiora ?",

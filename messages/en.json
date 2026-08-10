@@ -20,7 +20,6 @@
     "noData": "No data",
     "required": "Required",
     "optional": "Optional",
-    "hipaaCompliant": "HIPAA Compliant",
     "viewArrow": "View →",
     "viewAll": "View all"
   },
@@ -57,9 +56,8 @@
     "password": "Password",
     "passwordPlaceholder": "••••••••",
     "rememberMe": "Remember me",
-    "forgotPassword": "Forgot password?",
     "signingIn": "Signing in…",
-    "footer": "Radiora Medical © {year} — HIPAA Compliant",
+    "footer": "Radiora Medical © {year}",
     "builtBy": "Built by Teranga Tech",
     "invalidCredentials": "Invalid email or password.",
     "notifications": "Notifications",
@@ -1934,6 +1932,7 @@
     "ctaShort": "Free trial",
     "signIn": "Sign in",
     "nav": {
+      "workflow": "How it works",
       "demo": "Demo",
       "features": "Features",
       "pricing": "Pricing",
@@ -1948,12 +1947,13 @@
       "builtBy": "Built by Teranga Tech"
     },
     "home": {
-      "badge": "AI-assisted radiology platform",
-      "hero": "Modern radiology for",
-      "heroHighlight": "Senegal and West Africa",
-      "heroDesc": "Radiora helps radiologists, imaging centers, clinics and hospitals produce structured reports faster — with voice dictation, AI-assisted structuring and secure delivery, in a platform built for the local context.",
-      "secondary": "Explore features",
+      "badge": "AI-assisted radiology",
+      "hero": "Dictate. Radiora structures.",
+      "heroHighlight": "You validate.",
+      "heroDesc": "Turn your dictation into a structured radiology report, reviewed and ready to sign. AI assists — the radiologist remains the final medical authority.",
+      "secondary": "See how it works",
       "trust": "Built for independent radiologists, imaging centers, clinics and hospitals.",
+      "trialHint": "New to Radiora?",
       "highlightsHeading": "Why Radiora",
       "highlights": [
         { "title": "Faster reports", "desc": "Structured templates and voice dictation cut reporting time." },
@@ -2012,7 +2012,7 @@
       "subtitle": "Radiora protects patient data and strictly isolates every facility.",
       "items": [
         { "title": "Per-facility data isolation", "desc": "Row-level security (RLS) guarantees no clinic can see another's data." },
-        { "title": "HIPAA-style safeguards", "desc": "Access controls, encryption in transit and controlled data retention." },
+        { "title": "Access control and encryption", "desc": "Strict access controls, encryption in transit and controlled data retention." },
         { "title": "Full audit trail", "desc": "Every sensitive action is logged and reviewable by administrators." },
         { "title": "Role-based access", "desc": "Seven roles, from radiologist to secretary, with strict permissions." },
         { "title": "No clinical access for the platform", "desc": "The Radiora team only accesses subscription and usage data, never reports." },
@@ -2195,9 +2195,57 @@
       "modalities": ["CT", "MRI", "Ultrasound", "Conventional X-ray"],
       "footer": "Optimized for sessions of 20 to 50 exams per day."
     },
+    "workflow": {
+      "title": "The Radiora journey",
+      "subtitle": "Six steps, from dictation to secure delivery.",
+      "steps": [
+        { "label": "Dictate", "desc": "On computer, phone or an imported file." },
+        { "label": "AI structuring", "desc": "Free text becomes a structured report." },
+        { "label": "Review", "desc": "You correct and complete as needed." },
+        { "label": "Sign", "desc": "Only the radiologist validates and signs." },
+        { "label": "Export", "desc": "PDF or Word, ready to use." },
+        { "label": "Send", "desc": "Secure, traceable delivery." }
+      ]
+    },
+    "modes": {
+      "heading": "Three ways to dictate",
+      "computer": { "label": "Computer", "desc": "Live workstation microphone." },
+      "phone": { "label": "Phone", "desc": "Instant connection via secure QR code, no app." },
+      "import": { "label": "Imported file", "desc": "Import an existing recording." }
+    },
+    "aiAssist": {
+      "heading": "AI assists, the radiologist decides",
+      "authority": "The radiologist remains the final medical authority.",
+      "points": [
+        "Structures free text into report sections",
+        "Flags dictated corrections and inconsistencies",
+        "Prepares the report for review"
+      ],
+      "boundary": "AI never makes a diagnosis, and never validates or signs a report."
+    },
+    "output": {
+      "heading": "A report ready to use",
+      "items": [
+        { "label": "PDF", "desc": "Professional layout, ready to print." },
+        { "label": "Word (DOCX)", "desc": "Editable for your internal needs." },
+        { "label": "Direct print", "desc": "From the report preview." },
+        { "label": "Secure delivery", "desc": "Protected link, with expiry and revocation." }
+      ]
+    },
+    "trustStrip": {
+      "heading": "Strict isolation, full traceability",
+      "points": [
+        "Per-facility data isolation (RLS)",
+        "Role-based access, from radiologist to front desk",
+        "Full audit trail on every sensitive action",
+        "Only the radiologist validates and signs a report"
+      ],
+      "link": "Learn more about security"
+    },
     "mobile": {
-      "title": "How Radiora works",
-      "subtitle": "One single flow, from phone to secure delivery.",
+      "title": "Dictate wherever you are",
+      "subtitle": "Computer, phone or an imported file — one single flow through to secure delivery.",
+      "phoneExample": "Example: phone dictation",
       "steps": [
         "Phone",
         "Secure QR",
@@ -2239,11 +2287,11 @@
       "note": "Testimonial collected as part of the pilot program."
     },
     "trial": {
-      "headline": "Try Radiora free for 30 days",
-      "subtext1": "No credit card required.",
-      "subtext2": "Set up in under 10 minutes.",
-      "primary": "Create my account",
-      "secondary": "Request a demo"
+      "headline": "Your dictation. Your report. Your validation.",
+      "subtext1": "Sign in to continue your work.",
+      "subtext2": "New to Radiora? 30-day free trial, no credit card.",
+      "primary": "Sign in to Radiora",
+      "secondary": "Create an account"
     },
     "why": {
       "heading": "Why Radiora?",
