@@ -41,6 +41,7 @@ DECLARE
   v_clinic      uuid;
   v_clinic_name text;
   v_n           integer;
+  v_has         boolean;
   v_patient     uuid;
   v_study       uuid;
   v_accession   text;
@@ -118,9 +119,18 @@ BEGIN
   -- this examination behave exactly like any other.
   RAISE NOTICE 'Created study % (accession %, CT / Cerveau)', v_study, v_accession;
 
-  SELECT has_report INTO v_n FROM public.studies WHERE id = v_study;
+  -- Read back the trigger-maintained flag into a BOOLEAN. An earlier revision
+  -- selected it into the integer counter, and boolean→integer is an
+  -- explicit-only cast in Postgres while PL/pgSQL assignment uses assignment
+  -- context — so that line risked aborting the whole transaction and creating
+  -- nothing. It is also the value the operator most wants confirmed.
+  SELECT has_report INTO v_has FROM public.studies WHERE id = v_study;
+  IF v_has THEN
+    RAISE EXCEPTION 'ABORTED: the new study already reports has_report = true; it would not appear in /reports/new.';
+  END IF;
+
   RAISE NOTICE '─────────────────────────────────────────────';
-  RAISE NOTICE 'R2.7C fixture created. The examination should now appear in /fr/reports/new.';
+  RAISE NOTICE 'R2.7C fixture created. has_report = false → eligible in /fr/reports/new.';
   RAISE NOTICE 'No report, audio, session or transcription row was created.';
 END $$;
 
