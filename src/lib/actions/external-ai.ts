@@ -8,6 +8,13 @@ import {
   mapExternalAiFindingRow,
 } from '@/lib/data/external-ai'
 import type { ExternalAiResult, ExternalAiFinding } from '@/lib/data/external-ai'
+import { createReportVersion, type VersionDb } from '@/lib/reports/versioning'
+import {
+  buildExternalAiBlock,
+  applyExternalAiFindings,
+  type AcceptedFinding,
+} from '@/lib/reports/external-ai-apply'
+import type { StructuredReportData } from '@/types/report'
 
 type ManageRole = 'clinic_admin' | 'radiologist' | 'super_admin'
 const MANAGE_ROLES: ManageRole[] = ['clinic_admin', 'radiologist', 'super_admin']
@@ -338,77 +345,85 @@ export async function applyAcceptedFindingsToReport(
 
   const supabase = await createClient()
 
-  const { data: report } = await supabase
+  // R2.6 — every Supabase result is checked. supabase-js does not throw; it
+  // returns { error }, and the previous version of this action ignored all of
+  // them, so a failed read looked identical to "report not found".
+  const { data: report, error: reportError } = await supabase
     .from('reports')
-    .select('id, clinic_id, status, findings, impression, recommendations')
+    .select('id, clinic_id, status, findings, impression, recommendations, structured_data')
     .eq('id', reportId)
     .single()
 
+  if (reportError) return { error: 'Could not load the report.' }
   if (!report) return { error: 'Report not found.' }
 
   if (report.status === 'finalized') {
     return { error: 'Cannot modify a finalized report. Amend it first.' }
   }
 
-  const { data: findings } = await supabase
+  const { data: findings, error: findingsError } = await supabase
     .from('external_ai_findings')
     .select('*')
     .eq('external_ai_result_id', resultId)
     .eq('accepted', true)
     .order('created_at', { ascending: true })
 
+  if (findingsError) return { error: 'Could not load the accepted findings.' }
   if (!findings || findings.length === 0) {
     return { error: 'No accepted findings to apply.' }
   }
 
-  const { data: aiResult } = await supabase
+  const { data: aiResult, error: aiResultError } = await supabase
     .from('external_ai_results')
     .select('vendor_name, model_name, model_version')
     .eq('id', resultId)
     .single()
 
-  const vendor = (aiResult?.vendor_name as string | null) ?? 'Unknown Vendor'
-  const model  = (aiResult?.model_name  as string | null) ?? 'Unknown Model'
-  const ver    = (aiResult?.model_version as string | null)
+  if (aiResultError) return { error: 'Could not load the external AI result.' }
 
-  const header = `--- External AI Suggestions (${vendor}, ${model}${ver ? ` v${ver}` : ''}) ---`
-  const lines  = findings.map((f) => {
-    const sev   = f.severity ? `[${(f.severity as string).toUpperCase()}] ` : ''
-    const loc   = [f.body_region, f.laterality].filter(Boolean).join(', ')
-    const conf  = f.confidence !== null ? ` — confidence: ${f.confidence}%` : ''
-    const rec   = f.recommendation ? `\n  → ${f.recommendation}` : ''
-    return `• ${sev}${f.finding_label}${loc ? `, ${loc}` : ''}${conf}${rec}`
+  const block = buildExternalAiBlock(
+    (aiResult?.vendor_name as string | null) ?? 'Unknown Vendor',
+    (aiResult?.model_name  as string | null) ?? 'Unknown Model',
+    (aiResult?.model_version as string | null) ?? null,
+    findings as AcceptedFinding[],
+  )
+
+  // R2.6 — write the CANONICAL model. A structured report keeps its content in
+  // structured_data, which is what the editor, PDF, DOCX, print and delivery
+  // all read; writing only the legacy column made accepted findings invisible
+  // everywhere while the action reported success.
+  const currentStructured = (report.structured_data as StructuredReportData | null) ?? null
+  const applied = applyExternalAiFindings({
+    structuredData:  currentStructured,
+    findings:        report.findings as string | null,
+    impression:      report.impression as string | null,
+    recommendations: report.recommendations as string | null,
+    block,
   })
 
-  const insertText = `\n\n${header}\n${lines.join('\n')}`
-  const currentFindings = (report.findings as string) ?? ''
-  const updatedFindings = currentFindings + insertText
-
-  // Version snapshot before edit
-  const { data: latestVersion } = await supabase
-    .from('report_versions')
-    .select('version_number')
-    .eq('report_id', reportId)
-    .order('version_number', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const nextVersionNumber = ((latestVersion?.version_number as number | null) ?? 0) + 1
-
-  await supabase.from('report_versions').insert({
-    report_id:      reportId,
-    version_number: nextVersionNumber,
-    findings:       report.findings,
-    impression:     report.impression,
-    recommendations: report.recommendations,
-    status:         report.status,
-    created_by:     user.id,
-    change_reason:  'Pre-edit snapshot: External AI findings applied',
+  // Pre-edit snapshot through the shared R0.2 writer: it carries clinic_id and
+  // structured_data, checks the returned error, and retries a version-number
+  // race. The hand-rolled insert here did none of that.
+  const snapshot = await createReportVersion(supabase as unknown as VersionDb, {
+    reportId,
+    clinicId:        (report.clinic_id as string | null) ?? user.clinicId,
+    findings:        (report.findings as string | null) ?? '',
+    impression:      (report.impression as string | null) ?? '',
+    recommendations: (report.recommendations as string | null) ?? null,
+    structuredData:  currentStructured,
+    status:          report.status as string,
+    createdBy:       user.id,
+    action:          'saved',
+    changeReason:    'Pre-edit snapshot: External AI findings applied',
   })
+  if (snapshot.error) return { error: snapshot.error }
 
   const { error: updateError } = await supabase
     .from('reports')
-    .update({ findings: updatedFindings })
+    .update({
+      findings: applied.findings,
+      ...(applied.structuredData ? { structured_data: applied.structuredData } : {}),
+    })
     .eq('id', reportId)
 
   if (updateError) return { error: 'Failed to update report.' }

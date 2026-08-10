@@ -27,10 +27,12 @@ interface Props {
 const FLAG_ORDER: LiveFlagCode[] = [
   'physicianOwned',
   'ambiguousCorrection',
+  'duplicateContent',
   'rewrite',
   'sectionReassigned',
   'autoFilled',
   'inferredConclusion',
+  'sectionInferred',
   'cleanupDrift',
   'lowConfidence',
 ]
@@ -44,6 +46,8 @@ const TONE: Record<LiveFlagCode, string> = {
   inferredConclusion:  'border-blue-300 bg-blue-50 text-blue-800',
   cleanupDrift:        'border-amber-300 bg-amber-50 text-amber-800',
   lowConfidence:       'border-blue-300 bg-blue-50 text-blue-800',
+  duplicateContent:    'border-amber-300 bg-amber-50 text-amber-800',
+  sectionInferred:     'border-blue-300 bg-blue-50 text-blue-800',
 }
 
 export function LiveSectionStatus({

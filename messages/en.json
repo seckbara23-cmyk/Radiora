@@ -928,6 +928,8 @@
       "sectionReassigned": "Text moved between sections",
       "ambiguousCorrection": "Ambiguous correction",
       "cleanupDrift": "Text heavily reworded",
+      "duplicateContent": "Similar content in another section",
+      "sectionInferred": "Section proposed by AI",
       "physicianOwned": "Edited by the radiologist — AI suggestion available"
     }
   },

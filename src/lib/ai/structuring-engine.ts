@@ -12,7 +12,8 @@
 // doctor's own (cleaned) words. The ONLY generated text is the TECHNIQUE
 // acquisition protocol template, which is always flagged autoFilled + review.
 
-import { parseStructuredText, buildDefaultTechnique } from '@/lib/ai/hpd-engine'
+import { parseStructuredTextWithProvenance } from '@/lib/ai/hpd-engine'
+import { detectSectionDuplication } from '@/lib/safety/section-duplication'
 import { detectSelfCorrections } from '@/lib/ai/self-correction'
 import { cleanupFrench } from '@/lib/ai/french-cleanup'
 import type {
@@ -112,8 +113,9 @@ export function runStructuring(input: StructuringInput): StructuringResult {
   // 2. Clean fillers / repetitions / terminology.
   const { cleaned, removed } = cleanupFrench(corrected)
 
-  // 3. Structure into HPD sections (no invention — pure slicing + protocol template).
-  const structured = parseStructuredText(cleaned, {
+  // 3. Route into HPD sections. R2.6: every sentence lands in at most ONE
+  //    section, and provenance records why.
+  const parsed     = parseStructuredTextWithProvenance(cleaned, {
     modality:    input.modality,
     bodyPart:    input.bodyPart,
     patientName: input.patientName,
@@ -121,13 +123,11 @@ export function runStructuring(input: StructuringInput): StructuringResult {
     patientSex:  input.patientSex,
     locale:      input.locale ?? 'fr',
   })
+  const structured = parsed.data
 
-  // Detect whether the TECHNIQUE came from the template (auto-filled) vs dictation.
-  const template = input.modality ? buildDefaultTechnique(input.modality) : ''
-  const techniqueAutoFilled =
-    !HEADER_HINTS.technique.test(cleaned) &&
-    !!structured.technique &&
-    structured.technique === template
+  // The template is the one string nobody dictated; the router already marked
+  // it, so this no longer has to be re-derived by comparing strings.
+  const techniqueAutoFilled = parsed.provenance.technique === 'auto_filled'
 
   const confidence: SectionConfidence[] = [
     scoreSection('indication',      structured.indication,            cleaned, false),
@@ -136,6 +136,22 @@ export function runStructuring(input: StructuringInput): StructuringResult {
     scoreSection('conclusion',      structured.conclusion,            cleaned, false),
     scoreSection('recommendations', structured.recommendations ?? '', cleaned, false),
   ]
+  for (const c of confidence) {
+    const p = parsed.provenance[c.section]
+    if (p) c.provenance = p
+  }
+
+  // 4. Duplication net. The router cannot create cross-section duplicates, but
+  //    a transcript can legitimately repeat a clause and content also arrives
+  //    from templates and external sources. Nothing is removed unless
+  //    provenance proves which copy is the engine's.
+  const duplication = detectSectionDuplication({
+    indication:      structured.indication,
+    technique:       structured.technique,
+    results:         structured.results,
+    conclusion:      structured.conclusion,
+    recommendations: structured.recommendations ?? '',
+  }).filter((d) => d.kind !== 'overlap')
 
   return {
     rawTranscript:     raw,
@@ -144,10 +160,15 @@ export function runStructuring(input: StructuringInput): StructuringResult {
     removedTokens:     removed,
     structured,
     confidence,
+    provenance:        parsed.provenance,
+    sectionRanges:     parsed.ranges,
+    duplication,
     // R0.3 — a preserved-for-review suggestion (an ambiguous self-correction
     // the engine refused to apply) always forces human review.
+    // R2.6 — so does unresolved cross-section duplication.
     reviewRequired:
       confidence.some((c) => c.reviewRequired) ||
-      events.some((e) => e.applied === false),
+      events.some((e) => e.applied === false) ||
+      duplication.length > 0,
   }
 }

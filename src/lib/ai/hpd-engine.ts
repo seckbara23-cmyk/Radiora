@@ -1,4 +1,7 @@
 import type { StructuredReportData } from '@/types/report'
+import { routeTranscript, type SectionProvenance } from '@/lib/ai/section-router'
+
+export type { SectionProvenance }
 
 export type { StructuredReportData }
 
@@ -11,37 +14,11 @@ export interface HpdContext {
   locale?:     string
 }
 
-// ─── Section keywords ─────────────────────────────────────────────────────────
+// Section header vocabulary now lives in ONE place: section-router.ts. The old
+// SECTION_KEYWORDS table here was a second copy, and a second copy of routing
+// vocabulary is how two callers start disagreeing about where a sentence goes.
 
 type SectionKey = 'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'
-
-const SECTION_KEYWORDS: Record<SectionKey, string[]> = {
-  indication: [
-    'renseignements cliniques', 'renseignement clinique',
-    'contexte clinique', "motif d'examen", 'motif',
-    'indication clinique', 'indication',
-    'clinical indication', 'clinical history', 'history',
-  ],
-  technique: [
-    "protocole d'acquisition", 'protocole', "technique d'acquisition",
-    'technique', 'procédure', 'procedure', 'method',
-  ],
-  results: [
-    "résultats de l'examen", 'résultats', 'resultats',
-    'aspect radiologique', 'aspects radiologiques',
-    'description', 'observations', 'findings', 'results',
-  ],
-  conclusion: [
-    'en conclusion', 'au total', 'en résumé',
-    'conclusion', 'synthèse', 'synthese',
-    'impression', 'assessment', 'interpretation',
-  ],
-  recommendations: [
-    'conduite à tenir', 'préconisations', 'préconisation',
-    'recommandations', 'recommandation',
-    'recommendations', 'recommendation', 'follow-up', 'follow up',
-  ],
-}
 
 // ─── Exam title mapping ────────────────────────────────────────────────────────
 
@@ -173,41 +150,6 @@ function norm(s: string): string {
   return s.toLowerCase().normalize('NFD').replace(/\p{Diacritic}/gu, '')
 }
 
-// Each accent-folded base letter → a character class that also matches its
-// accented French variants. Lets a keyword regex built from a folded keyword
-// still match accented source text ("Résultats" as well as "Resultats"), while
-// the `i` flag covers upper/lower case (incl. "RÉSULTATS").
-const ACCENT_CLASS: Record<string, string> = {
-  a: 'aàâä', c: 'cç', e: 'eéèêë', i: 'iîï',
-  o: 'oôö', u: 'uùûü', y: 'yÿ', n: 'nñ',
-}
-
-const REGEX_SPECIAL = /[-[\]{}()*+?.,\\^$|#]/
-
-/**
- * Turns an already-accent-folded keyword into a regex fragment that is both
- * accent- and case-insensitive: every foldable letter expands to its accented
- * variant class, runs of whitespace become `\s+`, and regex metacharacters are
- * escaped. The result is matched against the ORIGINAL (accented) text.
- */
-function accentInsensitivePattern(foldedKeyword: string): string {
-  let out = ''
-  let prevSpace = false
-  for (const ch of foldedKeyword) {
-    if (/\s/.test(ch)) {
-      if (!prevSpace) out += '\\s+'
-      prevSpace = true
-      continue
-    }
-    prevSpace = false
-    const cls = ACCENT_CLASS[ch]
-    if (cls) out += `[${cls}]`
-    else if (REGEX_SPECIAL.test(ch)) out += `\\${ch}`
-    else out += ch
-  }
-  return out
-}
-
 export function buildExamInfo(modality: string | null, bodyPart: string | null): ExamInfo {
   if (!modality) return { examType: 'examen_radiologique', examTitle: 'EXAMEN RADIOLOGIQUE' }
 
@@ -237,71 +179,61 @@ export function buildDefaultTechnique(modality: string | null): string {
 
 // ─── Section parser ───────────────────────────────────────────────────────────
 
-function matchSectionKey(partStart: string): SectionKey | null {
-  const n = norm(partStart.slice(0, 80))
-  for (const [key, keywords] of Object.entries(SECTION_KEYWORDS) as [SectionKey, string[]][]) {
-    for (const kw of keywords.sort((a, b) => b.length - a.length)) {
-      const re = new RegExp(
-        `^${norm(kw).replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&').replace(/\s+/g, '\\s+')}\\s*[:\\n]?`,
-        'i',
-      )
-      if (re.test(n)) return key
-    }
-  }
-  return null
+/**
+ * R2.6 — routing is delegated to the sentence-level router.
+ *
+ * The old implementation split on header keywords and then ran a fallback
+ * guarded by `!foundSections || (!sections.results && !sections.conclusion)`.
+ * That `||` fired the fallback even when a header HAD been found, copying the
+ * whole transcript into RÉSULTATS: "Indication traumatisme crânien." produced
+ * the same sentence in both INDICATION and RÉSULTATS. The router routes every
+ * sentence to at most one section and has no such pass.
+ *
+ * `parseStructuredText` keeps its signature and its role: sections in, canonical
+ * StructuredReportData out. Callers that want provenance use
+ * `parseStructuredTextWithProvenance`.
+ */
+export function parseStructuredText(freeText: string, context: HpdContext): StructuredReportData {
+  return parseStructuredTextWithProvenance(freeText, context).data
 }
 
-export function parseStructuredText(freeText: string, context: HpdContext): StructuredReportData {
-  const text                   = freeText.trim()
+export interface ParsedWithProvenance {
+  data: StructuredReportData
+  /** Why each populated section holds what it holds. */
+  provenance: Partial<Record<SectionKey, SectionProvenance>>
+  /** Source ranges in the transcript, for review flags that point at a sentence. */
+  ranges: Partial<Record<SectionKey, Array<{ start: number; end: number }>>>
+}
+
+export function parseStructuredTextWithProvenance(
+  freeText: string,
+  context: HpdContext,
+): ParsedWithProvenance {
+  const text                    = freeText.trim()
   const { examType, examTitle } = buildExamInfo(context.modality, context.bodyPart)
 
-  // Build split regex from all known keywords. Keywords are accent-folded then
-  // expanded to accent-INSENSITIVE patterns so the split fires on accented
-  // headers ("Résultats :") as well as folded ones ("Resultats :") — the regex
-  // is matched against the original (accented) text, so content is preserved.
-  const allKw = [...new Set(Object.values(SECTION_KEYWORDS).flat().map(norm))]
-  const sorted = allKw.sort((a, b) => b.length - a.length)
-  const escapedKw = sorted.map(accentInsensitivePattern).join('|')
-
-  // Split on section headers ("KEYWORD :" or "KEYWORD\n")
-  const splitRe = new RegExp(`(?=(?:${escapedKw})\\s*[:\\n])`, 'gi')
-  const parts   = text.split(splitRe).filter(Boolean)
-
+  const routed = routeTranscript(text)
   const sections: Partial<Record<SectionKey, string>> = {}
-  let foundSections = false
+  const provenance: Partial<Record<SectionKey, SectionProvenance>> = {}
+  const ranges: Partial<Record<SectionKey, Array<{ start: number; end: number }>>> = {}
 
-  for (const part of parts) {
-    const key = matchSectionKey(part)
-    if (key) {
-      foundSections = true
-      // Strip header + colon/newline + leading whitespace
-      const stripped = part.replace(/^[^\n:]+[:\n]\s*/i, '').trim()
-      if (!stripped) continue
-      // R0.3 — repeated section aliases ("Impression : … Conclusion : …") must
-      // never silently discard later dictated content: append, don't drop. The
-      // LAST dictated conclusion is a corrected negative finding more often
-      // than not — losing it would invert the report's meaning.
-      sections[key] = sections[key] ? `${sections[key]}\n${stripped}` : stripped
-    }
+  for (const [key, value] of Object.entries(routed.sections) as [SectionKey, { text: string; provenance: SectionProvenance; ranges: Array<{ start: number; end: number }> }][]) {
+    sections[key]   = value.text
+    provenance[key] = value.provenance
+    ranges[key]     = value.ranges
   }
 
-  // Fallback: no recognisable headers → sentence-proportion split
-  if (!foundSections || (!sections.results && !sections.conclusion)) {
-    const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean)
-    if (sentences.length >= 2) {
-      const cutoff = Math.max(1, Math.ceil(sentences.length * 0.7))
-      if (!sections.results)    sections.results    = sentences.slice(0, cutoff).join(' ')
-      if (!sections.conclusion) sections.conclusion = sentences.slice(cutoff).join(' ')
-    } else {
-      if (!sections.results) sections.results = text
-    }
-  }
-
+  // The protocol template is the one string in this product nobody dictated. It
+  // is always marked auto_filled so downstream can flag it for confirmation.
   if (!sections.technique && context.modality) {
-    sections.technique = buildDefaultTechnique(context.modality)
+    const template = buildDefaultTechnique(context.modality)
+    if (template) {
+      sections.technique   = template
+      provenance.technique = 'auto_filled'
+    }
   }
 
-  return {
+  const data: StructuredReportData = {
     language:    (context.locale ?? 'fr') as 'fr' | 'en',
     examType,
     examTitle,
@@ -318,4 +250,6 @@ export function parseStructuredText(freeText: string, context: HpdContext): Stru
     dictationTranscript: freeText,
     generatedAt:     new Date().toISOString(),
   }
+
+  return { data, provenance, ranges }
 }

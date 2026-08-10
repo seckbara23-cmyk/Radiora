@@ -18,37 +18,8 @@
 // legitimate surgical history). Every action is recorded as a CorrectionEvent
 // for side-by-side review.
 
+import { splitSentences } from '@/lib/ai/sentences'
 import type { CorrectionEvent } from '@/types/structuring'
-
-interface Sentence {
-  text:  string
-  start: number
-}
-
-function isDigit(ch: string | undefined): boolean {
-  return !!ch && ch >= '0' && ch <= '9'
-}
-
-function splitSentences(text: string): Sentence[] {
-  const res: Sentence[] = []
-  let start = 0
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]
-    if (ch === '.' || ch === '!' || ch === '?' || ch === '\n') {
-      // R0.3 — never split a decimal measurement ("3.5 cm", "12.5 mm") at the
-      // point: a '.' flanked by digits is a decimal separator, not a boundary.
-      if (ch === '.' && isDigit(text[i - 1]) && isDigit(text[i + 1])) continue
-      const seg = text.slice(start, i + 1)
-      if (seg.trim()) res.push({ text: seg.trim(), start })
-      start = i + 1
-    }
-  }
-  if (start < text.length) {
-    const seg = text.slice(start)
-    if (seg.trim()) res.push({ text: seg.trim(), start })
-  }
-  return res
-}
 
 /** A whole short clause that signals "retract what I just said". */
 const STANDALONE_RETRACTION =
@@ -104,6 +75,89 @@ interface Localized {
   text:     string  // the rewritten sentence
   removed:  string  // exactly what was replaced
   inserted: string  // exactly what replaced it
+}
+
+// ─── R2.6: cross-sentence correction targets ──────────────────────────────────
+//
+// "Nodule du lobe supérieur droit mesurant 12 mm. Je corrige, 14 mm."
+//
+// The correction and its target are in DIFFERENT sentences. Before R2.6 the
+// replacement was appended as a new clause, leaving the report saying both
+// 12 mm and 14 mm — and for "Présence d'épanchement. Je corrige, absence
+// d'épanchement." it left both polarities standing, which is worse.
+//
+// Resolution is preservation-first and refuses ambiguity: a correction is only
+// applied when the target is UNIQUE in the preceding clause.
+
+/** Measurements, including "12 x 8 mm" pairs and both decimal separators. */
+const MEASUREMENT_GLOBAL =
+  /\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)*\s*(?:mm³|cm³|mm3|cm3|ml|cc|mm|cm|m|%|°)/gi
+
+/** Laterality and the words that qualify it. */
+const LATERALITY_GLOBAL =
+  /\b(?:droite?s?|gauches?|bilat[ée]rales?|bilat[ée]ral|m[ée]diane?s?)\b/gi
+
+const LATERALITY_ONLY =
+  /^(?:[àa]\s+)?(?:droite?|gauche|bilat[ée]rale?|m[ée]dian[e]?)$/i
+
+export type ResolveOutcome =
+  /** A unique target was found and replaced. */
+  | { status: 'applied'; text: string; removed: string; inserted: string }
+  /** More than one candidate — never guess which lesion the doctor meant. */
+  | { status: 'ambiguous'; reason: 'multiple_measurements' | 'multiple_laterality' }
+  /** Not a targeted correction; the replacement supersedes the whole clause. */
+  | { status: 'clause' }
+
+function matchesOf(text: string, re: RegExp): RegExpMatchArray[] {
+  return [...text.matchAll(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'))]
+}
+
+/**
+ * Resolve a correction whose replacement is in the NEXT sentence against the
+ * clause it corrects.
+ *
+ * Only two things are targeted surgically, because only these two can be
+ * matched without understanding the sentence: a measurement and a laterality.
+ * Anything else is treated as a replacement of the whole clause, which the
+ * caller then guards with its own preservation rules.
+ */
+export function resolveCorrectionTarget(previousClause: string, replacement: string): ResolveOutcome {
+  const target = stripTrailingPunct(previousClause).trim()
+  const repl   = stripTrailingPunct(replacement).trim()
+  if (!target || !repl) return { status: 'clause' }
+
+  // (a) measurement → measurement
+  if (MEASUREMENT_ONLY.test(repl) || /^\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)+\s*\w*$/i.test(repl)) {
+    const found = matchesOf(target, MEASUREMENT_GLOBAL)
+    if (found.length === 0) return { status: 'clause' }
+    if (found.length > 1) return { status: 'ambiguous', reason: 'multiple_measurements' }
+    const hit = found[0]
+    const at  = hit.index!
+    return {
+      status: 'applied',
+      text: target.slice(0, at) + repl + target.slice(at + hit[0].length),
+      removed: hit[0].trim(),
+      inserted: repl,
+    }
+  }
+
+  // (b) laterality → laterality
+  if (LATERALITY_ONLY.test(repl)) {
+    const word = repl.replace(/^[àa]\s+/i, '')
+    const found = matchesOf(target, LATERALITY_GLOBAL)
+    if (found.length === 0) return { status: 'clause' }
+    if (found.length > 1) return { status: 'ambiguous', reason: 'multiple_laterality' }
+    const hit = found[0]
+    const at  = hit.index!
+    return {
+      status: 'applied',
+      text: target.slice(0, at) + word + target.slice(at + hit[0].length),
+      removed: hit[0].trim(),
+      inserted: word,
+    }
+  }
+
+  return { status: 'clause' }
 }
 
 /**
@@ -171,7 +225,7 @@ export function detectSelfCorrections(raw: string): {
   const sentences = splitSentences(text)
   const kept: string[] = []
   const events: CorrectionEvent[] = []
-  let awaiting: { removed: string; marker: string; index: number } | null = null
+  let awaiting: { removed: string; punct: string; marker: string; index: number } | null = null
 
   for (const s of sentences) {
     const bare = stripTrailingPunct(s.text)
@@ -197,12 +251,51 @@ export function detectSelfCorrections(raw: string): {
       }
 
       const removed = kept.pop() ?? ''
-      awaiting = { removed: stripTrailingPunct(removed), marker: bare.toLowerCase(), index: s.start }
+      awaiting = {
+        removed: stripTrailingPunct(removed),
+        punct:   removed.match(/[.!?]+$/)?.[0] ?? '.',
+        marker:  bare.toLowerCase(),
+        index:   s.start,
+      }
       continue
     }
 
     // Case 2 — this sentence is the replacement that follows a retraction.
     if (awaiting) {
+      // R2.6 — "Nodule du lobe supérieur droit de 12 mm. Non. 14 mm." replaces
+      // only the measurement. Replacing the whole clause would throw away the
+      // lesion, its lobe and its laterality to keep a bare number.
+      const resolved = resolveCorrectionTarget(awaiting.removed, stripTrailingPunct(s.text))
+
+      if (resolved.status === 'applied') {
+        kept.push(`${resolved.text}${awaiting.punct}`)
+        events.push({
+          marker:  awaiting.marker,
+          removed: resolved.removed,
+          kept:    resolved.inserted,
+          index:   awaiting.index,
+          applied: true,
+        })
+        awaiting = null
+        continue
+      }
+
+      if (resolved.status === 'ambiguous') {
+        // Put the retracted clause back: with two candidate targets, deleting
+        // it would be a guess about which lesion the doctor meant.
+        kept.push(`${awaiting.removed}${awaiting.punct}`)
+        kept.push(s.text)
+        events.push({
+          marker:  awaiting.marker,
+          removed: awaiting.removed,
+          kept:    stripTrailingPunct(s.text),
+          index:   awaiting.index,
+          applied: false,
+        })
+        awaiting = null
+        continue
+      }
+
       kept.push(s.text)
       events.push({
         marker:  awaiting.marker,
@@ -222,10 +315,77 @@ export function detectSelfCorrections(raw: string): {
       const after  = s.text.slice(m.index + m[0].length).trim()
 
       if (after && !before) {
-        // Marker opens the sentence — dropping just the marker is safe.
+        // R2.6 — the marker opens the sentence, so the target is the PREVIOUS
+        // clause. Before R2.6 this appended the replacement as a new sentence,
+        // leaving "… 12 mm. 14 mm." in the report — and, worse, leaving both
+        // "Présence d'épanchement" and "absence d'épanchement" standing.
+        const prev     = kept.length > 0 ? kept[kept.length - 1] : ''
+        const prevBare = stripTrailingPunct(prev)
+        const marker   = m[0].trim().toLowerCase()
+        const punct    = prev.match(/[.!?]+$/)?.[0] ?? '.'
+
+        if (prev) {
+          const resolved = resolveCorrectionTarget(prevBare, after)
+
+          if (resolved.status === 'applied') {
+            // Surgical: only the measurement or the laterality changed. Lesion
+            // identity, location and everything else are untouched.
+            kept[kept.length - 1] = `${resolved.text}${punct}`
+            events.push({
+              marker,
+              removed: resolved.removed,
+              kept:    resolved.inserted,
+              index:   s.start + m.index,
+              applied: true,
+            })
+            continue
+          }
+
+          if (resolved.status === 'ambiguous') {
+            // Two candidate lesions. Never guess which one — preserve both the
+            // original and the correction, and raise it for review.
+            kept.push(s.text)
+            events.push({
+              marker,
+              removed: prevBare,
+              kept:    stripTrailingPunct(after),
+              index:   s.start + m.index,
+              applied: false,
+            })
+            continue
+          }
+
+          // Whole-clause replacement. Same preservation guards as a standalone
+          // retraction: an answer to a question or a multi-finding clause is
+          // too meaningful to delete automatically.
+          if (!/\?\s*$/.test(prev.trim()) && !isTooMeaningfulToDrop(prevBare)) {
+            kept.pop()
+            kept.push(capitalize(after))
+            events.push({
+              marker,
+              removed: prevBare,
+              kept:    stripTrailingPunct(after),
+              index:   s.start + m.index,
+              applied: true,
+            })
+            continue
+          }
+
+          kept.push(s.text)
+          events.push({
+            marker,
+            removed: prevBare,
+            kept:    stripTrailingPunct(after),
+            index:   s.start + m.index,
+            applied: false,
+          })
+          continue
+        }
+
+        // Nothing before it — dropping just the marker is safe.
         kept.push(capitalize(after))
         events.push({
-          marker:  m[0].trim().toLowerCase(),
+          marker,
           removed: '',
           kept:    stripTrailingPunct(after),
           index:   s.start + m.index,

@@ -98,6 +98,10 @@ export type LiveFlagCode =
   | 'cleanupDrift'
   /** The radiologist authored this section. */
   | 'physicianOwned'
+  /** R2.6 — this clinical statement also appears in another section. */
+  | 'duplicateContent'
+  /** R2.6 — routed here by classification, not by a header the doctor dictated. */
+  | 'sectionInferred'
 
 export interface SectionSuggestion {
   key: SectionKey
@@ -339,20 +343,37 @@ export function reconcile(
   const suggestions = { ...state.suggestions }
   const flags = { ...state.flags }
 
+  // R2.6 — sections whose clinical statement also appears somewhere else.
+  const duplicated = new Set<SectionKey>()
+  for (const d of meta.duplication ?? []) {
+    duplicated.add(d.sections[0] as SectionKey)
+    duplicated.add(d.sections[1] as SectionKey)
+  }
+
   for (const k of SECTION_ORDER) {
     const score = meta.confidence.find((c) => c.section === k)
     const autoFilled = Boolean(score?.autoFilled)
+    // R2.6 — the router says why this section holds what it holds, so the
+    // coordinator no longer re-derives it by re-scanning the transcript.
+    const routed = meta.provenance?.[k]
 
     const reasons: LiveFlagCode[] = [...reportFlags]
     if (autoFilled) reasons.push('autoFilled')
     else if (score?.reviewRequired && proposed[k].trim()) reasons.push('lowConfidence')
+
+    if (proposed[k].trim() && (routed === 'inferred' || routed === 'continuation')) {
+      reasons.push('sectionInferred')
+    }
     if (
       k === 'conclusion' &&
       proposed[k].trim() &&
-      !hasExplicitSectionHeader('conclusion', input.stableTranscript)
+      (routed
+        ? routed !== 'explicit_header'
+        : !hasExplicitSectionHeader('conclusion', input.stableTranscript))
     ) {
       reasons.push('inferredConclusion')
     }
+    if (duplicated.has(k)) reasons.push('duplicateContent')
     if (reassigned.has(k)) reasons.push('sectionReassigned')
 
     const locked = state.report.sections[k].locked

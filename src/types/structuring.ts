@@ -42,6 +42,11 @@ export interface SectionConfidence {
   /** True when the engine filled this from a template (e.g. a standard
    *  acquisition protocol) rather than from dictated content. Always flagged. */
   autoFilled?:    boolean
+  /** R2.6 — WHY this section holds what it holds. Set by the section router;
+   *  `SectionProvenance` lives in @/lib/ai/section-router. Kept as a field on
+   *  the existing type rather than a parallel enum so every consumer of
+   *  structuring metadata sees it for free. */
+  provenance?:    string
   reason?:        string
 }
 
@@ -52,5 +57,13 @@ export interface StructuringResult {
   removedTokens:     RemovedToken[]
   structured:        StructuredReportData // layer 4 — HPD JSON
   confidence:        SectionConfidence[]
+  /** R2.6 — why each populated section holds what it holds. */
+  provenance?:       Partial<Record<StructuredSectionKey, string>>
+  /** R2.6 — where in the transcript each section came from, so a review flag
+   *  can point at the sentence responsible. */
+  sectionRanges?:    Partial<Record<StructuredSectionKey, Array<{ start: number; end: number }>>>
+  /** R2.6 — clinical statements found in more than one section (exact/near
+   *  only; shared vocabulary is not duplication). */
+  duplication?:      Array<{ kind: string; sections: [StructuredSectionKey, StructuredSectionKey]; clause: string }>
   reviewRequired:    boolean             // any section flagged for review
 }

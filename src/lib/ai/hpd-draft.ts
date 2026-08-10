@@ -29,6 +29,8 @@ import type {
   CorrectionEvent,
   RemovedToken,
   SectionConfidence,
+  StructuredSectionKey,
+  StructuringResult,
 } from '@/types/structuring'
 
 /** Safety metadata produced alongside the structured draft. */
@@ -48,6 +50,10 @@ export interface HpdStructuringMeta {
   reviewRequired: boolean
   /** Advisory warnings, incl. heavy_cleanup_drift (raw vs cleaned). */
   warnings: ClinicalWarning[]
+  /** R2.6 — why each populated section holds what it holds. */
+  provenance: Partial<Record<StructuredSectionKey, string>>
+  /** R2.6 — clinical statements found in more than one section. */
+  duplication: NonNullable<StructuringResult['duplication']>
 }
 
 export interface HpdDraftInput {
@@ -105,6 +111,8 @@ export function buildHpdDraft(input: HpdDraftInput): HpdDraft {
       confidence:        result.confidence,
       reviewRequired:    result.reviewRequired,
       warnings,
+      provenance:        result.provenance  ?? {},
+      duplication:       result.duplication ?? [],
     },
   }
 }

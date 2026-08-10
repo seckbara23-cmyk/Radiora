@@ -1295,3 +1295,271 @@ confirmation rules for auto-filled content are unchanged.
 - Live population for specialized structured-exam forms.
 - Active-session recovery, if it is ever wanted; it does not exist today.
 - R2.7: seamless phone behaviour.
+
+---
+
+## R2.6 implementation status
+
+**Gate R2.6 — section accuracy, corrections and provenance. COMPLETE.** No migration.
+
+> **Empty section > incorrect duplicated clinical content.**
+>
+> A section left blank costs the radiologist a sentence of typing. A section
+> filled with the wrong clinical statement is a reporting error that survives
+> into the PDF, the signature and the patient's file.
+
+### Root cause of the indication → findings duplication
+
+`parseStructuredText` split the transcript on header keywords, then ran a
+fallback:
+
+```js
+if (!foundSections || (!sections.results && !sections.conclusion)) {
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(Boolean)
+  if (sentences.length >= 2) {
+    const cutoff = Math.max(1, Math.ceil(sentences.length * 0.7))
+    if (!sections.results)    sections.results    = sentences.slice(0, cutoff).join(' ')
+    if (!sections.conclusion) sections.conclusion = sentences.slice(cutoff).join(' ')
+  } else {
+    if (!sections.results) sections.results = text        // ← the WHOLE transcript
+  }
+}
+```
+
+Two defects, compounding:
+
+1. **The `||`.** The fallback fired whenever RÉSULTATS and CONCLUSION were both
+   empty — *even when a header had been found*. "Indication traumatisme
+   crânien." routed correctly to INDICATION, then the fallback copied the entire
+   transcript, header text included, into RÉSULTATS.
+2. **No boundary after a header.** The split only fired at `KEYWORD :` or
+   `KEYWORD\n`, so an explicit header captured everything to the end of the
+   transcript. Findings dictated after "Indication : …" without the doctor
+   saying "Résultats" stayed in INDICATION.
+
+A third, related defect: the fallback's 70/30 positional split is what made
+CONCLUSION churn on every revision in the R2.5 measurements.
+
+The fix is in the canonical layer, so the vacation queue, live dictation,
+`generateHPDDraft` and any future template workflow all inherit it.
+
+### Section routing
+
+`src/lib/ai/section-router.ts` routes **sentence by sentence**. Precedence:
+
+| | signal | provenance |
+|---|---|---|
+| 1 | explicit header — "Résultats :", "Indication traumatisme crânien." | `explicit_header` |
+| 2 | strong marker — "Au total,", "Conduite à tenir" | `semantic` |
+| 3 | weak cue — findings/technique/indication vocabulary | `semantic` |
+| 4 | continues the open section | `continuation` |
+| 5 | nothing open, nothing recognised → RÉSULTATS | `inferred` |
+
+**Every sentence lands in at most one section.** There is no pass that copies
+text anywhere, so duplication cannot be created by routing.
+
+Two rules make this behave like real dictation:
+
+- **The report flows forward.** Weak evidence may advance along
+  indication → technique → results → conclusion → recommendations, never
+  rewind. So "Indication : céphalées. Petite hyperdensité frontale droite."
+  moves on to RÉSULTATS, while "Résultats : masse pulmonaire. Suspicion de
+  malignité." stays in RÉSULTATS — "suspicion de" is indication vocabulary, but
+  the doctor is plainly still describing what they saw. Moving backwards needs
+  an explicit header or a strong marker.
+- **Markers must open the clause.** "Au total" is a conclusion marker at the
+  start of a sentence and ordinary French in the middle of one: "il existe au
+  total deux lésions" is a finding, and stays one.
+
+The bare header form ("Indication traumatisme crânien." — no colon) is accepted
+only for the primary section names. A sentence merely starting with
+"Description" or "History" is not evidence enough to reroute clinical text. A
+plural is not a header either: "Indications opératoires discutées." is a
+sentence, not an INDICATION section.
+
+### Findings fallback
+
+RÉSULTATS is the destination for unrecognised clinical dictation, which is
+correct — most of a report is findings. It is **not** a catch-all: a sentence
+goes there *instead of* somewhere else, never *in addition to* it. An
+indication-only or technique-only transcript now leaves RÉSULTATS **empty**.
+
+Consequence worth stating plainly: the signing gate requires RÉSULTATS and
+CONCLUSION on a structured report, so a doctor who dictates only an indication
+can no longer sign until they write the rest. That is the intended trade — the
+alternative was a report whose findings section repeated the referral question.
+
+### Conclusion is never guessed
+
+A conclusion now requires an explicit header or a strong marker. The positional
+70/30 guess is gone. If no conclusion can safely be inferred, CONCLUSION stays
+empty for the doctor to write. Inferred content that does arrive (via
+`continuation` or `inferred` provenance) is still REVIEW_REQUIRED and can never
+auto-apply.
+
+### Provenance model
+
+`SectionProvenance` is threaded through the existing types rather than
+duplicated: `SectionConfidence.provenance` on the per-section score, plus
+`StructuringResult.provenance` / `.sectionRanges` / `.duplication` and the same
+fields on `HpdStructuringMeta`.
+
+| provenance | meaning |
+|---|---|
+| `explicit_header` | the doctor dictated the section name |
+| `semantic` | classified from clinical language |
+| `continuation` | continues the section already open |
+| `inferred` | no signal; default destination |
+| `auto_filled` | generated from exam metadata (the protocol template) |
+| `physician_edit` | written by the radiologist |
+
+`sectionRanges` carries character offsets back into the transcript, so a review
+flag can point at the sentence responsible — text provenance, no waveform
+synchroniser.
+
+### Duplication detection
+
+`src/lib/safety/section-duplication.ts` compares **clauses**, never words.
+Radiology repeats its vocabulary constantly; flagging that would bury the real
+cases.
+
+| kind | test | acted on? |
+|---|---|---|
+| `exact` | identical ignoring case, accents, punctuation, spacing | yes |
+| `near` | Jaccard ≥ 0.8 over clauses of ≥ 4 tokens | yes |
+| `overlap` | Jaccard ≥ 0.5 — shared terminology | **never** |
+
+Unresolved exact/near duplication sets `reviewRequired` on the structuring
+result and raises a `duplicateContent` flag on both sections in the live
+coordinator.
+
+### Safe auto-repair
+
+`repairSectionDuplication` removes a duplicate **only when provenance proves
+which copy is wrong**:
+
+| situation | action |
+|---|---|
+| authoritative + fallback, neither locked | drop the fallback copy |
+| either side physician-owned | keep both, raise for review |
+| both authoritative, or both fallback | keep both, raise for review |
+| `overlap` | nothing |
+
+Authoritative = `explicit_header`, `semantic`, `auto_filled`, `physician_edit`.
+Fallback = `continuation`, `inferred`. The protocol template is authoritative
+for TECHNIQUE, so a copy of it in RÉSULTATS is the copy that goes.
+
+Because the router can no longer create duplicates, this is a net rather than a
+routine path — it catches content arriving from applied templates, external-AI
+appends and legacy reports, none of which pass through the router.
+
+### Correction target resolution
+
+The correction and its target are usually in **different** sentences. Before
+R2.6, "…mesurant 12 mm. Je corrige, 14 mm." appended the replacement as a new
+clause, so the report said both 12 mm and 14 mm — and "Présence d'épanchement
+pleural. Je corrige, absence d'épanchement pleural." left **both polarities
+standing**, which is worse than either alone.
+
+`resolveCorrectionTarget` now resolves the replacement against the preceding
+clause, and refuses ambiguity:
+
+| replacement | behaviour |
+|---|---|
+| a measurement | replace the one measurement in the clause; **two candidates → refuse** |
+| a laterality word | replace the one laterality token; **two candidates → refuse** |
+| anything else | whole-clause replacement, under the existing preservation guards |
+
+A refusal preserves the original text verbatim, keeps the correction visible,
+and emits `CorrectionEvent { applied: false }` → `ambiguousCorrection`. Both the
+inline path ("Je corrige, …") and the standalone path ("Non." then the
+replacement) go through it.
+
+Result: `"Nodule du lobe supérieur droit mesurant 12 mm. Je corrige, 14 mm."`
+→ `"Nodule du lobe supérieur droit mesurant 14 mm."` — lesion, lobe, laterality
+and units all intact, provenance recording `12 mm → 14 mm`.
+
+### Measurement, laterality and negation safety
+
+One decimal-safe sentence splitter (`src/lib/ai/sentences.ts`) is now shared by
+self-correction, routing and duplication detection: a boundary one module sees
+and another does not is how a correction lands on the wrong finding. A `.`
+between digits is a decimal separator, never a boundary.
+
+Pinned by test: `3.5 cm`, `3,5 cm`, `12 x 8 mm`, `12 × 8 mm` survive the whole
+pipeline, and a paired measurement can be corrected as a unit. Laterality is
+changed only when exactly one laterality token is present. Negation is never
+inverted: a corrected polarity **replaces** the clause rather than sitting
+beside it, and an uncorrected negation passes through untouched.
+
+### Uncertainty
+
+`possible`, `probable`, `compatible avec`, `évoquant`, `suspect`,
+`ne peut être exclu` and `vraisemblablement` all survive routing, cleanup and
+reconciliation verbatim. "compatible avec" is never promoted to "diagnostic
+de"; "possible" is never promoted to "présence de". Any certainty drift is
+already caught by the R0 uncertainty fail-safe and surfaces as REVIEW_REQUIRED.
+
+### Physician ownership
+
+Unchanged from R2.5 and now also binding on repair: a physician-edited section
+is never auto-repaired, never auto-removed, and never re-routed. Text being
+identical to AI output does not make it AI-owned after a physician edit —
+ownership is tracked on the section, not inferred from the text.
+
+### Live coordinator integration
+
+The coordinator reads provenance directly instead of re-deriving it by
+re-scanning the transcript, and gains two flags: `sectionInferred` (routed by
+classification rather than a dictated header) and `duplicateContent`. Both hold
+a section back from `SAFE_AUTO_APPLY`, so an update auto-applies only when the
+destination is reliable, non-destructive, duplicate-free, drift-free, unlocked
+and free of ambiguous corrections. R1's `applyStructuredPatch` still runs
+underneath as an independent backstop — none of its safeguards were weakened.
+
+### External-AI append fix
+
+`applyAcceptedFindingsToReport` appended the suggestion block to the legacy
+`findings` **column only**. Structured reports keep their content in
+`structured_data`, and `getReportSections` reads the structured payload first —
+so on a structured report the accepted findings were written somewhere nothing
+renders: absent from the editor, the PDF, the DOCX and the print view, while
+the action reported success. Its version snapshot was hand-rolled, omitted
+`clinic_id`, and ignored every returned error.
+
+Fixed:
+
+- content goes through `applyExternalAiFindings` into canonical
+  `structured_data.results`, with the legacy `findings` column mirrored exactly
+  as `ReportEditor.updateSection` does — no parallel content model;
+- legacy reports (no `structured_data`) still write only `findings`;
+- the snapshot goes through the shared R0.2 `createReportVersion`, which carries
+  `clinic_id` and `structured_data`, checks the returned error and retries a
+  version-number race; a snapshot failure now aborts the write;
+- every Supabase read is error-checked;
+- the finalized-report refusal still runs before anything is written.
+
+### Persistence
+
+No migration. Everything R2.6 adds is derived, not stored:
+
+- **Provenance, duplication findings and section ranges are active-session
+  state.** They are recomputed by `runStructuring` from the transcript on every
+  pass, so they survive a reload only in the sense that re-running the engine
+  reproduces them. They are not persisted, and no claim is made that they are.
+- `ai_outputs.raw_response` continues to store the structuring result for the
+  server-side path, so provenance for that run is recoverable from it.
+- Canonical clinical content persists exactly as before: `structured_data` on
+  the report, transcript linkage from migration 044, version snapshots through
+  `createReportVersion`.
+- Physician lock state is reconstructed conservatively on reload (every
+  non-empty saved section starts physician-owned), unchanged from R2.5.
+
+### What remains
+
+- Per-section attribution for `ambiguousCorrection` and `cleanupDrift`: both are
+  still report-level, because a `CorrectionEvent` offset points into the RAW
+  transcript while sections are sliced from the CLEANED one. `sectionRanges`
+  is the groundwork; mapping raw↔cleaned offsets is the remaining piece.
+- Live population for specialized structured-exam forms (F18 tables).
+- Active-session recovery — still does not exist.
