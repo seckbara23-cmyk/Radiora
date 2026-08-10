@@ -1737,3 +1737,244 @@ the page or the recorder.
 Nothing here presumes a template library. When R3 arrives, the phone remains a
 capture device: templates will shape the report the transcript is structured
 into, and the handoff described above is unchanged.
+
+---
+
+## R2.7A implementation status
+
+**Gate R2.7A — automatic speech-to-text for phone and imported audio. COMPLETE.**
+**Migration 045 required and included.**
+
+> **STT answers "what words were spoken?". Radiora answers "which section of
+> the report do those words belong in?"** Those are different layers, and the
+> seam between them is `SpeechToTextResult`. Speech-to-text never writes a
+> report section, never signs, never validates.
+
+### The gap this closes
+
+Before R2.7A the phone and import paths attached audio to a report and opened a
+transcript row whose `raw_text` was empty — a **person** typed what the doctor
+had just dictated. Only the workstation produced text, live via the browser's
+Web Speech API. R2.7A makes phone and imported audio transcribe themselves.
+
+### Provider audit — what was already here
+
+Nothing. The repository had **no AI provider, no STT implementation, no audio
+dependency and no provider environment variable of any kind**. Radiora's entire
+"AI" is the local deterministic engine, and its safety story is stated in the
+module headers: *no external model, no network, no PHI leaving the tenant*.
+
+R2.7A therefore introduces the first capability that **can** send data outside
+the tenant, and the configuration boundary is built accordingly.
+
+### Provider decision
+
+**Selected: the OpenAI-compatible `POST {baseUrl}/audio/transcriptions`
+multipart endpoint family** — not a specific vendor.
+
+Why this and not a named service:
+
+- It is the closest thing to a de-facto standard for speech-to-text, so a single
+  adapter is genuinely portable.
+- Critically, it is implemented **both** by hosted services **and** by
+  self-hostable Whisper servers. The operator can therefore choose a deployment
+  in which clinical audio never leaves their own network — the
+  privacy-maximising option stays reachable without a second adapter.
+- Choosing a specific hosted vendor would have required asserting things about
+  retention, data-processing terms and pricing that **cannot be verified from
+  this repository or its environment**. Those are contractual facts, not
+  engineering ones, and inventing them in a clinical product's documentation
+  would be worse than leaving the choice explicit.
+
+**Residual decision for the operator:** which endpoint to point `STT_BASE_URL`
+at, and acceptance of that endpoint's terms. Radiora does not ship a default
+endpoint, a bundled key, or a vendor SDK.
+
+`STT_MODEL` is likewise not hard-coded — a self-hosted server and a hosted
+service name their models differently, and the adapter passes the configured
+value through verbatim.
+
+### Configuration
+
+| Variable | Required | Notes |
+|---|---|---|
+| `STT_PROVIDER` | yes | only `openai-compatible` today |
+| `STT_MODEL` | yes | passed through verbatim |
+| `STT_BASE_URL` | yes | https, or `localhost` for a self-hosted server |
+| `STT_API_KEY` | conditional | required unless the base URL is loopback |
+| `STT_TIMEOUT_MS` | no | 5 000–600 000, default 120 000 |
+| `STT_LANGUAGE` | no | default `fr` |
+
+**Fails closed.** Unset or invalid configuration means the feature is
+unavailable and the doctor is told so. There is deliberately **no mock or
+offline fallback** — a clinical product must never manufacture words nobody said
+because a service was unreachable. Plain `http` off localhost is refused, and a
+remote endpoint without a credential is refused so a misconfiguration cannot
+post audio to an open endpoint.
+
+None of these are `NEXT_PUBLIC_`, so Next never inlines them into a client
+bundle. They are reproduced in full in `docs/operations/r0-safety-activation.md`
+because `.env.example` is untracked (`.gitignore` excludes `.env*`). Three tests enforce the boundary: `STT_API_KEY` is read in exactly one
+module, no client component imports `@/lib/stt`, and the **built** client bundle
+is scanned for every STT variable name and for the endpoint path.
+
+### Does audio leave Radiora?
+
+**Entirely determined by `STT_BASE_URL`, and stated plainly rather than
+implied.** Self-hosted endpoint → audio stays on the operator's infrastructure.
+Hosted endpoint → it does not, and that provider's terms govern it.
+
+What is sent, in full: **the audio bytes, a language hint, and — only if
+configured — a bounded radiology vocabulary hint.** Not sent: report id, clinic
+id, patient id, patient name, accession number, exam type, previous findings,
+previous conclusions, or any part of the report. A test reads the outgoing
+`FormData` and asserts each of those is absent.
+
+### Phone flow
+
+```
+record → upload (R2.7, unchanged) → recording received
+      → transcription claimed → provider → RAW transcript persisted
+      → canonical transcript → runStructuring → structured proposal → review
+```
+
+Transcription is triggered from the **desktop** when the recording lands, not
+from the phone. The phone's request stays short and its session is never held
+open across a long provider call, and the long operation runs where the page's
+`maxDuration` budget applies.
+
+### Imported-audio flow
+
+Identical, and deliberately so. `importReportAudio` attaches the file, then the
+same `transcribeReportAudio` runs. There is no `transcribeImportedAudio` and no
+`transcribeMobileAudio`: one service, one pipeline. Clinical behaviour does not
+depend on which microphone was used.
+
+### Workstation flow — unchanged
+
+Web Speech text still goes straight to structuring without a round trip through
+the provider. **Convergence is on TEXT, not audio.**
+
+### Raw transcript is provenance
+
+The provider's transcript is written to `transcription_runs.raw_text`
+**verbatim** — before cleanup, before correction resolution, before section
+routing, and without trimming or normalising. Only afterwards is the canonical
+transcript updated and the existing pipeline invoked. A test asserts the
+ordering and that the service imports none of `cleanupFrench`,
+`detectSelfCorrections`, `runStructuring`, `parseStructuredText` or
+`routeTranscript`.
+
+The radiologist can therefore always distinguish *what the microphone heard*
+from *what Radiora structured*.
+
+### Lifecycle and migration 045
+
+`transcriptions.status` is a **review** state (`draft` /
+`secretary_reviewed` / `radiologist_reviewed`) — a human workflow, not a job
+state; overloading it would corrupt an existing meaning. `audio_assets.status`
+has no in-progress and no failed state, and extending a Postgres enum is not
+cleanly transaction-safe. There was also no column anywhere that could carry a
+compare-and-set. A migration was therefore genuinely required.
+
+**Migration 045** adds one append-only table, `transcription_runs`. Nothing in
+001–044 is dropped, altered or re-typed, and no existing row is modified. Status
+is `text` + `CHECK` rather than an enum so a future state can be added inside an
+ordinary transaction.
+
+| stage | meaning |
+|---|---|
+| `none` | no recording attached |
+| `pending` | audio attached, not started |
+| `transcribing` | a worker owns it |
+| `completed` | text is part of the canonical transcript |
+| `failed` | explicit retry offered |
+
+### Idempotency — the claim
+
+Serverless means the same operation can be invoked twice: a double click, a
+retry, a platform re-invocation. The claim is a **partial unique index**:
+
+```sql
+CREATE UNIQUE INDEX transcription_runs_active_uidx
+  ON transcription_runs (audio_asset_id)
+  WHERE status IN ('processing', 'completed');
+```
+
+An index makes the race impossible rather than merely unlikely. Both workers
+INSERT; Postgres lets exactly one succeed; the loser gets `23505`, returns
+`already_processing`, and **never calls the provider** — no double spend, no
+duplicate transcript, no duplicate audit entry. The provider configuration is
+checked *before* the claim so a misconfigured deployment cannot leave stuck
+`processing` rows.
+
+A **completed** run is inside the index, so a finished transcript can never be
+silently redone. A **failed** run is outside it, so an explicit retry always
+works — on the same audio asset, with no re-recording.
+
+### Long audio and platform limits
+
+`export const maxDuration = 300` is declared on the report page, which is how
+Next.js applies a budget to the Server Actions a page hosts. This is a
+**ceiling, not a guarantee**: it is only honoured on plans that permit it. A
+recording long enough to outlast it fails with the `timeout` category and an
+explicit retry rather than a hung request.
+
+`STT_TIMEOUT_MS` (default 120 s) bounds the provider call independently, and the
+existing 100 MB audio ceiling is unchanged. **No transcoding was introduced** —
+the recorded container is sent as-is — and no media-processing dependency was
+added; a test asserts none crept in.
+
+### Multiple dictation passes
+
+Each pass keeps its own audio asset and its own `transcription_runs` row, so
+per-pass provenance survives including for failures. The canonical transcript is
+the completed passes **appended in order**, separated by a blank line; earlier
+text is never destroyed and audio files are never merged. The combined text is
+then structured as ONE complete transcript, which is exactly what R2.5/R2.6
+expect. An exactly-repeated pass is not appended twice.
+
+### Radiologist control
+
+Unchanged. Automatic transcription is not automatic clinical acceptance: R2.5's
+classification, R2.6's provenance and duplication rules, physician-owned section
+locks, review-required flags for inferred conclusions and auto-filled technique
+— all still apply, and all are re-tested against a transcript that arrived from
+the provider. STT cannot sign, finalize or validate; a test asserts the service
+contains no signing symbol and writes no report column.
+
+### Failure model
+
+Every raw failure is mapped to a safe internal category before it can reach the
+UI: `not_configured`, `auth`, `unavailable`, `timeout`, `rate_limited`,
+`unsupported_audio`, `empty_audio`, `too_large`, `empty_transcript`,
+`malformed_response`, `unknown`. The provider's response body is never read into
+an error, so it cannot surface in the interface or the audit trail. An empty
+transcript is a failure, not an empty report — silence never becomes content.
+
+### Audit
+
+`transcription.started` / `.completed` / `.failed` / `.retried`, carrying report
+id, run id, provider, model, MIME, byte size, processing duration and — for
+completion — the transcript **length**. Never the transcript, the audio, a
+storage path, a signed URL, a capability token or the API key. A test extracts
+every `logAudit` payload by brace matching and asserts it.
+
+### Known limitations
+
+- **Transcription is synchronous.** It runs inside the request that starts it.
+  There is no background queue: a recording that outlasts the platform budget
+  fails with `timeout` and must be retried. Adding a queue was out of scope and
+  would not have been the smallest reliable mechanism for typical dictations.
+- **No streaming.** Uploaded audio is a completed recording; partial provider
+  streaming was not implemented and is not claimed.
+- **Vocabulary hints are supported by the contract but not yet populated.** The
+  adapter forwards a bounded hint when given one; nothing feeds it today, and
+  Radiora's vocabulary-learning data is deliberately not wired in until the
+  privacy review of what may be sent is done.
+- **Provider accuracy on French radiology dictation is unverified here.** No
+  provider is configured in this environment, so no accuracy claim is made. The
+  downstream safety rules (decimals, negation, laterality, hedging) are tested
+  against the pipeline, not against a provider's real output.
+- The operator must apply migration 045 and choose an endpoint before the
+  feature does anything.

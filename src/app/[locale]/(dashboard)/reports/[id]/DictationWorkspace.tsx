@@ -38,6 +38,14 @@ import {
 } from '@/lib/dictation/session-status'
 import { PhoneHandoffPanel } from './PhoneHandoffPanel'
 import {
+  transcribeReportAudio,
+  retryReportTranscription,
+} from '@/lib/actions/transcription'
+import {
+  canRetryTranscription,
+  type TranscriptionStage,
+} from '@/lib/dictation/transcription-state'
+import {
   saveReportTranscript,
   structureReportTranscript,
   importReportAudio,
@@ -103,6 +111,9 @@ export function DictationWorkspace({
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [deviceLabel, setDeviceLabel] = useState<string | undefined>()
   const recoveredRef = useRef(false)
+  // R2.7A — automatic speech-to-text for phone and imported audio.
+  const [sttStage, setSttStage] = useState<TranscriptionStage>('none')
+  const [sttError, setSttError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -120,6 +131,12 @@ export function DictationWorkspace({
 
   const onStableRef = useRef(onStableTranscript)
   useEffect(() => { onStableRef.current = onStableTranscript })
+
+  // R2.7A — the poll fires transcription when the recording lands. Held in a
+  // ref rather than declared as a dependency: the function is recreated every
+  // render, so depending on it would tear down and restart the interval each
+  // time and the handoff would never settle.
+  const transcribeRef = useRef<(kind?: 'start' | 'retry') => void>(() => {})
 
   // Committing is an event (the recogniser settled more speech), not a
   // synchronisation, so it reduces here rather than in an effect.
@@ -247,7 +264,12 @@ export function DictationWorkspace({
 
       if (res.terminal) {
         clearInterval(id)
-        if (next === 'received') setQr(null)
+        if (next === 'received') {
+          setQr(null)
+          // R2.7A — the phone is a microphone, so the words follow the
+          // recording automatically. The doctor types nothing.
+          transcribeRef.current()
+        }
       }
     }, 2500)
     return () => { alive = false; clearInterval(id) }
@@ -260,6 +282,43 @@ export function DictationWorkspace({
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
   }, [qr, stage])
+
+  /**
+   * R2.7A — the recording is attached; turn it into text automatically.
+   *
+   * The doctor no longer types what they just dictated. The claim lives in the
+   * database (migration 045), so calling this twice is safe: the second call
+   * loses the claim and returns without spending a provider request.
+   */
+  function runTranscription(kind: 'start' | 'retry' = 'start') {
+    setSttError(null)
+    setSttStage('transcribing')
+    startTransition(async () => {
+      const res = kind === 'retry'
+        ? await retryReportTranscription(reportId)
+        : await transcribeReportAudio(reportId)
+
+      if (res.code === 'already_processing') {
+        setSttStage(res.stage ?? 'transcribing')
+        return
+      }
+      if (res.error) {
+        setSttStage(res.stage ?? 'failed')
+        setSttError(res.error)
+        return
+      }
+      setSttStage('completed')
+      if (res.transcript) {
+        setTranscript(res.transcript)
+        // The transcript is complete, so it enters the SAME complete-transcript
+        // path the workstation uses. No separate "mobile AI" anywhere.
+        onStableRef.current?.(res.transcript, { final: true })
+        send({ type: 'TRANSCRIPT_READY' })
+      }
+    })
+  }
+
+  useEffect(() => { transcribeRef.current = runTranscription })
 
   function cancelPhone() {
     if (!qr) return
@@ -291,6 +350,9 @@ export function DictationWorkspace({
       const res = await importReportAudio(reportId, fd)
       if (res.error) { setError(res.error); send({ type: 'FAIL' }); return }
       send({ type: 'AUDIO_RECEIVED' })
+      // R2.7A — imported audio enters the SAME transcription service and the
+      // same canonical structuring path as a phone recording.
+      runTranscription()
     })
   }
 
@@ -443,6 +505,45 @@ export function DictationWorkspace({
               {t(`method.${method}` as Parameters<typeof t>[0])}
             </span>}
           </label>
+
+          {/* R2.7A — automatic transcription. The doctor watches rather than
+              types; the field below stays editable for corrections. */}
+          {sttStage !== 'none' && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-2" role="status" aria-live="polite">
+              {sttStage === 'transcribing' && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-800">
+                  <span
+                    className="h-3 w-3 animate-spin rounded-full border-2 border-blue-300 border-t-blue-700 motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                  {t('stt.transcribing')}
+                </span>
+              )}
+              {sttStage === 'completed' && (
+                <span className="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-800">
+                  {t('stt.ready')}
+                </span>
+              )}
+              {sttStage === 'failed' && (
+                <>
+                  <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800">
+                    {t('stt.failed')}
+                  </span>
+                  {canRetryTranscription(sttStage) && (
+                    <button
+                      type="button"
+                      onClick={() => runTranscription('retry')}
+                      disabled={busy}
+                      className="rounded-lg border border-gray-300 px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50"
+                    >
+                      {t('stt.retry')}
+                    </button>
+                  )}
+                </>
+              )}
+              {sttError && <span className="text-xs text-amber-700">{sttError}</span>}
+            </div>
+          )}
           <textarea
             id="workspace-transcript"
             value={transcript}

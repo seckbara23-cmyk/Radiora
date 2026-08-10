@@ -488,6 +488,12 @@
     "scanQr": "Scan this code with your phone",
     "phoneWaiting": "Waiting for the phone…",
     "phoneRecording": "Phone connected — recording",
+    "stt": {
+      "transcribing": "Transcribing…",
+      "ready": "Transcript ready",
+      "failed": "Transcription failed.",
+      "retry": "Retry transcription"
+    },
     "transcriptLabel": "Original dictation",
     "transcriptPlaceholder": "Type or correct the transcription here.",
     "saveTranscript": "Save dictation",

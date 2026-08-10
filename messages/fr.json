@@ -488,6 +488,12 @@
     "scanQr": "Scannez ce code avec votre téléphone",
     "phoneWaiting": "En attente du téléphone…",
     "phoneRecording": "Téléphone connecté — enregistrement en cours",
+    "stt": {
+      "transcribing": "Transcription en cours…",
+      "ready": "Transcription prête",
+      "failed": "La transcription a échoué.",
+      "retry": "Réessayer la transcription"
+    },
     "transcriptLabel": "Dictée originale",
     "transcriptPlaceholder": "Saisissez ou corrigez la transcription ici.",
     "saveTranscript": "Enregistrer la dictée",

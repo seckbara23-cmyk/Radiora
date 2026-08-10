@@ -255,3 +255,72 @@ Run in the Supabase SQL editor, in order:
 
 Until step 1 is applied, report-owned dictation returns a database error if
 attempted; the vacation-queue workflow is unaffected either way.
+
+---
+
+## Migration 045 — transcription runs (R2.7A)
+
+**Status: awaiting manual application.** Automatic speech-to-text is inert until
+this is applied AND a provider is configured; nothing else regresses in the
+meantime — phone and imported audio still attach to the report exactly as they
+did in R2.7, and the transcript can still be typed.
+
+### Why it was needed
+
+`transcriptions.status` is the REVIEW state (`draft` / `secretary_reviewed` /
+`radiologist_reviewed`), not a job state, and overloading it would corrupt an
+existing meaning. `audio_assets.status` has no in-progress and no failed value,
+and extending a Postgres enum is not cleanly transaction-safe. No existing
+column could carry the atomic claim that stops two workers transcribing the same
+recording. One append-only table was the smallest honest answer.
+
+### Activation procedure
+
+Run in the Supabase SQL editor, in order:
+
+1. `supabase/migrations/045_transcription_runs.sql`
+
+   It pre-flights first: every referenced table must exist and migration 044
+   must already be applied (`transcriptions.report_id` present). Otherwise it
+   raises `MIGRATION 045 ABORTED` and changes nothing. It is wrapped in a single
+   transaction and adds only: the `transcription_runs` table, its partial unique
+   claim index, three lookup indexes, an `updated_at` trigger, a clinic-guard
+   trigger and three RLS policies. Nothing in 001–044 is touched.
+
+   Success prints:
+   `R2.7A pre-flight: dependencies present.`
+
+2. `supabase/verify/R2_7A_transcription_runs.sql` — expect **11 `PASS`
+   notices**, zero failures. It creates its fixtures inside a transaction and
+   `ROLLBACK`s; nothing persists, and it prints no transcript, patient data or
+   provider key. Fixture UUIDs use hex-only segments, so an invalid-UUID abort
+   cannot recur.
+
+   It proves the claim admits exactly one live run, that a failed run releases
+   the claim for retry, that a completed run does NOT, that failure history is
+   preserved, that a cross-clinic attachment is refused, and that the review
+   enum was not modified.
+
+### Configuration (separate from the migration)
+
+Automatic transcription also requires the `STT_*` server variables below.
+Radiora ships no default endpoint and no bundled key, and without configuration
+the feature reports itself unavailable rather than producing text.
+
+    STT_PROVIDER=openai-compatible   # the only supported family today
+    STT_MODEL=<model name>           # passed through verbatim
+    STT_BASE_URL=https://...         # https, or localhost for a self-hosted server
+    STT_API_KEY=<key>                # required unless STT_BASE_URL is loopback
+    STT_TIMEOUT_MS=120000            # optional, 5000-600000
+    STT_LANGUAGE=fr                  # optional, default fr
+
+(These are also listed in `.env.example`, which is untracked here because
+`.gitignore` excludes `.env*` — so they are reproduced in full above.)
+
+None are `NEXT_PUBLIC_`, so they are never inlined into a browser bundle.
+
+**Whether clinical audio leaves your infrastructure is decided entirely by
+`STT_BASE_URL`.** Point it at a self-hosted Whisper-compatible server and the
+audio stays on your own network; point it at a hosted service and it does not.
+Review that endpoint's retention and data-processing terms before enabling it —
+Radiora makes no claim about them.

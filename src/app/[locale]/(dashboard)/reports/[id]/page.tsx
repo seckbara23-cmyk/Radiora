@@ -1,3 +1,14 @@
+// R2.7A — transcribing a dictation is the longest server action on this page.
+// Next.js applies a page-level maxDuration to every Server Action the page
+// hosts, so the budget is declared here rather than being left at the platform
+// default, which a several-minute recording would predictably exceed.
+//
+// This is a CEILING, not a guarantee: it is only honoured on plans that allow
+// it, and a recording long enough to outlast it fails with a `timeout`
+// category and an explicit retry rather than a hung request. See the R2.7A
+// appendix for the measured limits.
+export const maxDuration = 300
+
 import type { ReactNode } from 'react'
 import { Link } from '@/i18n/navigation'
 import { notFound } from 'next/navigation'
