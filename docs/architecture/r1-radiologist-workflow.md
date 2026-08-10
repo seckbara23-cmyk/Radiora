@@ -1563,3 +1563,177 @@ No migration. Everything R2.6 adds is derived, not stored:
   is the groundwork; mapping raw↔cleaned offsets is the remaining piece.
 - Live population for specialized structured-exam forms (F18 tables).
 - Active-session recovery — still does not exist.
+
+---
+
+## R2.7 implementation status
+
+**Gate R2.7 — seamless QR / mobile dictation handoff. COMPLETE.** No migration.
+
+> **The phone is a microphone for the same report.** It is not a second
+> workflow, and the doctor never meets the words session, token, capability or
+> queue item.
+
+### An honest statement of what the phone does
+
+**Radiora has no automatic speech-to-text for uploaded audio.** `uploadFromMobile`
+attaches the recording to the report and opens a transcript row whose `raw_text`
+is empty; a person writes the transcript. Nothing in the codebase transcribes an
+audio file — only the workstation microphone produces text, via the browser's
+Web Speech API in real time.
+
+So the phone's job is to capture dictation as audio bound to the right report
+without the doctor being at the workstation. R2.7 makes that handoff seamless
+and honest; it does not invent a transcription service. The desktop vocabulary
+therefore stops at **"Enregistrement reçu"** and then asks for the transcript,
+rather than showing a "Preparing transcription" spinner over work nobody is
+doing.
+
+### Audit verdicts
+
+| Component | Verdict |
+|---|---|
+| 192-bit capability token, TTL, one-owner scoping | **REUSE** — sound, untouched |
+| QR generation (local `qrcode`, no external service) | **REUSE** |
+| `ownerFromRow` / R2.2 ownership, migration 044 trigger | **REUSE** |
+| Service-role upload with the key never leaving the server | **REUSE** |
+| `getMobileContext` low-PHI projection | **REUSE** |
+| `MobileRecorder` capture, level meter, review-before-send | **REUSE** — no second recorder |
+| `getDictationSessionStatus` expiry | **BUGFIX** |
+| `markDeviceConnected` expiry | **BUGFIX** |
+| Upload idempotency | **BUGFIX** |
+| `recording` status never set | **BUGFIX** |
+| Desktop panel, status vocabulary, reload recovery | **POLISH** |
+
+### The four defects fixed
+
+1. **The desktop polled a dead QR forever.** Nothing ever wrote `expired` except
+   an upload attempt, so a session left on screen reported `pending`
+   indefinitely and the 2.5 s poll never stopped. Expiry is now resolved against
+   the clock by `effectiveSessionStatus`, the row is corrected once, and the
+   server returns `terminal` so the client loop ends.
+2. **An expired link still accepted a connection.** `markDeviceConnected`
+   checked status but not the TTL. It now checks both.
+3. **A duplicate send could store two recordings.** Two taps that both passed
+   the status check would both run the transcript writes and both leave an
+   asset. The session is now claimed with an atomic compare-and-set
+   (`update … .in('status', ['pending','connected','recording'])`) placed
+   **after** the asset row exists (the FK requires it) and **before** any
+   transcript write. Exactly one caller sees a row come back; the loser deletes
+   its own asset and storage object.
+4. **`recording` was in the enum but nothing set it**, so the desktop could not
+   distinguish "phone opened the link" from "doctor is dictating". The phone now
+   calls `markDeviceRecording` when capture starts.
+
+### Desktop flow
+
+```
+"Mon téléphone"  →  QR + countdown  →  scan  →  "Téléphone connecté"
+                 →  "Enregistrement sur le téléphone"
+                 →  "Enregistrement reçu"  →  transcript  →  structure  →  review
+```
+
+`PhoneHandoffPanel` renders the QR, a live countdown, the stage badge and a
+Cancel button; when the link dies it offers **"Nouveau lien téléphone"**. Status
+is announced through one `aria-live` region and always carries a dot **plus a
+word** — never colour alone. The QR has a descriptive `role="img"` label.
+
+### Mobile flow
+
+Unchanged in structure (no second recorder): brand, examination context, one
+large capture button, review with playback, Send. R2.7 adds the recording
+signal, an `aria-live` phase announcement, a focus-visible ring on Send, and a
+**Retry** affordance — a failed upload keeps the recording in memory and returns
+to review rather than discarding it.
+
+### Token and session lifecycle
+
+Unchanged and unweakened: 24 random bytes (192 bits) base64url, 30-minute TTL,
+bound to one clinic and one owner, and the phone never states where the audio
+belongs — the session row does. Cross-report and cross-clinic reuse are
+structurally impossible rather than merely checked, because the owner is read
+from the row the token resolves to.
+
+**Consumption: one session, one recording.** On a successful upload the session
+moves to `completed` and every phone entry point refuses a terminal session.
+Retry is possible only *before* a successful claim: storage and asset failures
+return before the compare-and-set, so the status is untouched and the same
+recording can be sent again.
+
+The raw token is never logged, never returned as a field, and never placed in
+audit metadata. `getActiveReportDictationSession` regenerates the QR image from
+the stored token but returns only the SVG.
+
+### Desktop status sync
+
+Polling stays at 2.5 s — the architecture has no realtime channel and adding one
+for polish alone was out of scope. What changed is that the loop now terminates:
+it runs only while the stage is live, stops on `terminal`, and stops on unmount.
+
+Session status maps to a **workspace event**, never to a state assignment:
+`workspaceEventForStatus` returns `PHONE_CONNECTED` / `AUDIO_RECEIVED` / `FAIL`
+or `null`, and `workspaceReducer` remains the only authority. There is no second
+state machine.
+
+### Transcription and structuring handoff
+
+`received` → the workspace enters `audio_uploaded` and shows the transcript
+field. Once a transcript exists and is saved, the state becomes
+`transcription_ready` and the primary action is **"Structurer le compte rendu"**
+— option B of the brief, chosen because there is no machine transcription to
+wait on and because R2.5/R2.6 require the radiologist to remain in control.
+
+Phone audio then flows through exactly the same path as every other source:
+`runStructuring` → section router → correction engine → provenance and
+duplication rules → live coordinator. There is no "mobile AI" branch anywhere.
+
+### Multiple dictation passes
+
+Each pass mints its own session; nothing reuses a token. A second upload for the
+same report updates the existing transcript row's `audio_asset_id` rather than
+deleting anything, so earlier provenance survives and audio files are never
+merged destructively. A finalized report cannot start a new phone session, and
+a report signed while a QR is on screen refuses the upload.
+
+### Failure and retry behaviour
+
+| Situation | Behaviour |
+|---|---|
+| Upload fails / times out | Recording kept, returns to review, **Retry** offered |
+| Duplicate Send tap | Client guard, plus the server's atomic claim; one recording |
+| Phone closes before sending | Recording is lost — it never left the device |
+| QR expires before recording | Phone page shows the link is no longer valid |
+| QR expires during recording | Upload refused; desktop shows "Lien expiré" and offers a new link |
+| Desktop cancels | Session cancelled; a later upload loses the claim and rolls itself back |
+
+**No offline queue exists.** The recording lives in the page's memory until it is
+sent; closing the page loses it. R2.7 does not claim otherwise.
+
+### Reload behaviour
+
+A desktop reload now **rediscovers** a live session by report id and
+regenerates the QR from the same token. Re-minting was rejected deliberately: it
+would invalidate the link the doctor's phone is already holding and could lose a
+recording in progress. If nothing live is found the workspace simply shows the
+method picker. Recovery covers `pending`, `connected` and `recording`; a session
+whose TTL passed while the desktop was away is marked expired and not restored.
+
+### Audit and privacy
+
+Recorded: `dictation.session_created` (owner kind + id, method, TTL),
+`dictation.session_cancelled`, `dictation.session_expired`, and the existing
+`dictation.mobile_uploaded` (owner, size, extension). Never recorded: the token,
+the pairing URL, transcript text, report content, patient identifiers, or audio.
+A test walks every `logAudit` call in the module and fails if a token or URL
+appears in any of them.
+
+The phone page carries `robots: index:false`, shows no patient name for a
+report-owned session, and a test asserts that no report content vocabulary
+(`findings`, `conclusion`, `structured_data`, `signature`, …) appears in either
+the page or the recorder.
+
+### Relationship to R3 templates
+
+Nothing here presumes a template library. When R3 arrives, the phone remains a
+capture device: templates will shape the report the transcript is structured
+into, and the handoff described above is unchanged.

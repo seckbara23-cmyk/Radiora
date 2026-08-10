@@ -855,6 +855,25 @@
     "done": "Done",
     "cancel": "Cancel"
   },
+  "phone": {
+    "title": "Use your phone as a microphone",
+    "scanInstruction": "Scan this code with your phone",
+    "qrAlt": "QR code to scan with your phone to dictate this report",
+    "expiresIn": "Link valid for another {time}",
+    "receivedBody": "The recording is attached to this report. Enter the transcript below.",
+    "expiredBody": "The link has expired. Generate a new one to continue.",
+    "cancelledBody": "The session was cancelled.",
+    "cancel": "Cancel",
+    "newSession": "New phone link",
+    "stage": {
+      "waiting": "Waiting for phone",
+      "connected": "Phone connected",
+      "recording": "Recording on phone",
+      "received": "Recording received",
+      "expired": "Link expired",
+      "cancelled": "Session cancelled"
+    }
+  },
   "m": {
     "tagline": "Mobile dictation",
     "dictatingFor": "Dictating for",
@@ -875,6 +894,16 @@
     "micDenied": "Microphone access denied. Allow the microphone and try again.",
     "nothingRecorded": "Nothing was recorded.",
     "redo": "Redo",
+    "retrySend": "Retry sending",
+    "sendFailed": "Sending failed. Check your connection and try again.",
+    "phase": {
+      "idle": "Ready to record",
+      "recording": "Recording",
+      "review": "Recording finished, ready to send",
+      "sending": "Sending",
+      "done": "Sent",
+      "error": "Error"
+    },
     "send": "Send to Radiora",
     "sending": "Sending…",
     "sentTitle": "Dictation sent",

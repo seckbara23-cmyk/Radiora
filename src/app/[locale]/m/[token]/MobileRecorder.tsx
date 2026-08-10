@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslations } from 'next-intl'
-import { markDeviceConnected, uploadFromMobile } from '@/lib/actions/dictation'
+import { markDeviceConnected, markDeviceRecording, uploadFromMobile } from '@/lib/actions/dictation'
 
 type Phase = 'idle' | 'recording' | 'review' | 'sending' | 'done' | 'error'
 type Mode = 'tap' | 'ptt'
@@ -68,6 +68,7 @@ export function MobileRecorder({ token }: { token: string }) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const rafRef = useRef<number | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  const sendingRef = useRef(false)
 
   // Announce the phone connected, and report battery if the API exists.
   useEffect(() => {
@@ -117,6 +118,9 @@ export function MobileRecorder({ token }: { token: string }) {
       }
       recorder.start()
       setPhase('recording')
+      // R2.7 — the desktop can now say "Recording on phone" instead of guessing
+      // from "connected". Carries no content, only that capture began.
+      void markDeviceRecording(token)
       setSeconds(0)
       timerRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
 
@@ -144,7 +148,7 @@ export function MobileRecorder({ token }: { token: string }) {
       setPhase('error')
       cleanupStream()
     }
-  }, [blobUrl, cleanupStream, t])
+  }, [blobUrl, cleanupStream, t, token])
 
   const stopRecording = useCallback(() => {
     const r = recorderRef.current
@@ -154,16 +158,35 @@ export function MobileRecorder({ token }: { token: string }) {
   async function send() {
     const blob = blobRef.current
     if (!blob || blob.size === 0) { setError(t('nothingRecorded')); return }
+    // R2.7 — a second tap while the first is in flight must not start a second
+    // upload. The server claims the session atomically as well, so a duplicate
+    // that slips past this is still rejected rather than stored twice.
+    if (sendingRef.current) return
+    sendingRef.current = true
+
     setPhase('sending')
     setError(null)
-    const ext = extForMime(mimeRef.current)
-    const fd = new FormData()
-    fd.set('file', new File([blob], `dictation.${ext}`, { type: blob.type || `audio/${ext}` }))
-    fd.set('deviceLabel', deviceLabel())
-    const res = await uploadFromMobile(token, fd)
-    if (res.error) { setError(res.error); setPhase('review'); return }
-    if (blobUrl) { URL.revokeObjectURL(blobUrl); setBlobUrl(null) }
-    setPhase('done')
+    try {
+      const ext = extForMime(mimeRef.current)
+      const fd = new FormData()
+      fd.set('file', new File([blob], `dictation.${ext}`, { type: blob.type || `audio/${ext}` }))
+      fd.set('deviceLabel', deviceLabel())
+      const res = await uploadFromMobile(token, fd)
+      if (res.error) {
+        // The recording is still in memory: the doctor can retry without
+        // re-dictating, and the session is not consumed until an upload wins.
+        setError(res.error)
+        setPhase('review')
+        return
+      }
+      if (blobUrl) { URL.revokeObjectURL(blobUrl); setBlobUrl(null) }
+      setPhase('done')
+    } catch {
+      setError(t('sendFailed'))
+      setPhase('review')
+    } finally {
+      sendingRef.current = false
+    }
   }
 
   function reset() {
@@ -259,6 +282,11 @@ export function MobileRecorder({ token }: { token: string }) {
       {phase === 'idle' && <p className="text-sm text-gray-500">{mode === 'ptt' ? t('holdHint') : t('tapHint')}</p>}
       {recording && <p className="text-sm font-medium text-red-600">{t('recordingNow')}</p>}
 
+      {/* One live region for the whole recorder, so the phase is announced. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {t(`phase.${phase}` as Parameters<typeof t>[0])}
+      </p>
+
       {/* Review */}
       {phase === 'review' && blobUrl && (
         <div className="flex w-full flex-col items-center gap-4">
@@ -273,9 +301,9 @@ export function MobileRecorder({ token }: { token: string }) {
             </button>
             <button
               onClick={send}
-              className="flex-[2] rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white"
+              className="flex-[2] rounded-lg bg-blue-600 py-3 text-sm font-semibold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
-              {t('send')}
+              {error ? t('retrySend') : t('send')}
             </button>
           </div>
         </div>

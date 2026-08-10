@@ -20,6 +20,12 @@ import {
   type DictationOwner,
 } from '@/lib/dictation/owner'
 import { isReportContentLocked } from '@/lib/safety/immutability'
+import { logAudit } from '@/lib/actions/audit'
+import {
+  effectiveSessionStatus,
+  isSessionExpired,
+  isTerminalSessionStatus,
+} from '@/lib/dictation/session-status'
 import type { DictationSessionStatus } from '@/types/dictation'
 import type { UserRole } from '@/types/user'
 
@@ -136,6 +142,17 @@ async function createSessionForOwner(owner: DictationOwner): Promise<CreateSessi
     return { error: 'Could not generate the pairing QR code.' }
   }
 
+  // R2.7 — owner kind + id, method and TTL only. Never the token, never the
+  // URL that contains it, never any patient or clinical text.
+  await logAudit({
+    userId:     user.id,
+    clinicId:   user.clinicId,
+    action:     'dictation.session_created',
+    entityType: 'dictation_session',
+    entityId:   data.id as string,
+    metadata:   { ...ownerAuditMetadata(owner), method: 'phone', ttlMinutes: PAIRING_TTL_MINUTES },
+  }).catch(() => {})
+
   return { error: null, sessionId: data.id as string, url, qrSvg, expiresAt }
 }
 
@@ -158,26 +175,115 @@ export type SessionStatusResult = {
   status?:      DictationSessionStatus
   deviceLabel?: string
   hasAudio?:    boolean
+  expiresAt?:   string
+  /** Nothing further can happen — the caller must stop polling. */
+  terminal?:    boolean
 }
 
+/**
+ * R2.7 — a session past its TTL is expired even though nothing has written that
+ * to the row yet. Before this, only an upload attempt ever set `expired`, so a
+ * QR the doctor left on screen reported `pending` forever and the desktop kept
+ * polling every 2.5 s indefinitely. The status is now resolved against the
+ * clock, and the row is corrected once so the next reader agrees.
+ */
 export async function getDictationSessionStatus(sessionId: string): Promise<SessionStatusResult> {
   const user = await requireCurrentUser()
   if (!canManage(user.role)) return { error: 'Not allowed.' }
 
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('dictation_sessions')
-    .select('status, device_label, audio_asset_id')
+    .select('id, status, device_label, audio_asset_id, expires_at')
     .eq('id', sessionId)
     .maybeSingle()
+  if (error) return { error: error.message }
   if (!data) return { error: 'Session not found.' }
+
+  const stored    = data.status as DictationSessionStatus
+  const expiresAt = data.expires_at as string
+  const status    = effectiveSessionStatus(stored, expiresAt, Date.now())
+
+  if (status === 'expired' && stored !== 'expired') {
+    // Correct the row so every other reader — and the phone — agrees. RLS
+    // already proved this caller may see the session.
+    await supabase.from('dictation_sessions').update({ status: 'expired' }).eq('id', sessionId)
+    await logAudit({
+      userId:     user.id,
+      clinicId:   user.clinicId,
+      action:     'dictation.session_expired',
+      entityType: 'dictation_session',
+      entityId:   sessionId,
+      metadata:   { method: 'phone' },
+    }).catch(() => {})
+  }
 
   return {
     error:       null,
-    status:      data.status as DictationSessionStatus,
+    status,
     deviceLabel: (data.device_label as string | null) ?? undefined,
     hasAudio:    Boolean(data.audio_asset_id),
+    expiresAt,
+    terminal:    isTerminalSessionStatus(status),
   }
+}
+
+// ─── getActiveReportDictationSession (desktop reload recovery) ────────────────
+
+export type ActiveSessionResult = {
+  error:      string | null
+  sessionId?: string
+  qrSvg?:     string
+  expiresAt?: string
+  status?:    DictationSessionStatus
+}
+
+/**
+ * R2.7 — rediscover a live phone session for a report after a desktop reload.
+ *
+ * Re-minting instead would invalidate the link the doctor's phone is already
+ * holding, which could lose a recording in progress. Rediscovery keeps the
+ * phone session alive; the QR is regenerated from the SAME token, and RLS plus
+ * the role check prove the caller is the clinic user who may see it. The token
+ * is returned only inside the QR image, never as a field and never logged.
+ */
+export async function getActiveReportDictationSession(
+  reportId: string,
+): Promise<ActiveSessionResult> {
+  if (!reportId) return { error: 'Missing report.' }
+  const user = await requireCurrentUser()
+  if (!canManage(user.role)) return { error: 'Not allowed.' }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('dictation_sessions')
+    .select('id, token, status, expires_at')
+    .eq('report_id', reportId)
+    .in('status', ['pending', 'connected', 'recording'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) return { error: error.message }
+  if (!data) return { error: null } // nothing live — the caller shows the method picker
+
+  const expiresAt = data.expires_at as string
+  const status    = effectiveSessionStatus(data.status as DictationSessionStatus, expiresAt, Date.now())
+  if (status === 'expired') {
+    await supabase.from('dictation_sessions').update({ status: 'expired' }).eq('id', data.id as string)
+    return { error: null }
+  }
+
+  const locale = await getLocale().catch(() => 'fr')
+  const url    = `${await baseUrl()}/${locale}/m/${data.token as string}`
+  let qrSvg: string
+  try {
+    qrSvg = await QRCode.toString(url, { type: 'svg', margin: 1, width: 232, errorCorrectionLevel: 'M' })
+  } catch {
+    return { error: 'Could not generate the pairing QR code.' }
+  }
+
+  return { error: null, sessionId: data.id as string, qrSvg, expiresAt, status }
 }
 
 // ─── cancelDictationSession (desktop) ─────────────────────────────────────────
@@ -192,7 +298,18 @@ export async function cancelDictationSession(sessionId: string): Promise<{ error
     .update({ status: 'cancelled' })
     .eq('id', sessionId)
     .in('status', ['pending', 'connected', 'recording'])
-  return { error: error?.message ?? null }
+  if (error) return { error: error.message }
+
+  await logAudit({
+    userId:     user.id,
+    clinicId:   user.clinicId,
+    action:     'dictation.session_cancelled',
+    entityType: 'dictation_session',
+    entityId:   sessionId,
+    metadata:   { method: 'phone' },
+  }).catch(() => {})
+
+  return { error: null }
 }
 
 // ─── markDeviceConnected (phone, token-validated, service-role) ───────────────
@@ -214,14 +331,63 @@ export async function markDeviceConnected(
     .eq('token', token)
     .maybeSingle()
   if (!session) return { error: 'This dictation link is invalid.' }
-  if (['completed', 'cancelled', 'expired'].includes(session.status as string)) {
+  if (isTerminalSessionStatus(session.status as DictationSessionStatus)) {
     return { error: 'This dictation link is no longer active.' }
+  }
+  // R2.7 — the TTL is enforced here too. Only the upload path checked it
+  // before, so an expired link still accepted a connection.
+  if (isSessionExpired(session.status as DictationSessionStatus, session.expires_at as string, Date.now())) {
+    await admin.from('dictation_sessions').update({ status: 'expired' }).eq('id', session.id as string)
+    return { error: 'This dictation link has expired.' }
   }
 
   await admin
     .from('dictation_sessions')
     .update({ status: 'connected', device_label: deviceLabel.slice(0, 120) })
     .eq('id', session.id as string)
+    .in('status', ['pending', 'connected'])
+
+  return { error: null }
+}
+
+// ─── markDeviceRecording (phone, token-validated, service-role) ───────────────
+
+/**
+ * R2.7 — tell the desktop the phone is actually capturing.
+ *
+ * The `recording` status existed in the enum since migration 019 but nothing
+ * ever set it, so the desktop could not distinguish "phone opened the link"
+ * from "doctor is dictating". This is the missing signal; it carries no content,
+ * only the fact that capture started.
+ */
+export async function markDeviceRecording(token: string): Promise<{ error: string | null }> {
+  let admin
+  try {
+    admin = createAdminClient()
+  } catch {
+    return { error: 'Mobile dictation is not configured.' }
+  }
+
+  const { data: session } = await admin
+    .from('dictation_sessions')
+    .select('id, status, expires_at')
+    .eq('token', token)
+    .maybeSingle()
+  if (!session) return { error: 'This dictation link is invalid.' }
+  if (isTerminalSessionStatus(session.status as DictationSessionStatus)) {
+    return { error: 'This dictation link is no longer active.' }
+  }
+  if (isSessionExpired(session.status as DictationSessionStatus, session.expires_at as string, Date.now())) {
+    await admin.from('dictation_sessions').update({ status: 'expired' }).eq('id', session.id as string)
+    return { error: 'This dictation link has expired.' }
+  }
+
+  // Only ever moves forward from a live status; never resurrects a finished one.
+  await admin
+    .from('dictation_sessions')
+    .update({ status: 'recording' })
+    .eq('id', session.id as string)
+    .in('status', ['pending', 'connected', 'recording'])
 
   return { error: null }
 }
@@ -314,6 +480,37 @@ export async function uploadFromMobile(
     return { error: assetError.message }
   }
 
+  // R2.7 — CLAIM THE SESSION BEFORE ANY SIDE EFFECT.
+  //
+  // Two Send taps that both pass the status check above would previously both
+  // run the transcript/queue writes and both leave an audio asset behind. The
+  // update below is an atomic compare-and-set: Postgres locks the row, so
+  // exactly one caller sees a row come back. The loser deletes its own asset
+  // and storage object, leaving the report with exactly one recording.
+  //
+  // The claim happens AFTER the asset row exists because `audio_asset_id` is a
+  // foreign key — and BEFORE the transcript writes because those are the side
+  // effects a duplicate must never perform twice.
+  const { data: claimed, error: claimError } = await admin
+    .from('dictation_sessions')
+    .update({ status: 'completed', audio_asset_id: assetId, device_label: deviceLabel })
+    .eq('id', session.id as string)
+    .in('status', ['pending', 'connected', 'recording'])
+    .select('id')
+
+  if (claimError) {
+    await admin.from('audio_assets').delete().eq('id', assetId)
+    await admin.storage.from(AUDIO_BUCKET).remove([path])
+    return { error: claimError.message }
+  }
+
+  if (!claimed || claimed.length === 0) {
+    // Another send won, or the desktop cancelled in between. Roll ourselves back.
+    await admin.from('audio_assets').delete().eq('id', assetId)
+    await admin.storage.from(AUDIO_BUCKET).remove([path])
+    return { error: 'This recording has already been received.' }
+  }
+
   if (owner.kind === 'vacation_item') {
     // Unchanged queue behaviour: attach audio, advance audio_received →
     // transcribing, open an editable transcript draft if none exists.
@@ -380,12 +577,6 @@ export async function uploadFromMobile(
 
     revalidatePath(`/reports/${owner.reportId}`)
   }
-
-  const { error: sessionError } = await admin
-    .from('dictation_sessions')
-    .update({ status: 'completed', audio_asset_id: assetId, device_label: deviceLabel })
-    .eq('id', session.id as string)
-  if (sessionError) return { error: sessionError.message }
 
   // Audit via the service-role client (the phone request carries no user
   // cookie). Owner kind + id only — never the token, never transcript content.

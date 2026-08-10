@@ -855,6 +855,25 @@
     "done": "Terminé",
     "cancel": "Annuler"
   },
+  "phone": {
+    "title": "Utilisez votre téléphone comme microphone",
+    "scanInstruction": "Scannez ce code avec votre téléphone",
+    "qrAlt": "Code QR à scanner avec votre téléphone pour dicter ce compte rendu",
+    "expiresIn": "Lien valable encore {time}",
+    "receivedBody": "L'enregistrement est rattaché à ce compte rendu. Saisissez la transcription ci-dessous.",
+    "expiredBody": "Le lien a expiré. Générez-en un nouveau pour continuer.",
+    "cancelledBody": "La session a été annulée.",
+    "cancel": "Annuler",
+    "newSession": "Nouveau lien téléphone",
+    "stage": {
+      "waiting": "En attente du téléphone",
+      "connected": "Téléphone connecté",
+      "recording": "Enregistrement sur le téléphone",
+      "received": "Enregistrement reçu",
+      "expired": "Lien expiré",
+      "cancelled": "Session annulée"
+    }
+  },
   "m": {
     "tagline": "Dictée mobile",
     "dictatingFor": "Dictée pour",
@@ -875,6 +894,16 @@
     "micDenied": "Accès au micro refusé. Autorisez le microphone et réessayez.",
     "nothingRecorded": "Aucun audio enregistré.",
     "redo": "Refaire",
+    "retrySend": "Réessayer l'envoi",
+    "sendFailed": "L'envoi a échoué. Vérifiez votre connexion et réessayez.",
+    "phase": {
+      "idle": "Prêt à enregistrer",
+      "recording": "Enregistrement en cours",
+      "review": "Enregistrement terminé, prêt à envoyer",
+      "sending": "Envoi en cours",
+      "done": "Envoyé",
+      "error": "Erreur"
+    },
     "send": "Envoyer à Radiora",
     "sending": "Envoi…",
     "sentTitle": "Dictée envoyée",

@@ -25,9 +25,18 @@ import { useTranslations } from 'next-intl'
 import { useSpeechRecognition } from '@/lib/hooks/use-speech-recognition'
 import {
   createReportDictationSession,
+  getActiveReportDictationSession,
   getDictationSessionStatus,
   cancelDictationSession,
 } from '@/lib/actions/dictation'
+import {
+  phoneHandoffStage,
+  workspaceEventForStatus,
+  secondsRemaining,
+  isLiveStage,
+  type PhoneHandoffStage,
+} from '@/lib/dictation/session-status'
+import { PhoneHandoffPanel } from './PhoneHandoffPanel'
 import {
   saveReportTranscript,
   structureReportTranscript,
@@ -88,6 +97,12 @@ export function DictationWorkspace({
   const [meta, setMeta] = useState<HpdStructuringMeta | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [qr, setQr] = useState<{ svg: string; sessionId: string; expiresAt: string } | null>(null)
+  // R2.7 — the handoff as the doctor reads it, kept separate from the workspace
+  // state machine so no second state machine is introduced.
+  const [stage, setStage] = useState<PhoneHandoffStage>('waiting')
+  const [secondsLeft, setSecondsLeft] = useState(0)
+  const [deviceLabel, setDeviceLabel] = useState<string | undefined>()
+  const recoveredRef = useRef(false)
   const [isPending, startTransition] = useTransition()
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -179,6 +194,7 @@ export function DictationWorkspace({
   function startPhone() {
     setError(null)
     setMethod('phone')
+    setStage('waiting')
     startTransition(async () => {
       const res = await createReportDictationSession(reportId)
       if (res.error || !res.qrSvg || !res.sessionId) {
@@ -191,37 +207,76 @@ export function DictationWorkspace({
     })
   }
 
-  // Poll the pairing session while the QR is on screen. Same 2.5s mechanism the
-  // queue workspace uses; stops as soon as the session leaves 'pending'.
+  // R2.7 — recover a live phone session after a desktop reload. Re-minting
+  // would invalidate the link the doctor's phone is already holding and could
+  // lose a recording in progress, so the existing session is rediscovered by
+  // report id instead. Runs once on mount; silent when there is nothing live.
   useEffect(() => {
-    if (!qr || (state !== 'phone_waiting' && state !== 'phone_recording')) return
+    if (recoveredRef.current) return
+    recoveredRef.current = true
+    let alive = true
+    void (async () => {
+      const res = await getActiveReportDictationSession(reportId)
+      if (!alive || res.error || !res.sessionId || !res.qrSvg) return
+      setMethod('phone')
+      setQr({ svg: res.qrSvg, sessionId: res.sessionId, expiresAt: res.expiresAt ?? '' })
+      setStage(res.status ? phoneHandoffStage(res.status, res.expiresAt, Date.now()) : 'waiting')
+      setState((s) => workspaceReducer(s, { type: 'CHOOSE_METHOD', method: 'phone' }))
+    })()
+    return () => { alive = false }
+  }, [reportId])
+
+  // Poll while the handoff can still change. `terminal` comes from the server,
+  // which now resolves an expired TTL rather than reporting `pending` forever —
+  // so this loop actually stops instead of polling a dead QR indefinitely.
+  useEffect(() => {
+    if (!qr || !isLiveStage(stage)) return
     let alive = true
     const id = setInterval(async () => {
       const res = await getDictationSessionStatus(qr.sessionId)
-      if (!alive || res.error) return
-      if (res.status === 'connected' || res.status === 'recording') {
-        setState((s) => workspaceReducer(s, { type: 'PHONE_CONNECTED' }))
-      }
-      if (res.status === 'completed') {
+      if (!alive) return
+      if (res.error || !res.status) return
+      const next = phoneHandoffStage(res.status, res.expiresAt, Date.now())
+      setStage(next)
+      setDeviceLabel(res.deviceLabel)
+
+      // The R2.3 reducer stays the only authority over workspace state; this
+      // just hands it the event the session status implies.
+      const event = workspaceEventForStatus(res.status, res.expiresAt, Date.now())
+      if (event) setState((s) => workspaceReducer(s, event))
+
+      if (res.terminal) {
         clearInterval(id)
-        setState((s) => workspaceReducer(s, { type: 'AUDIO_RECEIVED' }))
-        setQr(null)
-      }
-      if (res.status === 'expired' || res.status === 'cancelled') {
-        clearInterval(id)
-        setError(t('errors.qrExpired'))
-        setState((s) => workspaceReducer(s, { type: 'FAIL' }))
+        if (next === 'received') setQr(null)
       }
     }, 2500)
     return () => { alive = false; clearInterval(id) }
-  }, [qr, state, t])
+  }, [qr, stage])
+
+  // Countdown ticks locally; the authority on expiry is still the server.
+  useEffect(() => {
+    if (!qr?.expiresAt || !isLiveStage(stage)) return
+    const tick = () => setSecondsLeft(secondsRemaining(qr.expiresAt, Date.now()))
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [qr, stage])
 
   function cancelPhone() {
     if (!qr) return
     const sessionId = qr.sessionId
+    setStage('cancelled')
+    startTransition(async () => {
+      await cancelDictationSession(sessionId)
+      setQr(null)
+      send({ type: 'RESET' })
+    })
+  }
+
+  /** Expired or cancelled — mint a fresh link for the same report. */
+  function restartPhone() {
     setQr(null)
-    send({ type: 'RESET' })
-    startTransition(async () => { await cancelDictationSession(sessionId) })
+    setError(null)
+    startPhone()
   }
 
   // ── Import ─────────────────────────────────────────────────────────────────
@@ -364,25 +419,17 @@ export function DictationWorkspace({
         </div>
       )}
 
-      {/* ── Phone pairing ── */}
-      {(state === 'phone_waiting' || state === 'phone_recording') && qr && (
-        <div className="mt-3 rounded-lg border border-gray-200 p-3">
-          <p className="text-sm text-gray-700">{t('scanQr')}</p>
-          <div
-            className="mx-auto mt-2 w-[200px]"
-            aria-label={t('scanQr')}
-            /* Server-generated SVG from the qrcode package — no external service. */
-            dangerouslySetInnerHTML={{ __html: qr.svg }}
-          />
-          <p className="mt-2 text-center text-xs text-gray-500">
-            {state === 'phone_recording' ? t('phoneRecording') : t('phoneWaiting')}
-          </p>
-          <div className="mt-2 flex justify-center">
-            <button type="button" onClick={cancelPhone} className="text-xs text-gray-500 underline">
-              {t('cancel')}
-            </button>
-          </div>
-        </div>
+      {/* ── Phone handoff (R2.7) ── */}
+      {method === 'phone' && (qr || stage === 'expired' || stage === 'cancelled') && (
+        <PhoneHandoffPanel
+          stage={stage}
+          qrSvg={qr?.svg ?? null}
+          secondsLeft={secondsLeft}
+          deviceLabel={deviceLabel}
+          busy={busy}
+          onCancel={cancelPhone}
+          onRestart={restartPhone}
+        />
       )}
 
       {/* ── Transcript (kept distinct from the report) ── */}
