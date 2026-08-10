@@ -23,7 +23,7 @@ export async function getMobileContext(token: string): Promise<MobileDictationCo
 
   const { data: session } = await supabase
     .from('dictation_sessions')
-    .select('id, vacation_item_id, status, expires_at')
+    .select('id, vacation_item_id, report_id, status, expires_at')
     .eq('token', token)
     .maybeSingle()
 
@@ -34,6 +34,37 @@ export async function getMobileContext(token: string): Promise<MobileDictationCo
   }
   if (new Date(session.expires_at as string).getTime() < Date.now()) {
     return { valid: false, reason: 'expired' }
+  }
+
+  // R2.2 — a session belongs to a report OR a queue item. Either way the phone
+  // sees only enough to confirm it is dictating the right examination: exam
+  // type/number and modality. Never the patient's name, never report content,
+  // never history or demographics.
+  if (session.report_id) {
+    const { data: report } = await supabase
+      .from('reports')
+      .select('exam_type, study_id')
+      .eq('id', session.report_id as string)
+      .maybeSingle()
+
+    let modality: string | undefined
+    let examNumber: string | undefined
+    if (report?.study_id) {
+      const { data: study } = await supabase
+        .from('studies')
+        .select('modality, accession_number')
+        .eq('id', report.study_id as string)
+        .maybeSingle()
+      modality   = (study?.modality as string) ?? undefined
+      examNumber = (study?.accession_number as string) ?? undefined
+    }
+
+    return {
+      valid:         true,
+      examNumber,
+      modality,
+      vacationTitle: (report?.exam_type as string | null) ?? undefined,
+    }
   }
 
   const { data: item } = await supabase

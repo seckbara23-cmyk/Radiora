@@ -25,7 +25,8 @@ or patient information.
 | 040 | R0.5 | Delivery lockout columns; restricted delivery policies | **Applied** |
 | 041 | R0.7 | Vacation authority: `printed` guard, fail-closed role check | **Applied** |
 | 042 | R0.8A | Radiologist-only clinical authority | **Applied** (succeeded on re-run) |
-| 043 | R0.8B | Database-enforced delivery expiry | **Blocked** until R0_8A verification passes |
+| 043 | R0.8B | Database-enforced delivery expiry | **Applied** |
+| 044 | R2.2 | Report-linked dictation ownership | **Awaiting operator activation** |
 
 **Next operator action:** run `supabase/verify/R0_8A_clinical_authority.sql`
 (expect 11 `PASS` notices, zero `FAIL`). Migration 043 must not be run until it
@@ -200,6 +201,49 @@ unaffected by this activation:
 - `supabase/verify/R0_1_profiles_guard.sql` — expect 8 `PASS` notices.
 - `supabase/verify/R0_2_report_immutability.sql` — expect 9 `PASS` notices.
 
-Every UUID literal in all four verification scripts is statically validated as
+Every UUID literal in all verification scripts is statically validated as
 hexadecimal before release, so a fixture can no longer abort a run the way the
 R0_8A seed did.
+
+---
+
+## Migration 044 — report-linked dictation (R2.2) — AWAITING ACTIVATION
+
+**Not applied.** Ships with the R2.2 code deployment; the application keeps
+working without it because every report-owned path is new — no existing call
+site depends on the new columns.
+
+What it does: lets a dictation session, audio asset and transcript be owned by a
+**report** as well as by a vacation queue item, so a report created directly
+from a study can start QR dictation and keep its AI review metadata across a
+reload. `dictation_sessions` and `transcriptions` get `report_id` and their
+`vacation_item_id` relaxed to nullable, each with an exactly-one-owner CHECK;
+`audio_assets` gets `report_id` with a never-both CHECK (both NULL stays legal —
+batch ingestion stores audio before assignment). A trigger validates that a
+dictation row and its owner belong to the same clinic, which RLS alone cannot
+express. `vacation_items` gains `UNIQUE (report_id) WHERE report_id IS NOT NULL`.
+
+**No RLS policy is added, widened or dropped. No row is rewritten and no
+historical ownership is reassigned.**
+
+### Activation procedure
+
+Run in the Supabase SQL editor, in order:
+
+1. `supabase/migrations/044_report_linked_dictation.sql`
+
+   It **pre-flights first** and aborts loudly rather than constraining bad data:
+   it counts sessions/transcriptions lacking a queue owner (must be zero, since
+   both columns are `NOT NULL` today) and reports linked to more than one queue
+   item (must be zero before `UNIQUE (report_id)` can be created). If either is
+   non-zero the migration raises `MIGRATION 044 ABORTED` and changes nothing.
+
+   Success prints:
+   `R2.2: report-linked dictation ownership installed; all rows satisfy the constraints.`
+
+2. `supabase/verify/R2_2_report_linked_dictation.sql` — expect **16 `PASS`
+   notices**, zero `FAIL`. Transaction-wrapped and rolled back; no fixture
+   persists, and it prints no transcript body, token or patient data.
+
+Until step 1 is applied, report-owned dictation returns a database error if
+attempted; the vacation-queue workflow is unaffected either way.

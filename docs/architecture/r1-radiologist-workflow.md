@@ -2,11 +2,11 @@
 
 **Status:** frozen for R2. **Date:** 2026-08-09. **Application SHA at audit:** `9cbba6e`.
 
-> **Implementation status — R2.0 and R2.1 COMPLETE.** See
-> [§R2.0 implementation status](#r20-implementation-status) and
-> [§R2.1 implementation status](#r21-implementation-status) at the end of this
-> document. The body below is the original audit and remains the frozen
-> architecture; only the status appendices are added.
+> **Implementation status — R2.0, R2.1 and R2.2 COMPLETE.** See the status
+> appendices at the end of this document
+> ([R2.0](#r20-implementation-status) · [R2.1](#r21-implementation-status) ·
+> [R2.2](#r22-implementation-status)). The body below is the original audit and
+> remains the frozen architecture; only the status appendices are added.
 
 This document is the product-surface and architecture freeze that R2 implements
 against. It is the result of a full read-only audit of the repository — every
@@ -810,3 +810,84 @@ onward with the unified dictation workspace; the creation call stays as-is.
 section population, and the full workspace redesign. Live structuring must
 still gate on `splitStableTranscript` (§8.2) before any partial transcript is
 allowed to mutate a report.
+
+---
+
+## R2.2 implementation status
+
+**Gate R2.2 — report-linked dictation ownership. COMPLETE (code); migration 044
+AWAITING MANUAL ACTIVATION.**
+
+§6 and §7 of this document recorded the two hard blockers: `dictation_sessions`
+and `transcriptions` were `NOT NULL` on `vacation_item_id`, so a report created
+from a study could neither start QR dictation nor own a transcript — which is
+why its AI review metadata could not survive a reload.
+
+### Ownership model (migration 044)
+
+The **same** dictation subsystem now supports two owner kinds. No second audio
+or transcription subsystem exists, and the vacation-item workflow is untouched.
+
+| Table | Rule | Constraint |
+|---|---|---|
+| `dictation_sessions` | `vacation_item_id` **XOR** `report_id` | `dictation_sessions_one_owner` |
+| `transcriptions` | `vacation_item_id` **XOR** `report_id` | `transcriptions_one_owner` |
+| `audio_assets` | `vacation_id` **NAND** `report_id` | `audio_assets_single_owner` |
+
+`audio_assets` is deliberately NAND rather than XOR. It has no
+`vacation_item_id` at all — its queue link is the nullable `vacation_id` plus
+the reverse pointer `vacation_items.audio_asset_id` — and the table exists to
+model **unassigned** audio: `ingestion_mode` `batch`/`long` with status
+`uploaded`, which `uploadAudio()` writes with no owner. Requiring an owner would
+break batch ingestion and reject existing rows. Both owners at once is still
+forbidden, which is the property that matters for isolation.
+
+**Delete behaviour**, chosen deliberately: `dictation_sessions.report_id`
+CASCADE (a pairing capability is meaningless without its owner, matching the
+existing `vacation_item_id`); `transcriptions.report_id` CASCADE (same as the
+queue owner; the signed report's own provenance lives in `report_versions`,
+untouched); `audio_assets.report_id` SET NULL (matching `vacation_id` — deleting
+the clinical owner must not silently orphan a private storage object without a
+row accounting for it).
+
+`vacation_items` gained `UNIQUE (report_id) WHERE report_id IS NOT NULL`, making
+real the single-valued assumption `getReportSafetyContext` already relied on.
+
+### Clinic isolation
+
+RLS on these tables keys off the **row's own** `clinic_id`, so it cannot stop a
+caller from pointing a correctly-scoped row at another clinic's report. A new
+`enforce_dictation_owner_clinic()` trigger on all three tables validates that
+the owner and the row share a clinic — for the queue owner too, which was never
+checked. **No RLS policy was widened, dropped or changed.**
+
+### Transcription persistence and the signing gate
+
+`getReportSafetyContext` now resolves in two steps: the **report-owned**
+transcript first (most recent, since a report may be dictated in several
+passes), then the queue-owned one through `vacation_items.report_id`. A missing
+transcript still returns `null`, and `null` still means "no AI metadata" — never
+high confidence. The gate was not weakened.
+
+`structureReportTranscript` persists the four layers (`cleaned_text`,
+`correction_events`, `structured_json`, `confidence`) on the report-owned row,
+which is what makes R2.0's review metadata survive save/reload on the direct
+path. **No additional field beyond ownership was required**, and no duplicate
+report-content storage was introduced.
+
+### QR token resolution
+
+A session token resolves to exactly one owner and one clinic, recorded when the
+session was minted; the phone never states where audio belongs. `uploadFromMobile`
+reads the owner off the stored session, re-checks at upload time that a
+report-owned target is still unsigned, and branches: the queue path is
+byte-identical to before, the report path touches no queue row. The phone page
+shows exam type, accession number and modality only — never the patient name,
+report content, history or demographics.
+
+### R2.3 dependency
+
+The unified workspace can now persist everything it captures against a report:
+session, audio, transcript and structuring metadata. R2.3 builds the UI on top
+of these actions. Live section population remains gated on
+`splitStableTranscript` (§8.2) — R2.2 structures a **complete** transcript only.

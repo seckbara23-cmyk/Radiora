@@ -10,6 +10,16 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { AUDIO_BUCKET, MAX_AUDIO_BYTES } from '@/types/audio'
 import { PAIRING_TTL_MINUTES, ACCEPTED_RECORDING_EXT } from '@/types/dictation'
+import {
+  reportOwner,
+  vacationItemOwner,
+  ownerColumns,
+  audioOwnerColumns,
+  ownerAuditMetadata,
+  ownerFromRow,
+  type DictationOwner,
+} from '@/lib/dictation/owner'
+import { isReportContentLocked } from '@/lib/safety/immutability'
 import type { DictationSessionStatus } from '@/types/dictation'
 import type { UserRole } from '@/types/user'
 
@@ -55,21 +65,44 @@ export type CreateSessionResult = {
   expiresAt?: string
 }
 
-export async function createDictationSession(itemId: string): Promise<CreateSessionResult> {
+/**
+ * R2.2 — mint a pairing session for EITHER owner kind.
+ *
+ * The owner is verified through the user-session client, so RLS proves the
+ * caller may see it before a capability token is created for it, and the
+ * clinic is taken from the server-resolved user — never from the client.
+ * Migration 044's trigger independently re-checks that the owner belongs to the
+ * same clinic.
+ */
+async function createSessionForOwner(owner: DictationOwner): Promise<CreateSessionResult> {
   const user = await requireCurrentUser()
   if (!canManage(user.role)) return { error: 'You do not have permission to start mobile dictation.' }
   if (!user.clinicId)        return { error: 'A clinic context is required.' }
-  if (!itemId)               return { error: 'Missing queue item.' }
 
   const supabase = await createClient()
 
-  // Confirm the item is visible to this user (RLS) before minting a token for it.
-  const { data: item } = await supabase
-    .from('vacation_items')
-    .select('id')
-    .eq('id', itemId)
-    .maybeSingle()
-  if (!item) return { error: 'Queue item not found.' }
+  if (owner.kind === 'vacation_item') {
+    const { data: item, error } = await supabase
+      .from('vacation_items')
+      .select('id')
+      .eq('id', owner.vacationItemId)
+      .maybeSingle()
+    if (error) return { error: error.message }
+    if (!item)  return { error: 'Queue item not found.' }
+  } else {
+    const { data: report, error } = await supabase
+      .from('reports')
+      .select('id, status')
+      .eq('id', owner.reportId)
+      .maybeSingle()
+    if (error)  return { error: error.message }
+    if (!report) return { error: 'Report not found.' }
+    // A signed report is immutable: new dictation must go through the
+    // amendment workflow, which re-opens it first.
+    if (isReportContentLocked(report.status as string)) {
+      return { error: 'This report is signed. Use "Amend Report" before dictating again.' }
+    }
+  }
 
   const token     = randomBytes(24).toString('base64url')
   const expiresAt = new Date(Date.now() + PAIRING_TTL_MINUTES * 60_000).toISOString()
@@ -77,12 +110,12 @@ export async function createDictationSession(itemId: string): Promise<CreateSess
   const { data, error } = await supabase
     .from('dictation_sessions')
     .insert({
-      clinic_id:        user.clinicId,
-      vacation_item_id: itemId,
-      created_by:       user.id,
+      clinic_id:  user.clinicId,
+      ...ownerColumns(owner),
+      created_by: user.id,
       token,
-      status:           'pending',
-      expires_at:       expiresAt,
+      status:     'pending',
+      expires_at: expiresAt,
     })
     .select('id')
     .single()
@@ -104,6 +137,18 @@ export async function createDictationSession(itemId: string): Promise<CreateSess
   }
 
   return { error: null, sessionId: data.id as string, url, qrSvg, expiresAt }
+}
+
+/** Existing queue-owned entry point — signature unchanged. */
+export async function createDictationSession(itemId: string): Promise<CreateSessionResult> {
+  if (!itemId) return { error: 'Missing queue item.' }
+  return createSessionForOwner(vacationItemOwner(itemId))
+}
+
+/** R2.2 — report-owned QR dictation. */
+export async function createReportDictationSession(reportId: string): Promise<CreateSessionResult> {
+  if (!reportId) return { error: 'Missing report.' }
+  return createSessionForOwner(reportOwner(reportId))
 }
 
 // ─── getDictationSessionStatus (desktop polling) ──────────────────────────────
@@ -198,7 +243,7 @@ export async function uploadFromMobile(
 
   const { data: session } = await admin
     .from('dictation_sessions')
-    .select('id, clinic_id, vacation_item_id, created_by, status, expires_at')
+    .select('id, clinic_id, vacation_item_id, report_id, created_by, status, expires_at')
     .eq('token', token)
     .maybeSingle()
   if (!session) return { error: 'This dictation link is invalid.' }
@@ -220,9 +265,29 @@ export async function uploadFromMobile(
   }
 
   const clinicId   = session.clinic_id as string
-  const itemId     = session.vacation_item_id as string
   const uploadedBy = session.created_by as string
   const deviceLabel = String(formData.get('deviceLabel') ?? '').slice(0, 120) || null
+
+  // R2.2 — the token resolves to exactly ONE owner, recorded when the session
+  // was minted. The phone never says where the audio belongs.
+  const owner = ownerFromRow(session as { report_id?: string | null; vacation_item_id?: string | null })
+  if (!owner) return { error: 'This dictation link is not attached to a report or queue item.' }
+
+  // A report signed since the QR was shown must not accept new audio.
+  if (owner.kind === 'report') {
+    const { data: report } = await admin
+      .from('reports')
+      .select('status, clinic_id')
+      .eq('id', owner.reportId)
+      .maybeSingle()
+    if (!report) return { error: 'The linked report no longer exists.' }
+    if ((report.clinic_id as string) !== clinicId) {
+      return { error: 'This dictation link is invalid.' }
+    }
+    if (isReportContentLocked(report.status as string)) {
+      return { error: 'This report has been signed and can no longer accept dictation.' }
+    }
+  }
 
   const assetId = crypto.randomUUID()
   const path    = `${clinicId}/${assetId}.${ext}`
@@ -235,6 +300,7 @@ export async function uploadFromMobile(
   const { error: assetError } = await admin.from('audio_assets').insert({
     id:                assetId,
     clinic_id:         clinicId,
+    ...audioOwnerColumns(owner),
     uploaded_by:       uploadedBy,
     original_filename: file.name || `mobile-dictation.${ext}`,
     mime_type:         file.type || 'application/octet-stream',
@@ -248,42 +314,81 @@ export async function uploadFromMobile(
     return { error: assetError.message }
   }
 
-  // Link to the queue item: attach audio, advance audio_received -> transcribing,
-  // open an editable transcript draft if none exists.
-  const { data: item } = await admin
-    .from('vacation_items')
-    .select('workflow_status')
-    .eq('id', itemId)
-    .maybeSingle()
+  if (owner.kind === 'vacation_item') {
+    // Unchanged queue behaviour: attach audio, advance audio_received →
+    // transcribing, open an editable transcript draft if none exists.
+    const itemId = owner.vacationItemId
 
-  const nextStatus =
-    item?.workflow_status === 'audio_received' ? 'transcribing' : item?.workflow_status
+    const { data: item } = await admin
+      .from('vacation_items')
+      .select('workflow_status')
+      .eq('id', itemId)
+      .maybeSingle()
 
-  await admin
-    .from('vacation_items')
-    .update({ audio_asset_id: assetId, workflow_status: nextStatus })
-    .eq('id', itemId)
+    const nextStatus =
+      item?.workflow_status === 'audio_received' ? 'transcribing' : item?.workflow_status
 
-  const { data: existing } = await admin
-    .from('transcriptions')
-    .select('id')
-    .eq('vacation_item_id', itemId)
-    .maybeSingle()
-  if (!existing) {
-    await admin.from('transcriptions').insert({
-      clinic_id:        clinicId,
-      vacation_item_id: itemId,
-      audio_asset_id:   assetId,
-      created_by:       uploadedBy,
-    })
+    const { error: itemError } = await admin
+      .from('vacation_items')
+      .update({ audio_asset_id: assetId, workflow_status: nextStatus })
+      .eq('id', itemId)
+    if (itemError) return { error: itemError.message }
+
+    const { data: existing } = await admin
+      .from('transcriptions')
+      .select('id')
+      .eq('vacation_item_id', itemId)
+      .maybeSingle()
+    if (!existing) {
+      const { error: trError } = await admin.from('transcriptions').insert({
+        clinic_id:      clinicId,
+        ...ownerColumns(owner),
+        audio_asset_id: assetId,
+        created_by:     uploadedBy,
+      })
+      if (trError) return { error: trError.message }
+    }
+
+    revalidatePath(`/vacations/items/${itemId}`)
+    revalidatePath('/secretary')
+  } else {
+    // Report-owned: no queue row is touched. Open a transcript draft for this
+    // report if it has none yet; a report may be dictated in several passes.
+    const { data: existing } = await admin
+      .from('transcriptions')
+      .select('id')
+      .eq('report_id', owner.reportId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (!existing) {
+      const { error: trError } = await admin.from('transcriptions').insert({
+        clinic_id:      clinicId,
+        ...ownerColumns(owner),
+        audio_asset_id: assetId,
+        created_by:     uploadedBy,
+      })
+      if (trError) return { error: trError.message }
+    } else {
+      const { error: trError } = await admin
+        .from('transcriptions')
+        .update({ audio_asset_id: assetId })
+        .eq('id', existing.id as string)
+      if (trError) return { error: trError.message }
+    }
+
+    revalidatePath(`/reports/${owner.reportId}`)
   }
 
-  await admin
+  const { error: sessionError } = await admin
     .from('dictation_sessions')
     .update({ status: 'completed', audio_asset_id: assetId, device_label: deviceLabel })
     .eq('id', session.id as string)
+  if (sessionError) return { error: sessionError.message }
 
-  // Audit via the service-role client (the phone request carries no user cookie).
+  // Audit via the service-role client (the phone request carries no user
+  // cookie). Owner kind + id only — never the token, never transcript content.
   try {
     await admin.from('audit_logs').insert({
       user_id:     uploadedBy,
@@ -291,14 +396,11 @@ export async function uploadFromMobile(
       action:      'dictation.mobile_uploaded',
       entity_type: 'audio_asset',
       entity_id:   assetId,
-      metadata:    { sessionId: session.id, sizeBytes: file.size, ext },
+      metadata:    { ...ownerAuditMetadata(owner), sizeBytes: file.size, ext },
     })
   } catch {
     // Audit failures never block the upload.
   }
-
-  revalidatePath(`/vacations/items/${itemId}`)
-  revalidatePath('/secretary')
 
   return { error: null, ok: true }
 }
