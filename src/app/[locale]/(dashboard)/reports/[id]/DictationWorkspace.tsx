@@ -57,6 +57,12 @@ interface Props {
   initialTranscript?: string
   /** Applies the structured draft to the editor (radiologist action). */
   onApply: (data: StructuredReportData) => void
+  /**
+   * R2.5 — the CANONICAL STABLE transcript, emitted as it grows so the report
+   * can fill in while the doctor speaks. Committed segments only: the interim
+   * guess never reaches this callback.
+   */
+  onStableTranscript?: (stable: string, opts?: { final?: boolean }) => void
 }
 
 const METHODS: { key: DictationMethod; icon: string }[] = [
@@ -65,7 +71,12 @@ const METHODS: { key: DictationMethod; icon: string }[] = [
   { key: 'import',   icon: '📁' },
 ]
 
-export function DictationWorkspace({ reportId, initialTranscript = '', onApply }: Props) {
+export function DictationWorkspace({
+  reportId,
+  initialTranscript = '',
+  onApply,
+  onStableTranscript,
+}: Props) {
   const t = useTranslations('workspace')
 
   const [state, setState] = useState<WorkspaceState>(
@@ -87,15 +98,29 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
   // COMMITTED segments; the interim guess stays in the recogniser hook, is
   // display-only, and can never reach a clinical section.
   const [live, setLive] = useState<TranscriptState>(emptyTranscriptState)
+  // The reducer's accumulator. State is for rendering; this is what the next
+  // commit reads, so the new canonical text can be emitted in the same event
+  // instead of one render later.
+  const liveRef = useRef<TranscriptState>(emptyTranscriptState())
+
+  const onStableRef = useRef(onStableTranscript)
+  useEffect(() => { onStableRef.current = onStableTranscript })
 
   // Committing is an event (the recogniser settled more speech), not a
   // synchronisation, so it reduces here rather than in an effect.
   const speech = useSpeechRecognition({
     lang: 'fr-FR',
-    onFinalText: (cumulative) =>
-      setLive((prev) =>
-        commitFinalized(prev, cumulative, { source: 'computer', now: new Date().toISOString() }),
-      ),
+    onFinalText: (cumulative) => {
+      const next = commitFinalized(liveRef.current, cumulative, {
+        source: 'computer',
+        now: new Date().toISOString(),
+      })
+      liveRef.current = next
+      setLive(next)
+      // R2.5 — only committed segments. `canonicalTranscript` excludes interim
+      // by construction, so a live guess cannot reach the report.
+      onStableRef.current?.(canonicalTranscript(next))
+    },
   })
 
   // ── Workstation microphone ─────────────────────────────────────────────────
@@ -106,7 +131,8 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
       setError(t('errors.unsupportedBrowser'))
       return
     }
-    setLive(emptyTranscriptState())
+    liveRef.current = emptyTranscriptState()
+    setLive(liveRef.current)
     send({ type: 'CHOOSE_METHOD', method: 'computer' })
     speech.start()
   }
@@ -121,11 +147,15 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
     // silently discarded. The doctor edits it in the transcript box.
     const { state: flushed, pending } = finalizeRecording(
       setInterim(
-        commitFinalized(live, speech.finalText, { source: 'computer', now: new Date().toISOString() }),
+        commitFinalized(liveRef.current, speech.finalText, {
+          source: 'computer',
+          now: new Date().toISOString(),
+        }),
         speech.interimText,
       ),
       { source: 'computer', now: new Date().toISOString() },
     )
+    liveRef.current = flushed
     setLive(flushed)
 
     const committed = canonicalTranscript(flushed)
@@ -135,6 +165,9 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
     // The transcript itself is the record.
     if (!text) { send({ type: 'FAIL' }); setError(t('errors.noSpeech')); return }
     setTranscript(text)
+    // R2.5 §17 — ONE final reconciliation over the complete canonical
+    // transcript, including the pending clause the live passes never saw.
+    onStableRef.current?.(text, { final: true })
     startTransition(async () => {
       const res = await saveReportTranscript(reportId, text)
       if (res.error) { setError(res.error); send({ type: 'FAIL' }); return }
@@ -213,6 +246,10 @@ export function DictationWorkspace({ reportId, initialTranscript = '', onApply }
       const res = await saveReportTranscript(reportId, transcript)
       if (res.error) { setError(res.error); send({ type: 'FAIL' }); return }
       send({ type: 'TRANSCRIPT_READY' })
+      // R2.5 §18 — phone and imported audio arrive as ONE complete transcript.
+      // They use the same coordinator, as a single complete revision; no live
+      // streaming is fabricated for them.
+      onStableRef.current?.(transcript.trim(), { final: true })
     })
   }
 

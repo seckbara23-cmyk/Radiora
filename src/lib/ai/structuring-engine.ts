@@ -42,6 +42,17 @@ const HEADER_HINTS: Record<StructuredSectionKey, RegExp> = {
   recommendations: /\b(recommandations?|conduite\s+[àa]\s+tenir|pr[ée]conisations?|follow)\b/i,
 }
 
+/**
+ * R2.5 — did the doctor explicitly dictate this section's header?
+ *
+ * Exported so the live coordinator can tell a section the doctor NAMED from one
+ * the engine inferred by splitting, without restating HEADER_HINTS. One
+ * definition, one behaviour: a second copy would drift.
+ */
+export function hasExplicitSectionHeader(section: StructuredSectionKey, text: string): boolean {
+  return HEADER_HINTS[section].test(text)
+}
+
 function scoreSection(
   section:      StructuredSectionKey,
   value:        string,

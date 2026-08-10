@@ -913,6 +913,24 @@
     "saving": "Saving…",
     "updateStatus": "Update Status"
   },
+  "live": {
+    "editedByYou": "Edited by you",
+    "aiSuggestion": "AI suggestion",
+    "accept": "Accept",
+    "reject": "Dismiss",
+    "resumeAi": "Resume AI dictation",
+    "structuring": "Structuring…",
+    "flag": {
+      "autoFilled": "Technique proposed automatically",
+      "lowConfidence": "Wording to verify",
+      "inferredConclusion": "Conclusion inferred",
+      "rewrite": "Rewording proposed — verify",
+      "sectionReassigned": "Text moved between sections",
+      "ambiguousCorrection": "Ambiguous correction",
+      "cleanupDrift": "Text heavily reworded",
+      "physicianOwned": "Edited by the radiologist — AI suggestion available"
+    }
+  },
   "reportEditor": {
     "applyTemplatePlaceholder": "Apply a template…",
     "apply": "Apply",

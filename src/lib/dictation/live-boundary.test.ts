@@ -66,13 +66,16 @@ describe('the speech hook only recognises speech', () => {
 describe('the workspace commits on the recognition event, not in an effect', () => {
   it('reduces committed segments from onFinalText', () => {
     expect(WORKSPACE).toContain('onFinalText:')
-    expect(WORKSPACE).toContain('commitFinalized(prev, cumulative')
+    // R2.5 — the reducer accumulator moved to a ref so the new canonical text
+    // can be emitted in the same event; the commit itself is unchanged.
+    expect(WORKSPACE).toContain('commitFinalized(liveRef.current, cumulative')
   })
 
   it('does not mirror the interim guess into component state', () => {
     // Interim lives in the recogniser hook and is read directly for display.
     expect(WORKSPACE).toContain('speech.interimText.trim()')
-    expect(WORKSPACE).not.toMatch(/useEffect\([^)]*setLive/s)
+    // [^)] already spans newlines — no dotall flag needed (tsconfig target).
+    expect(WORKSPACE).not.toMatch(/useEffect\([^)]*setLive/)
   })
 })
 

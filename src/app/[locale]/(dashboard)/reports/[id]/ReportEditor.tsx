@@ -6,6 +6,9 @@ import { handleReportForm } from '@/lib/actions/reports'
 import { DictationWorkspace } from './DictationWorkspace'
 import { buildExamInfo, buildDefaultTechnique } from '@/lib/ai/hpd-engine'
 import { SectionSuggestions } from './SectionSuggestions'
+import { LiveSectionStatus } from './LiveSectionStatus'
+import { useLiveStructuring, type AppliedSection } from '@/lib/hooks/use-live-structuring'
+import type { SectionKey } from '@/lib/safety/sections'
 import { getSpecialForm, SPECIAL_LAYOUTS, type SpecialFormSchema } from '@/config/special-forms'
 import { emptySpecialForm, renderSpecialFormText, missingRequiredRows, cellKey } from '@/lib/reports/special-forms'
 import type { Report, StructuredReportData } from '@/types/report'
@@ -87,7 +90,7 @@ function PatientField({ label, value }: { label: string; value: string }) {
 }
 
 function DocSection({
-  label, value, onChange, disabled, placeholder, ariaLabel, required, suggestions,
+  label, value, onChange, disabled, placeholder, ariaLabel, required, suggestions, status, updated,
 }: {
   label: string
   value: string
@@ -97,13 +100,25 @@ function DocSection({
   ariaLabel: string
   required?: boolean
   suggestions?: React.ReactNode
+  /** R2.5 live review state for this section. */
+  status?: React.ReactNode
+  /** Briefly true when live structuring just wrote here. */
+  updated?: boolean
 }) {
   return (
-    <section className="mb-5">
+    <section
+      /* A calm, brief tint — enough to notice the section filled in, not enough
+         to pull the eye off the text being dictated. No movement at all under
+         prefers-reduced-motion. */
+      className={`mb-5 -mx-2 rounded px-2 transition-colors duration-700 motion-reduce:transition-none ${
+        updated ? 'bg-blue-50/70' : 'bg-transparent'
+      }`}
+    >
       <h3 className="text-[12px] font-bold tracking-[0.1em] text-slate-900 uppercase underline underline-offset-[5px] decoration-slate-400 mb-1.5">
         {label}
         {required && <span className="text-red-500 ml-0.5 no-underline">*</span>}
       </h3>
+      {status}
       {suggestions && <div className="font-sans">{suggestions}</div>}
       <AutoTextarea
         value={value}
@@ -187,7 +202,7 @@ function SpecialFormTableEditor({
 }
 
 function StructuredEditor({
-  draft, disabled, onChange, onSpecialCellChange, t, phrases, reportId, examDate,
+  draft, disabled, onChange, onSpecialCellChange, t, phrases, reportId, examDate, live, flash,
 }: {
   draft:    StructuredReportData
   disabled: boolean
@@ -197,7 +212,24 @@ function StructuredEditor({
   phrases:  UserPhrasePreference[]
   reportId: string
   examDate: string
+  live?:    ReturnType<typeof useLiveStructuring>
+  flash?:   Partial<Record<SectionKey, true>>
 }) {
+  /** The live status row for one section, or nothing when it has no state. */
+  const liveStatus = (section: SectionKey) =>
+    live ? (
+      <LiveSectionStatus
+        section={section}
+        flags={live.flags[section] ?? []}
+        suggestion={live.suggestions[section]}
+        owned={live.owned.includes(section)}
+        disabled={disabled}
+        onAccept={live.accept}
+        onReject={live.reject}
+        onResumeAi={live.resumeAi}
+      />
+    ) : null
+
   const specialSchema = draft.specialForm ? getSpecialForm(draft.specialForm.layout) : null
   const phrasesBySection = React.useMemo(() => {
     const map: Record<string, UserPhrasePreference[]> = {}
@@ -251,6 +283,8 @@ function StructuredEditor({
           disabled={disabled}
           placeholder={t('indicationPlaceholder')}
           ariaLabel={t('indicationLabel')}
+          status={liveStatus('indication')}
+          updated={flash?.indication}
           suggestions={
             <SectionSuggestions
               section="indication" examType={draft.examType} reportId={reportId}
@@ -267,6 +301,8 @@ function StructuredEditor({
           disabled={disabled}
           placeholder={t('techniquePlaceholder')}
           ariaLabel={t('techniqueLabel')}
+          status={liveStatus('technique')}
+          updated={flash?.technique}
           suggestions={
             <SectionSuggestions
               section="technique" examType={draft.examType} reportId={reportId}
@@ -293,6 +329,8 @@ function StructuredEditor({
             disabled={disabled}
             placeholder={t('resultsPlaceholder')}
             ariaLabel={t('resultsLabel')}
+            status={liveStatus('results')}
+            updated={flash?.results}
             required
           />
         )}
@@ -304,6 +342,8 @@ function StructuredEditor({
           disabled={disabled}
           placeholder={t('conclusionPlaceholder')}
           ariaLabel={t('conclusionLabel')}
+          status={liveStatus('conclusion')}
+          updated={flash?.conclusion}
           required
           suggestions={
             <SectionSuggestions
@@ -321,6 +361,8 @@ function StructuredEditor({
           disabled={disabled}
           placeholder={t('recommendationsPlaceholder')}
           ariaLabel={t('recommendationsLabel')}
+          status={liveStatus('recommendations')}
+          updated={flash?.recommendations}
           suggestions={
             <SectionSuggestions
               section="recommendations" examType={draft.examType} reportId={reportId}
@@ -441,7 +483,33 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
   const hasSpecialForm = Boolean(specialForm)
   const specialIncomplete = specialForm ? missingRequiredRows(specialForm).length > 0 : false
 
-  function updateSection(
+  // ── R2.5 live structuring ───────────────────────────────────────────────────
+  // The coordinator decides; this component applies what it decided. Sections
+  // it wrote land through the same `updateSection` a human edit uses, so the
+  // legacy mirror fields and the canonical draft never diverge.
+  const [flash, setFlash] = useState<Partial<Record<SectionKey, true>>>({})
+
+  const live = useLiveStructuring({
+    modality,
+    bodyPart,
+    base: report.structuredData ?? null,
+    frozen: isFinalized,
+    onApplied: (written: AppliedSection[]) => {
+      for (const s of written) writeSection(s.key, s.text)
+      const keys = written.map((s) => s.key)
+      setFlash((prev) => ({ ...prev, ...Object.fromEntries(keys.map((k) => [k, true])) }))
+      window.setTimeout(() => {
+        setFlash((prev) => {
+          const next = { ...prev }
+          for (const k of keys) delete next[k]
+          return next
+        })
+      }, 1400)
+    },
+  })
+
+  /** Write section text WITHOUT claiming the radiologist authored it. */
+  function writeSection(
     key: keyof Pick<StructuredReportData, 'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'>,
     value: string,
   ) {
@@ -449,6 +517,18 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
     if (key === 'results')         setFindings(value)
     if (key === 'conclusion')      setImpression(value)
     if (key === 'recommendations') setRecommendations(value)
+  }
+
+  /**
+   * A human edited this section. It becomes theirs: live AI may propose here
+   * afterwards but never writes again until they hand it back.
+   */
+  function updateSection(
+    key: keyof Pick<StructuredReportData, 'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'>,
+    value: string,
+  ) {
+    writeSection(key, value)
+    live.notePhysicianEdit(key, value)
   }
 
   // F18 — switch a structured report to (or away from) a special measurement form.
@@ -493,6 +573,10 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
     setFindings(structuredData.results)
     setImpression(structuredData.conclusion)
     setRecommendations(structuredData.recommendations ?? '')
+    // The radiologist applied a server-side structuring run. Re-baseline the
+    // live coordinator on it so the next stable sentence diffs against what is
+    // now on screen instead of stale live text.
+    live.adopt(structuredData)
   }
 
   function convertToStructured() {
@@ -607,48 +691,63 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
           replaces the three technical panels the doctor used to choose between
           (classic recording, live dictation, AI structuring); those components
           remain in the repository and still serve the vacation queue. */}
-      {isEditable && !hasSpecialForm && (
-        <DictationWorkspace
-          reportId={report.id}
-          initialTranscript={initialTranscript}
-          onApply={handleAiAccept}
-        />
-      )}
+      {/* R2.5 — dictation on the left, the report filling in on the right. On
+          narrow screens they stack in the same order. */}
+      <div
+        className={
+          isEditable && !hasSpecialForm
+            ? 'grid gap-4 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] lg:items-start'
+            : ''
+        }
+      >
+        {isEditable && !hasSpecialForm && (
+          <div className="lg:sticky lg:top-4">
+            <DictationWorkspace
+              reportId={report.id}
+              initialTranscript={initialTranscript}
+              onApply={handleAiAccept}
+              onStableTranscript={(stable, opts) => live.submit(stable, opts && { force: opts.final })}
+            />
+          </div>
+        )}
 
-      {/* ── Report editor ────────────────────────────────────────── */}
-      {isStructured ? (
-        <StructuredEditor
-          draft={structuredDraft}
-          disabled={isPending || !isEditable}
-          onChange={updateSection}
-          onSpecialCellChange={updateSpecialCell}
-          t={t}
-          phrases={initialPhrases}
-          reportId={report.id}
-          examDate={examDate}
-        />
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-          {isEditable && (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={convertToStructured}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-300 rounded-full px-3 py-1 transition"
-              >
-                {t('switchToStructured')}
-              </button>
-            </div>
-          )}
-          <LegacyEditor
-            findings={findings}               setFindings={setFindings}
-            impression={impression}           setImpression={setImpression}
-            recommendations={recommendations} setRecommendations={setRecommendations}
+        {/* ── Report editor ────────────────────────────────────────── */}
+        {isStructured ? (
+          <StructuredEditor
+            draft={structuredDraft}
             disabled={isPending || !isEditable}
+            onChange={updateSection}
+            onSpecialCellChange={updateSpecialCell}
             t={t}
+            phrases={initialPhrases}
+            reportId={report.id}
+            examDate={examDate}
+            live={live}
+            flash={flash}
           />
-        </div>
-      )}
+        ) : (
+          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+            {isEditable && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={convertToStructured}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-800 border border-indigo-200 hover:border-indigo-300 rounded-full px-3 py-1 transition"
+                >
+                  {t('switchToStructured')}
+                </button>
+              </div>
+            )}
+            <LegacyEditor
+              findings={findings}               setFindings={setFindings}
+              impression={impression}           setImpression={setImpression}
+              recommendations={recommendations} setRecommendations={setRecommendations}
+              disabled={isPending || !isEditable}
+              t={t}
+            />
+          </div>
+        )}
+      </div>
 
       {/* ── Amendment panel ──────────────────────────────────────── */}
       {showAmendPanel && (

@@ -913,6 +913,24 @@
     "saving": "Enregistrement…",
     "updateStatus": "Mettre à jour le statut"
   },
+  "live": {
+    "editedByYou": "Modifié par vous",
+    "aiSuggestion": "Suggestion IA",
+    "accept": "Accepter",
+    "reject": "Refuser",
+    "resumeAi": "Reprendre la dictée IA",
+    "structuring": "Structuration en cours…",
+    "flag": {
+      "autoFilled": "Technique proposée automatiquement",
+      "lowConfidence": "Formulation à vérifier",
+      "inferredConclusion": "Conclusion inférée",
+      "rewrite": "Reformulation proposée — à vérifier",
+      "sectionReassigned": "Texte déplacé entre sections",
+      "ambiguousCorrection": "Correction ambiguë",
+      "cleanupDrift": "Texte fortement reformulé",
+      "physicianOwned": "Contenu modifié par le radiologue — suggestion IA disponible"
+    }
+  },
   "reportEditor": {
     "applyTemplatePlaceholder": "Appliquer un modèle…",
     "apply": "Appliquer",

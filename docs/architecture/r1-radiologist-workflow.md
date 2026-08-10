@@ -1064,3 +1064,234 @@ Interim text is never durably persisted, by design.
 `structuringInput(state)` returns the canonical transcript and **excludes
 interim by construction**. That is the single function R2.5 calls to feed
 incremental structuring — the transcript model will not need redesigning again.
+
+---
+
+## R2.5 implementation status
+
+**Gate R2.5 — live AI section population. COMPLETE.** No migration.
+
+> **AI structures; the radiologist controls.** Nothing here signs, nothing here
+> invents, and nothing the doctor typed is ever overwritten without them saying
+> so.
+
+### What the engine actually does on a growing transcript
+
+The architecture was chosen from measurement, not assumption. `runStructuring`
+was run against growing **stable** transcripts (R2.4 boundary — complete
+sentences only) and the section outputs recorded per revision:
+
+| revision | RÉSULTATS | CONCLUSION |
+|---|---|---|
+| 4 | `…segment VII.` | `14 mm.` |
+| 5 | `…segment VII. 14 mm.` | `Pas de lésion splénique.` |
+| 6 | `…segment VII. 14 mm. Pas de lésion splénique.` | `Au total, nodule hépatique de 14 mm…` |
+
+Three facts came out of this, and they drive everything below:
+
+1. **RÉSULTATS only ever grew** — each new value began with the previous one.
+2. **CONCLUSION was wholly replaced every revision.** Until the doctor dictates
+   an explicit marker ("Au total", "Conclusion"), the engine's conclusion is a
+   positional guess. Auto-applying it would make the doctor watch their
+   conclusion flicker between unrelated sentences.
+3. **`14 mm.` migrated** out of CONCLUSION into RÉSULTATS — a real section
+   reassignment, not a hypothetical one.
+
+### Incremental coordinator
+
+`src/lib/reports/live-coordinator.ts` is the module that decides. It is pure —
+no React, no IO, no clock, no network — and a test asserts that. Components
+orchestrate: they open a revision, hand back a result, and render the outcome.
+
+```
+stable segments → canonical stable transcript → beginRevision
+  → buildHpdDraft (the canonical pipeline, run locally)
+  → reconcile → classification → applyStructuredPatch (R1)
+  → StructuredReportData → editor / save / PDF / DOCX / print / signed
+```
+
+### Contracts reused, not replaced
+
+The R1 freeze was sound and is used as shipped: `LiveReportState`,
+`SectionState`, `SectionPatch`, `StructuredReportPatch`, `PatchLogEntry` and
+`applyStructuredPatch` are unchanged. R1's rules — never blank a section, never
+overwrite a locked one, template origin always carries reviewRequired, log every
+decision — run underneath the coordinator as an independent backstop, so a
+classification bug cannot silently destroy clinical text.
+
+Two additions were made rather than a new abstraction:
+
+- `hasExplicitSectionHeader()` exported from `structuring-engine.ts` — one
+  definition of header detection, so the coordinator can tell a section the
+  doctor NAMED from one the engine inferred, without copying `HEADER_HINTS`.
+- `SUGGESTION_ONLY`, a fifth update class (below).
+
+### Input strategy — full reprocessing (strategy A)
+
+Every revision reprocesses the **whole** stable transcript. The engine is a
+function of a complete transcript; feeding it deltas would make it a different
+engine. Measured cost on a 9-sentence, 378-character dictation: **1.7 ms mean,
+7.5 ms worst case** per revision, entirely local and deterministic. An unchanged
+transcript costs nothing — 1000 repeat submissions returned in 9 ms without
+running the engine once.
+
+The pipeline runs in the browser via `buildHpdDraft`, the same module the server
+action uses. No second engine, no network, no external model, and no clinical
+text leaves the page.
+
+### Revision model and stale-result protection
+
+Every attempt carries a monotonically increasing revision. `reconcile` discards
+any result at or below `appliedRevision` and returns the previous state object
+**identically** — the test asserts reference equality, not merely deep equality.
+So:
+
+```
+revision 4 starts → revision 5 starts → revision 5 lands → revision 4 lands → discarded
+```
+
+The engine is synchronous today. The revision model exists so a future async
+provider cannot cause a stale write, and it is tested against the out-of-order
+case directly rather than by timing.
+
+### Update classification
+
+| class | written? | when |
+|---|---|---|
+| `NO_CHANGE` | — | identical text, or a blank proposal over existing content |
+| `SAFE_AUTO_APPLY` | yes | target empty or purely extended, and nothing flagged |
+| `REVIEW_REQUIRED` | yes, flagged | nothing is lost, but a human must look |
+| `SUGGESTION_ONLY` | **no** | would rewrite AI content already on screen |
+| `CONFLICT_WITH_PHYSICIAN_EDIT` | **no** | the radiologist owns the section |
+
+`SUGGESTION_ONLY` goes beyond the four classes R2.5 specified. It exists because
+those four collapse two different situations into `REVIEW_REQUIRED`: content
+that is safe to show but needs eyes, and content that would **destroy what the
+doctor is already reading**. Only the first belongs in the report. The
+distinction is the extension test — does the new text start with the old? — and
+it is exactly what separates the RÉSULTATS column above from the CONCLUSION one.
+
+Flags that hold a section back from silent auto-apply:
+
+| flag | meaning |
+|---|---|
+| `autoFilled` | the TECHNIQUE protocol template — the only machine-authored text in the product |
+| `lowConfidence` | the engine scored the section low |
+| `inferredConclusion` | a conclusion the doctor never marked |
+| `rewrite` | the proposal replaces rather than extends |
+| `sectionReassigned` | text appears to have moved between sections |
+| `ambiguousCorrection` | a dictated correction the engine refused to localize (report-level) |
+| `cleanupDrift` | raw vs cleaned transcript diverged heavily (report-level) |
+| `physicianOwned` | the radiologist authored it |
+
+**Known limitation.** `ambiguousCorrection` and `cleanupDrift` are report-level,
+not per-section. A `CorrectionEvent` carries a character offset into the RAW
+transcript while sections are sliced from the CLEANED one, with no ranges to map
+between them. Rather than guess a section, both are surfaced report-wide and
+hold every section in that revision back from silent auto-apply. Per-section
+attribution needs `sourceRange` support in `parseStructuredText` — R2.6.
+
+### AI never invents findings
+
+Pinned at the coordinator boundary: a section whose origin is `template` can
+never be `SAFE_AUTO_APPLY`. A template may define section names and order; it
+may not cause clinical content to appear. If the doctor said nothing about a
+structure, it stays empty — no "normal", no "sans particularité", no "pas de
+lésion". The test traces every word of every clinical section back to a word in
+the transcript.
+
+One engine behaviour is worth recording, because live population makes it
+visible where the Structure button used to hide it: when only an indication has
+been dictated, `parseStructuredText` also echoes that sentence into RÉSULTATS.
+That is **duplication of the doctor's own words**, not invention — long-standing
+behaviour, unchanged by R2.5, and a candidate for R2.6 parse-quality work.
+
+### Physician-edit locks
+
+Section-level, in the real section model — never DOM comparison. Any edit to a
+section's textarea routes through `updateSection`, which writes the text and
+calls `notePhysicianEdit`, marking the section `radiologist`-authored and
+locked. From then on live AI proposes into `suggestions[section]` and never
+writes. The doctor can accept the proposal, dismiss it, or hand the section back
+to AI ("Reprendre la dictée IA"). Accepting does **not** hand the section back —
+it writes the text and the section stays theirs.
+
+All five canonical sections are protected: indication, technique, results,
+conclusion, recommendations. Specialized structured-exam fields (F18 measurement
+tables) are **not** live-populated: the dictation workspace is not rendered for
+special forms at all, so those reports keep the existing typed-table flow
+untouched. That is a deliberate limitation, not an oversight.
+
+### Corrections
+
+Handled by the existing preservation-first engine; the coordinator's job is to
+not destroy. A correction that cannot be resolved safely leaves the original
+text in place, raises `ambiguousCorrection`, and blocks silent auto-apply for
+that revision. Tests assert that after "Je corrige, 14 mm" the lesion identity
+survives — organ, location and laterality all still present — and that decimal
+points, French decimal commas, negations, laterality and uncertainty terms all
+survive a live pass unchanged.
+
+### Live UI
+
+Dictation sits on the left (sticky on wide screens), the report document on the
+right, stacking in the same order on narrow screens. When live structuring
+writes a section it gets a brief, calm tint — a colour transition only, disabled
+entirely under `prefers-reduced-motion`.
+
+Per-section chips speak clinically and never expose internals: no revision
+numbers, no parser or model names, no confidence decimals. "Modifié par vous",
+"Suggestion IA" with Accepter / Refuser, "Technique proposée automatiquement",
+"Conclusion inférée", "Correction ambiguë". A held-back proposal is always shown
+in full, so accepting is never a blind choice. Nothing about review blocks
+dictation from continuing.
+
+### Stop / final reconciliation
+
+On stop the workspace flushes the final speech callback, keeps the pending
+unfinished clause, appends it verbatim to the canonical transcript, persists it,
+then runs **one** forced final revision over the complete text. `force` exists
+precisely so that the final pass still happens when the transcript is
+byte-identical to the last live one. The result is reconciled against physician
+edits like any other revision; remaining flags stay visible and the workspace
+enters `review_ready`. Nothing is auto-signed.
+
+Phone and imported audio produce a complete transcript with no interim phase.
+They use the same coordinator as a single complete revision once the transcript
+is confirmed — no fake streaming is fabricated for them.
+
+### Persistence — exactly what is durable
+
+- **During dictation:** live sections, locks, flags, suggestions and the
+  revision counter are **client state**. A refresh loses them. No migration was
+  added and no active-session recovery is claimed.
+- **On save:** live sections are already projected into `structuredDraft`, so
+  the normal report save persists them as canonical `structured_data`, together
+  with the transcript linkage (migration 044) and physician edits. After reload
+  the report content, the transcript relationship and the signing-safety context
+  all reconstruct.
+- **After reload:** every non-empty saved section starts **physician-owned** —
+  saved text was authored or reviewed by a human, so a new dictation pass
+  proposes rather than overwrites. Lock state is reconstructed conservatively
+  rather than persisted.
+- The server-side `structureReportTranscript` path is unchanged and still writes
+  the durable `ai_jobs` / `ai_outputs` audit record. Applying its result
+  re-baselines the coordinator (`adoptReportData`) so live and server results
+  cannot fight each other.
+
+### Signing boundary
+
+Untouched. Radiologist only, no administrative override. Live AI ceases the
+moment a report is finalized: the workspace is not rendered, the hook is
+constructed frozen, every mutating action is guarded, and `reconcile` returns
+`frozen` and changes nothing. Existing blocking flags, required sections and
+confirmation rules for auto-filled content are unchanged.
+
+### What remains for R2.6 / R2.7
+
+- `sourceRange` from `parseStructuredText`, so corrections and cleanup drift can
+  attribute to a section instead of the whole report.
+- Parse-quality work on section splitting (the indication/results echo above).
+- Live population for specialized structured-exam forms.
+- Active-session recovery, if it is ever wanted; it does not exist today.
+- R2.7: seamless phone behaviour.
