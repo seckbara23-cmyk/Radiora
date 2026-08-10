@@ -429,3 +429,20 @@ Run in the Supabase SQL editor, in order:
    confirming it now is worthwhile.
 
 **Do not re-run 044 or 045.** Both are already applied; 046 is forward-only.
+
+
+---
+
+## Speech-to-text activation (R2.7C)
+
+Migrations 044, 045 and 046 are applied and verified; the database side of
+automatic transcription is complete. What remains is **provider configuration**,
+which is documented separately and in full in:
+
+**`docs/operations/stt-activation.md`**
+
+Short version: add the `STT_*` variables to the Vercel project, **redeploy**
+(Vercel does not apply new variables to an existing deployment), then check
+`GET /api/admin/stt-health` as `super_admin`. Until that is done, transcription
+reports itself unavailable and phone/imported audio behaves exactly as it did in
+R2.7 — the recording attaches to the report and the transcript can be typed.
