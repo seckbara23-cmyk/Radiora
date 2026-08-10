@@ -338,3 +338,94 @@ None are `NEXT_PUBLIC_`, so they are never inlined into a browser bundle.
 audio stays on your own network; point it at a hosted service and it does not.
 Review that endpoint's retention and data-processing terms before enabling it —
 Radiora makes no claim about them.
+
+---
+
+## Migration 046 — owner-clinic trigger repair (R2.7B)
+
+**Status: awaiting manual application. This one is urgent.**
+
+### What is broken right now
+
+Migration 044 attached ONE trigger function to THREE tables that do not share
+ownership columns:
+
+| table | owners |
+|---|---|
+| `dictation_sessions` | `vacation_item_id` XOR `report_id` |
+| `transcriptions` | `vacation_item_id` XOR `report_id` |
+| `audio_assets` | `vacation_id` NAND `report_id` — **no `vacation_item_id`** |
+
+and guarded the queue branch with
+
+```sql
+if to_jsonb(new) ? 'vacation_item_id' and new.vacation_item_id is not null
+```
+
+That guard cannot work. PL/pgSQL hands each expression to the SQL planner, and
+`new.vacation_item_id` is resolved against the trigger relation's row type at
+**plan time**. For `audio_assets` the expression cannot be planned at all:
+
+```
+ERROR 42703: record "new" has no field "vacation_item_id"
+```
+
+SQL's `AND` short-circuit is a *runtime* property; an expression that fails to
+plan never reaches runtime, so the left-hand test never protects the right-hand
+one. `CREATE FUNCTION` does not validate a plpgsql body against any particular
+relation, so 044 deployed cleanly and the fault stayed dormant until something
+wrote to `audio_assets`.
+
+The branch is reached on **every** row, whatever its owner — so this affects
+every write to `audio_assets`: report-owned phone uploads, imported audio,
+queue/batch ingestion, and the R2.7A status update.
+
+### What 046 does
+
+Replaces the function so every ownership column is read through
+`to_jsonb(NEW) ->> '…'` — a runtime key lookup that is valid for any row type
+and yields NULL when the key is absent. No expression names a column that might
+not exist on the relation it runs for.
+
+It also **closes a real gap**: because the old queue branch could only ever run
+on tables carrying `vacation_item_id`, `audio_assets.vacation_id` was never
+clinic-validated. It is now.
+
+No column is added, renamed, retyped or dropped. The XOR/NAND CHECK constraints
+from 044 still do the ownership arithmetic. RLS is untouched. Unassigned audio
+(both owners NULL) still inserts, as batch ingestion requires.
+
+### Activation procedure
+
+Run in the Supabase SQL editor, in order:
+
+1. `supabase/migrations/046_owner_clinic_trigger_fix.sql`
+
+   Pre-flights that all six referenced tables exist, that 044's function is
+   present, that `audio_assets.vacation_id` exists and that `audio_assets` does
+   NOT have `vacation_item_id` (if it somehow does, it aborts and asks for a
+   re-audit). It then self-verifies that no unsafe field reference remains and
+   that all three triggers are attached.
+
+   Success prints:
+   `R2.7B: owner-clinic trigger repaired; 3 triggers attached; no unsafe field reference remains.`
+
+2. `supabase/verify/R2_7B_owner_clinic_trigger.sql` — expect **17 `PASS`**
+   notices plus the final structural `PASS`. It exercises real INSERT and UPDATE
+   execution on all three relations for every owner variant, including the
+   `audio_assets` paths that could not previously plan, and both cross-clinic
+   rejection directions. Transaction-wrapped, rolls back, prints no PHI.
+
+   The `audio_assets` checks run first on purpose: that is the relation whose
+   planning failed, so it is exercised before anything else could mask it.
+
+3. `supabase/verify/R2_7A_transcription_runs.sql` — the R2.7A verifier, which
+   could not previously get past its `audio_assets` fixture. Expect **11 PASS**.
+   Its assertions are unchanged.
+
+4. Optionally re-run `supabase/verify/R2_2_report_linked_dictation.sql`. Its
+   test 3 inserts report-owned audio and should have hit the same 42703; why the
+   original run reported 16 PASS could not be determined from the repository, so
+   confirming it now is worthwhile.
+
+**Do not re-run 044 or 045.** Both are already applied; 046 is forward-only.
