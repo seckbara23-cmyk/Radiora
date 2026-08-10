@@ -7,13 +7,19 @@
 // or recording.
 //
 // This is an operational endpoint, not a clinical one: it is outside the R2.1
-// product surface and appears in no navigation. Restricted to super_admin,
-// because it reveals which endpoint host an installation talks to.
+// product surface and appears in no navigation.
+//
+// AUTHORIZATION uses `canManageClinicSettings` — the SAME predicate that gates
+// the Administration area (Users / Institution / Letterhead), i.e. clinic_admin
+// or super_admin. The first version of this route required super_admin alone,
+// which is a strictly narrower role, so the clinic administrators who actually
+// operate an installation were refused by an endpoint built for them.
 //
 // The response contains no credential, no full URL and no clinical data — see
 // `checkSttHealth`, which is what builds it.
 
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
+import { canManageClinicSettings } from '@/lib/safety/authority'
 import { checkSttHealth } from '@/lib/stt/health'
 import { logAudit } from '@/lib/actions/audit'
 
@@ -21,8 +27,9 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
+  // Same session resolution as every authenticated page and route handler.
   const user = await requireCurrentUser()
-  if (user.role !== 'super_admin') {
+  if (!canManageClinicSettings(user.role)) {
     return new Response('Forbidden', { status: 403 })
   }
 

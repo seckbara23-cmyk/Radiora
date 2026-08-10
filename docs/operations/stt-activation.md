@@ -111,7 +111,9 @@ sees them as unset and the diagnostic will keep reporting `UNCONFIGURED`.
 
 ### 3. Confirm with the diagnostic
 
-Signed in as `super_admin`:
+Signed in as a **clinic administrator** (`clinic_admin`) or `super_admin` —
+the same roles that open the Administration area (Utilisateurs / Paramètres /
+En-tête):
 
 ```
 GET /api/admin/stt-health
@@ -126,6 +128,13 @@ GET /api/admin/stt-health
 
 It sends no audio, transcribes nothing, writes nothing, and returns the endpoint
 **host** and whether a key exists — never the key, never the full URL.
+
+Authorization uses `canManageClinicSettings` — the same predicate that gates the
+Administration area. It is deliberately NOT `super_admin`-only: the people who
+operate an installation are its clinic administrators, and requiring a
+platform-level role locked them out of a diagnostic built for them. Every
+clinical role, including `radiologist`, is refused: administering an
+installation is not a clinical capability.
 
 ### 4. Production E2E test — **must be run by a human**
 

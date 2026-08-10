@@ -164,8 +164,11 @@ describe('the diagnostic leaks nothing', () => {
     }
   })
 
-  it('the endpoint is super_admin only and audits state alone', () => {
-    expect(ROUTE).toContain("user.role !== 'super_admin'")
+  it('the endpoint is administrator-only and audits state alone', () => {
+    // Corrected after the production 403: the gate is the Administration-area
+    // predicate (clinic_admin OR super_admin), not super_admin alone.
+    // Behavioural coverage lives in stt-health-authorization.test.ts.
+    expect(ROUTE).toContain('canManageClinicSettings(user.role)')
     expect(ROUTE).toContain('status: 403')
     expect(ROUTE).toMatch(/metadata: \{ state: health\.state \}/)
     // The audit must not carry the endpoint or the key.
