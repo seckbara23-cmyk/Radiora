@@ -26,7 +26,7 @@ or patient information.
 | 041 | R0.7 | Vacation authority: `printed` guard, fail-closed role check | **Applied** |
 | 042 | R0.8A | Radiologist-only clinical authority | **Applied** (succeeded on re-run) |
 | 043 | R0.8B | Database-enforced delivery expiry | **Applied** |
-| 044 | R2.2 | Report-linked dictation ownership | **Awaiting operator activation** |
+| 044 | R2.2 | Report-linked dictation ownership | **Applied** — verified, 16 PASS |
 
 **Next operator action:** run `supabase/verify/R0_8A_clinical_authority.sql`
 (expect 11 `PASS` notices, zero `FAIL`). Migration 043 must not be run until it
@@ -207,11 +207,19 @@ R0_8A seed did.
 
 ---
 
-## Migration 044 — report-linked dictation (R2.2) — AWAITING ACTIVATION
+## Migration 044 — report-linked dictation (R2.2) — APPLIED
 
-**Not applied.** Ships with the R2.2 code deployment; the application keeps
-working without it because every report-owned path is new — no existing call
-site depends on the new columns.
+**Applied and verified by the operator.** `R2_2_report_linked_dictation.sql`
+returned 16 PASS with zero FAIL, confirming: the vacation-owned path still
+works; report-owned sessions, audio and transcriptions insert; both-owners and
+ownerless rows are rejected; unassigned batch audio is still accepted by design;
+cross-clinic report and queue-item ownership are refused by the trigger; the
+report-owned transcript is discoverable; and `vacation_items.report_id` is
+uniquely indexed.
+
+R2.3 depends on this migration and is safe to run against the current database.
+
+The description below is retained as the record of what was applied.
 
 What it does: lets a dictation session, audio asset and transcript be owned by a
 **report** as well as by a vacation queue item, so a report created directly

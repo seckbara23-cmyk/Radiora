@@ -3,9 +3,7 @@
 import React, { useState, useRef, useEffect, useActionState } from 'react'
 import { useTranslations } from 'next-intl'
 import { handleReportForm } from '@/lib/actions/reports'
-import { SmartStructuringPanel } from './SmartStructuringPanel'
-import { VoiceDictationPanel } from './VoiceDictationPanel'
-import { LiveDictationPanel } from '@/components/dictation/LiveDictationPanel'
+import { DictationWorkspace } from './DictationWorkspace'
 import { buildExamInfo, buildDefaultTechnique } from '@/lib/ai/hpd-engine'
 import { SectionSuggestions } from './SectionSuggestions'
 import { getSpecialForm, SPECIAL_LAYOUTS, type SpecialFormSchema } from '@/config/special-forms'
@@ -37,6 +35,8 @@ interface Props {
   initialPhrases: UserPhrasePreference[]
   patientInfo:    PatientInfo
   examDate:       string
+  /** R2.3 — transcript already stored for this report (report-owned, R2.2). */
+  initialTranscript?: string
 }
 
 // ─── Live document editor ─────────────────────────────────────────────────────
@@ -393,7 +393,7 @@ function LegacyEditor({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReportEditor({ report, canWrite, canAmend, templates, modality, bodyPart, initialPhrases, patientInfo, examDate }: Props) {
+export function ReportEditor({ report, canWrite, canAmend, templates, modality, bodyPart, initialPhrases, patientInfo, examDate, initialTranscript = '' }: Props) {
   const t = useTranslations('reportEditor')
 
   const isFinalized = report.status === 'finalized'
@@ -433,9 +433,6 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
   const [selectedTpl,    setSelectedTpl]    = useState('')
   const [showAmendPanel, setShowAmendPanel] = useState(false)
   const [changeReason,   setChangeReason]   = useState('')
-
-  const voiceKeyRef = useRef(0)
-  const [voiceSignal, setVoiceSignal] = useState<{ text: string; key: number } | null>(null)
 
   const [state, formAction, isPending] = useActionState(handleReportForm, { error: null })
 
@@ -496,10 +493,6 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
     setFindings(structuredData.results)
     setImpression(structuredData.conclusion)
     setRecommendations(structuredData.recommendations ?? '')
-  }
-
-  function handleVoiceApply(text: string) {
-    setVoiceSignal({ text, key: ++voiceKeyRef.current })
   }
 
   function convertToStructured() {
@@ -608,31 +601,17 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
         </div>
       )}
 
-      {/* ── Voice dictation ──────── (free-text exams only) ──────── */}
+      {/* ── Dictation workspace (R2.3) ── (free-text exams only) ──────────────
+          One clinical question — computer / phone / import — over the same
+          report-owned transcript and the canonical structuring pipeline. It
+          replaces the three technical panels the doctor used to choose between
+          (classic recording, live dictation, AI structuring); those components
+          remain in the repository and still serve the vacation queue. */}
       {isEditable && !hasSpecialForm && (
-        <VoiceDictationPanel reportId={report.id} onApply={handleVoiceApply} />
-      )}
-
-      {/* ── Live browser dictation (Phase 6B) ── (free-text exams only) ── */}
-      {isEditable && !hasSpecialForm && (
-        <LiveDictationPanel
-          modality={modality}
-          bodyPart={bodyPart}
-          patientName={patientInfo.name}
-          patientAge={patientInfo.age}
-          patientSex={patientInfo.sex}
-          onApply={handleVoiceApply}
-        />
-      )}
-
-      {/* ── AI structuring panel ── (free-text exams only) ──────── */}
-      {isEditable && !hasSpecialForm && (
-        <SmartStructuringPanel
+        <DictationWorkspace
           reportId={report.id}
-          modality={modality}
-          bodyPart={bodyPart}
-          onAccept={handleAiAccept}
-          voiceSignal={voiceSignal}
+          initialTranscript={initialTranscript}
+          onApply={handleAiAccept}
         />
       )}
 

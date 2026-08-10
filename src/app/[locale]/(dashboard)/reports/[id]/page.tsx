@@ -185,6 +185,9 @@ export default async function ReportPage({ params }: Props) {
             sex:  patient ? (SEX_FR[patient.sex] ?? '') : '',
           }}
           examDate={study?.studyDate ?? report.createdAt.slice(0, 10)}
+          // R2.3 — the report-owned transcript (R2.2) so a reload reconstructs
+          // the dictation relationship, not just the report content.
+          initialTranscript={safetyContext?.rawTranscript ?? ''}
         />
       </WorkspaceSection>
 

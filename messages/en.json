@@ -476,6 +476,57 @@
     "archiveNote": "Each report is saved individually, with secure delivery and a full audit trail.",
     "archiveBatchLink": "Batch export (ZIP) from the reports list →"
   },
+  "workspace": {
+    "title": "Dictation",
+    "question": "How would you like to dictate?",
+    "recording": "Recording",
+    "listening": "Listening…",
+    "stop": "Finish",
+    "cancel": "Cancel",
+    "interimNote": "Interim text is never written straight into the report.",
+    "scanQr": "Scan this code with your phone",
+    "phoneWaiting": "Waiting for the phone…",
+    "phoneRecording": "Phone connected — recording",
+    "transcriptLabel": "Original dictation",
+    "transcriptPlaceholder": "Type or correct the transcription here.",
+    "saveTranscript": "Save dictation",
+    "structure": "Structure the report",
+    "structuringInProgress": "Structuring…",
+    "draftReady": "Draft ready for review.",
+    "reviewRequired": "Review required before signing.",
+    "autoFilled": "The technique was pre-filled — confirm it matches the acquisition.",
+    "corrections": "{count} correction(s) detected in the dictation.",
+    "applyToReport": "Apply to report",
+    "method": {
+      "computer": "This computer",
+      "phone": "Use my phone",
+      "import": "Import an audio file"
+    },
+    "state": {
+      "setup": "Selecting the examination",
+      "ready_to_dictate": "Ready to dictate",
+      "recording": "Recording",
+      "phone_waiting": "Waiting for the phone",
+      "phone_recording": "Recording from the phone",
+      "audio_uploaded": "Audio received",
+      "transcribing": "Transcribing",
+      "transcription_ready": "Dictation ready",
+      "structuring": "Structuring",
+      "review_ready": "Draft ready",
+      "saving": "Saving",
+      "saved": "Saved",
+      "signing_blocked": "Signing blocked",
+      "signed": "Signed",
+      "error": "Error"
+    },
+    "errors": {
+      "unsupportedBrowser": "This browser does not support dictation. Use Chrome, Edge, or your phone.",
+      "noSpeech": "No speech detected.",
+      "qrFailed": "Could not create the dictation session.",
+      "qrExpired": "The dictation link has expired. Generate a new one.",
+      "structuringFailed": "Structuring failed. Please try again."
+    }
+  },
   "newReport": {
     "title": "New report",
     "subtitle": "Select the examination you want to dictate.",

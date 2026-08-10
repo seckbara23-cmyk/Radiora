@@ -891,3 +891,67 @@ The unified workspace can now persist everything it captures against a report:
 session, audio, transcript and structuring metadata. R2.3 builds the UI on top
 of these actions. Live section population remains gated on
 `splitStableTranscript` (§8.2) — R2.2 structures a **complete** transcript only.
+
+---
+
+## R2.3 implementation status
+
+**Gate R2.3 — unified New Report workspace. COMPLETE.** No migration.
+
+### Composition
+
+The three technical accordions the doctor used to choose between — "Classic
+recording", "Live dictation", "AI Structuring" — are replaced inside the report
+editor by **one** `DictationWorkspace` asking a single clinical question:
+*How would you like to dictate?* → **This computer · My phone · Import a file**.
+
+All three feed the same report-owned transcript and the same canonical
+pipeline. Nothing was rebuilt:
+
+| Concern | Reused |
+|---|---|
+| Browser speech | `useSpeechRecognition` — the single binding; no third implementation |
+| QR pairing | `createReportDictationSession` (R2.2) + the existing `/m/[token]` recorder |
+| Audio import | the private `dictation-audio` bucket, same size/MIME limits |
+| Transcript | `saveReportTranscript` → report-owned row (migration 044) |
+| Structuring | `structureReportTranscript` → `buildHpdDraft` → `runStructuring` |
+| Report editing | the existing `StructuredEditor` — the workspace renders dictation only |
+| Signing / export | the existing gate, `buildReportExportModel` and renderers, untouched |
+
+`VoiceDictationPanel`, `LiveDictationPanel` and `SmartStructuringPanel` remain in
+the repository and still serve the vacation queue; only the report editor stopped
+composing them.
+
+### State model
+
+`src/lib/reports/workspace-state.ts` — a 15-state machine (setup →
+ready_to_dictate → recording / phone_waiting / phone_recording / audio_uploaded
+→ transcribing → transcription_ready → structuring → review_ready → saving →
+saved → signing_blocked → signed, plus error) with an explicit transition table.
+No scattered booleans; an invalid event is ignored rather than crashing or
+jumping.
+
+**The safety-critical property, asserted by test across every state:**
+`structuring` can only be ENTERED from `transcription_ready`. There is no path
+by which interim speech reaches a clinical section. The live transcript is shown
+as transcript, the doctor stops and reviews it, and the structured draft is
+applied by an explicit radiologist action.
+
+### Entry and navigation
+
+`/[locale]/reports/new` stays the canonical entry: it selects an examination
+without a report, reuses `createReport`, and redirects to `/reports/[id]` where
+the workspace lives. This deliberately avoids a second report editor — the
+report route remains the single place a report is edited, so refresh, the back
+button and direct report links all behave normally.
+
+### Reload behaviour
+
+The report page passes the report-owned transcript into the editor via
+`getReportSafetyContext`, so a refresh reconstructs report content, the
+transcript relationship and the signing-safety context together.
+
+### Not started
+
+Continuous live section mutation, `splitStableTranscript` UI, template
+ingestion, PACS/RIS integration. The external-AI append bug remains open.

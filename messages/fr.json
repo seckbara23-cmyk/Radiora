@@ -476,6 +476,57 @@
     "archiveNote": "Sauvegarde individuelle de chaque compte rendu, envoi sécurisé et journal d’audit complet.",
     "archiveBatchLink": "Export groupé (ZIP) depuis la liste des comptes rendus →"
   },
+  "workspace": {
+    "title": "Dictée",
+    "question": "Comment souhaitez-vous dicter ?",
+    "recording": "Enregistrement",
+    "listening": "À l'écoute…",
+    "stop": "Terminer",
+    "cancel": "Annuler",
+    "interimNote": "Le texte provisoire n'est jamais écrit directement dans le compte rendu.",
+    "scanQr": "Scannez ce code avec votre téléphone",
+    "phoneWaiting": "En attente du téléphone…",
+    "phoneRecording": "Téléphone connecté — enregistrement en cours",
+    "transcriptLabel": "Dictée originale",
+    "transcriptPlaceholder": "Saisissez ou corrigez la transcription ici.",
+    "saveTranscript": "Enregistrer la dictée",
+    "structure": "Structurer le compte rendu",
+    "structuringInProgress": "Structuration…",
+    "draftReady": "Proposition prête à relire.",
+    "reviewRequired": "Relecture requise avant signature.",
+    "autoFilled": "La technique a été pré-remplie — confirmez qu'elle correspond à l'acquisition.",
+    "corrections": "{count} correction(s) détectée(s) dans la dictée.",
+    "applyToReport": "Appliquer au compte rendu",
+    "method": {
+      "computer": "Cet ordinateur",
+      "phone": "Mon téléphone",
+      "import": "Importer un fichier audio"
+    },
+    "state": {
+      "setup": "Sélection de l'examen",
+      "ready_to_dictate": "Prêt à dicter",
+      "recording": "Enregistrement en cours",
+      "phone_waiting": "En attente du téléphone",
+      "phone_recording": "Enregistrement depuis le téléphone",
+      "audio_uploaded": "Audio reçu",
+      "transcribing": "Transcription en cours",
+      "transcription_ready": "Dictée prête",
+      "structuring": "Structuration en cours",
+      "review_ready": "Proposition prête",
+      "saving": "Enregistrement",
+      "saved": "Enregistré",
+      "signing_blocked": "Signature bloquée",
+      "signed": "Signé",
+      "error": "Erreur"
+    },
+    "errors": {
+      "unsupportedBrowser": "Ce navigateur ne prend pas en charge la dictée. Utilisez Chrome, Edge, ou votre téléphone.",
+      "noSpeech": "Aucune parole détectée.",
+      "qrFailed": "Impossible de créer la session de dictée.",
+      "qrExpired": "Le lien de dictée a expiré. Générez-en un nouveau.",
+      "structuringFailed": "La structuration a échoué. Réessayez."
+    }
+  },
   "newReport": {
     "title": "Nouveau compte rendu",
     "subtitle": "Sélectionnez l'examen à dicter.",
