@@ -3,13 +3,23 @@
 --
 -- Read-only with respect to real data: every fixture is created inside the
 -- transaction and the whole script ROLLS BACK at the end. Nothing here prints
--- clinical text, a transcript, a patient identifier or a provider key.
+-- clinical text, a transcript, a patient identifier, a token or a provider key.
 --
--- Fixture UUIDs use hex-only segments. 'v', 'i', 's' and similar letters are NOT
--- valid hex and produce a 22P02 invalid-input error before any test runs — the
--- mistake that aborted the R0.8A verification run. Allowed: 0-9 a-f.
+-- FIXTURES FOLLOW THE PROVEN PATTERN in R2_2_report_linked_dictation.sql:
+--   clinic(+slug) → synthetic auth user → profile → patient → study → report
+--   → audio asset → transcription
 --
---   clinic  ceee...   report  4eef...   asset  a55e...   user  0b0b...
+-- Every fixture is SYNTHETIC. In particular the script creates its own
+-- auth.users row rather than borrowing an existing one: an earlier revision did
+-- `SELECT id FROM auth.users LIMIT 1`, which reaches into a real account and
+-- also gives no guarantee that the profile belongs to the fixture clinic.
+--
+-- Fixture UUIDs use hex-only segments. 'v', 'i', 's' and similar letters are
+-- NOT valid hex and produce a 22P02 invalid-input error before any test runs —
+-- the mistake that aborted the R0.8A verification run. Allowed: 0-9 a-f.
+--
+--   clinic ceee…   user 0b0b…   patient bbbb…   study 57d7…
+--   report 4eef…   asset a55e…
 --
 -- Run in the Supabase SQL editor. Every check raises NOTICE 'PASS' or fails
 -- loudly with an exception.
@@ -20,7 +30,9 @@ DO $$
 DECLARE
   v_clinic     uuid := 'ceee0000-0000-4000-8000-000000000001';
   v_clinic_b   uuid := 'ceee0000-0000-4000-8000-000000000002';
-  v_user       uuid;
+  v_user       uuid := '0b0b0000-0000-4000-8000-000000000001';
+  v_patient    uuid := 'bbbb0000-0000-4000-8000-000000000001';
+  v_study      uuid := '57d70000-0000-4000-8000-000000000001';
   v_report     uuid := '4eef0000-0000-4000-8000-000000000001';
   v_transcript uuid;
   v_asset      uuid := 'a55e0000-0000-4000-8000-000000000001';
@@ -85,20 +97,44 @@ BEGIN
   RAISE NOTICE 'PASS %: review-status enum untouched', v_test;
 
   -- ── Fixtures ───────────────────────────────────────────────────────────────
-  SELECT id INTO v_user FROM auth.users LIMIT 1;
-  IF v_user IS NULL THEN
-    RAISE NOTICE 'SKIP: no auth.users row available; behavioural tests need one.';
-    RAISE EXCEPTION 'VERIFICATION INCOMPLETE — create a user and re-run.';
-  END IF;
+  -- clinics.slug is NOT NULL UNIQUE (migration 001). The only other columns
+  -- without defaults is `name`; everything else (country/status/plan) defaults.
+  INSERT INTO public.clinics (id, name, slug) VALUES
+    (v_clinic,   'R2.7A Verify A', 'r27a-verify-clinic-a'),
+    (v_clinic_b, 'R2.7A Verify B', 'r27a-verify-clinic-b');
 
-  INSERT INTO public.clinics (id, name) VALUES (v_clinic, 'R2.7A Verify A')
-    ON CONFLICT (id) DO NOTHING;
-  INSERT INTO public.clinics (id, name) VALUES (v_clinic_b, 'R2.7A Verify B')
-    ON CONFLICT (id) DO NOTHING;
+  -- A synthetic user. The AFTER INSERT trigger on auth.users creates the
+  -- matching public.profiles row, which reports.author_id references.
+  INSERT INTO auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at
+  ) VALUES (
+    v_user, '00000000-0000-0000-0000-000000000000',
+    'authenticated', 'authenticated', 'r27a.verify@test.local', '',
+    now(), now(), now()
+  );
 
-  INSERT INTO public.reports (id, clinic_id, status, findings, impression, created_by)
-  VALUES (v_report, v_clinic, 'draft', '', '', v_user)
-  ON CONFLICT (id) DO NOTHING;
+  UPDATE public.profiles
+     SET clinic_id = v_clinic, role = 'radiologist'
+   WHERE id = v_user;
+
+  -- reports.study_id and reports.patient_id are NOT NULL, so both parents are
+  -- required before a report can exist.
+  INSERT INTO public.patients (id, clinic_id, mrn, first_name, last_name, date_of_birth, sex)
+  VALUES (v_patient, v_clinic, 'R27A-MRN-1', 'Test', 'Fixture', '1980-01-01', 'unknown');
+
+  INSERT INTO public.studies (
+    id, clinic_id, patient_id, accession_number, modality, body_part, study_date, status
+  ) VALUES (
+    v_study, v_clinic, v_patient, 'ACC-R27A-VERIFY', 'CT', 'Thorax', current_date, 'pending'
+  );
+
+  -- reports has author_id (→ public.profiles), NOT created_by.
+  INSERT INTO public.reports (
+    id, clinic_id, study_id, patient_id, author_id, status, findings, impression
+  ) VALUES (
+    v_report, v_clinic, v_study, v_patient, v_user, 'draft', '', ''
+  );
 
   INSERT INTO public.audio_assets (
     id, clinic_id, report_id, uploaded_by, original_filename,
@@ -106,7 +142,7 @@ BEGIN
   ) VALUES (
     v_asset, v_clinic, v_report, v_user, 'verify.webm',
     'audio/webm', 1024, v_clinic || '/verify.webm', 'single', 'assigned'
-  ) ON CONFLICT (id) DO NOTHING;
+  );
 
   INSERT INTO public.transcriptions (clinic_id, report_id, audio_asset_id, created_by)
   VALUES (v_clinic, v_report, v_asset, v_user)

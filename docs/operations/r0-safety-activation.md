@@ -291,7 +291,21 @@ Run in the Supabase SQL editor, in order:
    `R2.7A pre-flight: dependencies present.`
 
 2. `supabase/verify/R2_7A_transcription_runs.sql` — expect **11 `PASS`
-   notices**, zero failures. It creates its fixtures inside a transaction and
+   notices**, zero failures.
+
+   > **Repaired 2026-08-10.** The first published version of this verifier was
+   > written against a remembered schema and aborted in production with
+   > `23502: null value in column "slug" of relation "clinics"`. Auditing it
+   > against the real migrations found four defects, not one: `clinics.slug`
+   > (NOT NULL since 001) was missing; `reports.created_by` does not exist (the
+   > column is `author_id`, referencing `profiles`); and `reports.study_id` /
+   > `reports.patient_id` are NOT NULL and were absent, so `patients` and
+   > `studies` parents were needed too. It also borrowed a real account via
+   > `SELECT id FROM auth.users LIMIT 1` and now creates a synthetic one, as
+   > `R2_2_report_linked_dictation.sql` does. Migration 045 itself needed no
+   > change. A regression test (`src/lib/safety/verify-fixtures.test.ts`) now
+   > parses the migrations and holds every `supabase/verify` INSERT against the
+   > real column set, so a fixture cannot silently omit a required column again. It creates its fixtures inside a transaction and
    `ROLLBACK`s; nothing persists, and it prints no transcript, patient data or
    provider key. Fixture UUIDs use hex-only segments, so an invalid-UUID abort
    cannot recur.
