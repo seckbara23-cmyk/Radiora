@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { setUserStatus } from '@/lib/actions/users'
 
 interface UserActionsProps {
@@ -10,6 +11,7 @@ interface UserActionsProps {
 }
 
 export function UserActions({ userId, isActive, isSelf }: UserActionsProps) {
+  const t = useTranslations('users')
   const [state, formAction, isPending] = useActionState(setUserStatus, { error: null })
 
   // Current user's own row — no action available
@@ -32,8 +34,8 @@ export function UserActions({ userId, isActive, isSelf }: UserActionsProps) {
           {isPending
             ? '…'
             : isActive
-              ? 'Deactivate'
-              : 'Reactivate'}
+              ? t('deactivate')
+              : t('reactivate')}
         </button>
       </form>
       {state.error && (

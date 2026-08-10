@@ -2,6 +2,7 @@
 
 import { Link } from '@/i18n/navigation'
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { saveTemplate } from '@/lib/actions/templates'
 import type { Template } from '@/types/template'
 
@@ -18,6 +19,8 @@ interface Props {
 }
 
 export function TemplateForm({ initialData }: Props) {
+  const t = useTranslations('templates')
+  const tCommon = useTranslations('common')
   const [state, formAction, isPending] = useActionState(saveTemplate, { error: null })
   const isEdit = !!initialData?.id
 
@@ -36,11 +39,11 @@ export function TemplateForm({ initialData }: Props) {
 
         {/* Title */}
         <div>
-          <label className={labelCls} htmlFor="title">Template Title *</label>
+          <label className={labelCls} htmlFor="title">{t('titleField')} *</label>
           <input
             id="title" name="title" required
             defaultValue={initialData?.title ?? ''}
-            placeholder="e.g. Chest XR — Normal"
+            placeholder={t('phTitle')}
             disabled={isPending} className={inputCls}
           />
         </div>
@@ -48,24 +51,24 @@ export function TemplateForm({ initialData }: Props) {
         {/* Modality + Body Part */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
           <div>
-            <label className={labelCls} htmlFor="modality">Modality</label>
+            <label className={labelCls} htmlFor="modality">{t('modality')}</label>
             <select
               id="modality" name="modality"
               defaultValue={initialData?.modality ?? ''}
               disabled={isPending} className={inputCls}
             >
-              <option value="">Any modality (generic)</option>
+              <option value="">{t('anyModalityGeneric')}</option>
               {MODALITIES.map((m) => (
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
           </div>
           <div>
-            <label className={labelCls} htmlFor="body_part">Body Part</label>
+            <label className={labelCls} htmlFor="body_part">{t('bodyPart')}</label>
             <input
               id="body_part" name="body_part"
               defaultValue={initialData?.bodyPart ?? ''}
-              placeholder="e.g. Chest, Abdomen, Brain"
+              placeholder={t('phBodyPart')}
               disabled={isPending} className={inputCls}
             />
           </div>
@@ -76,55 +79,55 @@ export function TemplateForm({ initialData }: Props) {
 
         {/* Indication Template */}
         <div>
-          <label className={labelCls} htmlFor="indication_template">Indication Template</label>
+          <label className={labelCls} htmlFor="indication_template">{t('indicationField')}</label>
           <textarea
             id="indication_template" name="indication_template" rows={2}
             defaultValue={initialData?.indicationTemplate ?? ''}
-            placeholder="Default indication / clinical context (optional)…"
+            placeholder={t('phIndication')}
             disabled={isPending} className={textareaCls}
           />
         </div>
 
         {/* Technique Template */}
         <div>
-          <label className={labelCls} htmlFor="technique_template">Technique Template</label>
+          <label className={labelCls} htmlFor="technique_template">{t('techniqueField')}</label>
           <textarea
             id="technique_template" name="technique_template" rows={2}
             defaultValue={initialData?.techniqueTemplate ?? ''}
-            placeholder="Default acquisition technique (optional)…"
+            placeholder={t('phTechnique')}
             disabled={isPending} className={textareaCls}
           />
         </div>
 
         {/* Findings Template */}
         <div>
-          <label className={labelCls} htmlFor="findings_template">Findings Template *</label>
+          <label className={labelCls} htmlFor="findings_template">{t('findingsField')} *</label>
           <textarea
             id="findings_template" name="findings_template" rows={7} required
             defaultValue={initialData?.findingsTemplate ?? ''}
-            placeholder="Standard findings text for this study type…"
+            placeholder={t('phFindings')}
             disabled={isPending} className={textareaCls}
           />
         </div>
 
         {/* Impression Template */}
         <div>
-          <label className={labelCls} htmlFor="impression_template">Impression Template *</label>
+          <label className={labelCls} htmlFor="impression_template">{t('impressionField')} *</label>
           <textarea
             id="impression_template" name="impression_template" rows={4} required
             defaultValue={initialData?.impressionTemplate ?? ''}
-            placeholder="Standard impression for this study type…"
+            placeholder={t('phImpression')}
             disabled={isPending} className={textareaCls}
           />
         </div>
 
         {/* Recommendations Template */}
         <div>
-          <label className={labelCls} htmlFor="recommendations_template">Recommendations Template</label>
+          <label className={labelCls} htmlFor="recommendations_template">{t('recommendationsField')}</label>
           <textarea
             id="recommendations_template" name="recommendations_template" rows={3}
             defaultValue={initialData?.recommendationsTemplate ?? ''}
-            placeholder="Standard follow-up recommendations (optional)…"
+            placeholder={t('phRecommendations')}
             disabled={isPending} className={textareaCls}
           />
         </div>
@@ -135,14 +138,14 @@ export function TemplateForm({ initialData }: Props) {
             href="/templates"
             className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition"
           >
-            Cancel
+            {tCommon('cancel')}
           </Link>
           <button
             type="submit"
             disabled={isPending}
             className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-semibold rounded-lg transition"
           >
-            {isPending ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Template'}
+            {isPending ? tCommon('loading') : isEdit ? t('saveChanges') : t('createTemplate')}
           </button>
         </div>
 

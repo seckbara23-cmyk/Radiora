@@ -4,7 +4,7 @@ import { getTranslations } from 'next-intl/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
 import { getClinicUsers } from '@/lib/data/users'
 import { getInviteStatuses } from '@/lib/data/user-invites'
-import { Badge, userRoleVariant, userRoleLabel } from '@/components/ui/badge'
+import { Badge, userRoleVariant } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { UserActions } from './UserActions'
 import { ResendInvite } from './ResendInvite'
@@ -23,6 +23,7 @@ export default async function UsersPage({
   }
 
   const t = await getTranslations('users')
+  const tRoles = await getTranslations('roles')
   const { invited } = await searchParams
   const users = await getClinicUsers()
   const inviteStatuses = await getInviteStatuses(users.map((u) => u.id))
@@ -52,13 +53,13 @@ export default async function UsersPage({
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Users</h1>
+          <h1 className="text-xl font-semibold text-gray-900">{t('title')}</h1>
           <p className="mt-1 text-sm text-gray-500">
-            {users.length} user{users.length !== 1 ? 's' : ''}
+            {t('countUsers', { count: users.length })}
             {' · '}
-            <span className="text-emerald-600 font-medium">{activeCount} active</span>
+            <span className="text-emerald-600 font-medium">{t('countActive', { count: activeCount })}</span>
             {inactiveCount > 0 && (
-              <span className="text-gray-400"> · {inactiveCount} inactive</span>
+              <span className="text-gray-400"> · {t('countInactive', { count: inactiveCount })}</span>
             )}
           </p>
         </div>
@@ -69,7 +70,7 @@ export default async function UsersPage({
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Invite User
+          {t('inviteUser')}
         </Link>
       </div>
 
@@ -77,14 +78,14 @@ export default async function UsersPage({
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {users.length === 0 ? (
           <EmptyState
-            title="No users yet"
-            description="Invite your first team member to get started."
+            title={t('noUsersTitle')}
+            description={t('noUsersDesc')}
             action={
               <Link
                 href="/users/new"
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
               >
-                Invite User
+                {t('inviteUser')}
               </Link>
             }
           />
@@ -94,22 +95,22 @@ export default async function UsersPage({
               <thead>
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    User
+                    {t('colUser')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Role
+                    {t('colRole')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide hidden md:table-cell">
-                    Specialty
+                    {t('colSpecialty')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide hidden lg:table-cell">
-                    License
+                    {t('colLicense')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide hidden sm:table-cell">
-                    Joined
+                    {t('colJoined')}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    Status
+                    {t('colStatus')}
                   </th>
                   <th className="px-6 py-3" />
                 </tr>
@@ -136,7 +137,7 @@ export default async function UsersPage({
                             <p className="font-medium text-gray-900 truncate">
                               {u.firstName} {u.lastName}
                               {isSelf && (
-                                <span className="ml-1.5 text-xs font-normal text-gray-400">(you)</span>
+                                <span className="ml-1.5 text-xs font-normal text-gray-400">{t('you')}</span>
                               )}
                             </p>
                             <p className="text-xs text-gray-400 truncate">{u.email ?? '—'}</p>
@@ -147,7 +148,7 @@ export default async function UsersPage({
                       {/* Role */}
                       <td className="px-6 py-3.5">
                         <Badge variant={userRoleVariant[u.role]}>
-                          {userRoleLabel[u.role]}
+                          {tRoles(u.role)}
                         </Badge>
                       </td>
 

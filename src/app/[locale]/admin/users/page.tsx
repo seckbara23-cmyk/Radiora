@@ -1,7 +1,13 @@
+import { getTranslations } from 'next-intl/server'
 import { mockUsers } from '@/lib/mock-data'
-import { Badge, userRoleVariant, userRoleLabel } from '@/components/ui/badge'
+import { Badge, userRoleVariant } from '@/components/ui/badge'
 
-export default function AdminUsersPage() {
+// NOTE: this platform-area page renders mockUsers, not real clinic data. Its
+// role badges are localized here because the page is reachable; the mock data
+// itself is a separate concern.
+export default async function AdminUsersPage() {
+  const t = await getTranslations('users')
+  const tRoles = await getTranslations('roles')
   const activeCount = mockUsers.filter((u) => u.isActive).length
 
   return (
@@ -12,9 +18,9 @@ export default function AdminUsersPage() {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-1">Admin</p>
-            <h1 className="text-xl font-semibold text-gray-900">Users</h1>
+            <h1 className="text-xl font-semibold text-gray-900">{t('title')}</h1>
             <p className="mt-1 text-sm text-gray-500">
-              {mockUsers.length} users &mdash; {activeCount} active
+              {t('countUsers', { count: mockUsers.length })} &mdash; {t('countActive', { count: activeCount })}
             </p>
           </div>
           <button className="self-start sm:self-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition">
@@ -54,7 +60,7 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-3.5">
                       <Badge variant={userRoleVariant[user.role]}>
-                        {userRoleLabel[user.role]}
+                        {tRoles(user.role)}
                       </Badge>
                     </td>
                     <td className="px-6 py-3.5 text-gray-500 hidden md:table-cell">

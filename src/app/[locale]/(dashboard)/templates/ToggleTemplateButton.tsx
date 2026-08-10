@@ -1,6 +1,7 @@
 'use client'
 
 import { useActionState } from 'react'
+import { useTranslations } from 'next-intl'
 import { toggleTemplate } from '@/lib/actions/templates'
 
 export function ToggleTemplateButton({
@@ -10,6 +11,7 @@ export function ToggleTemplateButton({
   id: string
   isActive: boolean
 }) {
+  const t = useTranslations('templates')
   const [state, formAction, isPending] = useActionState(toggleTemplate, { error: null })
 
   return (
@@ -28,7 +30,7 @@ export function ToggleTemplateButton({
             : 'text-gray-400 hover:text-green-600'
         }`}
       >
-        {isPending ? '…' : isActive ? 'Deactivate' : 'Reactivate'}
+        {isPending ? '…' : isActive ? t('deactivate') : t('activate')}
       </button>
     </form>
   )

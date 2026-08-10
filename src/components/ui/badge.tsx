@@ -76,15 +76,20 @@ export const clinicStatusVariant: Record<ClinicStatus, BadgeVariant> = {
   inactive:  'neutral',
 }
 
-export const userRoleLabel: Record<UserRole, string> = {
-  super_admin:          'Super Admin',
-  clinic_admin:         'Admin',
-  radiologist:          'Radiologist',
-  secretary:            'Secretary',
-  technician:           'Technician',
-  referring_physician:  'Referring Physician',
-  viewer:               'Viewer',
-}
+// Role DISPLAY labels are NOT defined here any more.
+//
+// This module used to export `userRoleLabel`, a hard-coded English
+// Record<UserRole, string> ('Radiologist', 'Admin', …), so a French user saw
+// English role badges however well the rest of the page was translated. The
+// `roles.*` namespace already existed in both message bundles — it was simply
+// never consulted.
+//
+// Callers now translate the role themselves:
+//     const tRoles = await getTranslations('roles')   // or useTranslations
+//     tRoles(user.role)
+//
+// The stored enum value ('radiologist') is unchanged; only the display is.
+// `userRoleVariant` stays here because a colour is not language.
 
 export const userRoleVariant: Record<UserRole, BadgeVariant> = {
   super_admin:         'danger',
