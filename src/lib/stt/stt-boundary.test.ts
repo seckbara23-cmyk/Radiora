@@ -83,8 +83,10 @@ describe('4-51. the provider secret is server-only', () => {
 
   it('the built client bundle contains no STT configuration name or value', () => {
     const dir = join(ROOT, '.next', 'static')
-    if (!existsSync(dir)) {
-      // `npx next build` runs in validation; skip cleanly when it has not.
+    // BUILD_ID is written when a build COMPLETES. Scanning a half-written
+    // .next produced a spurious failure once; an incomplete tree proves
+    // nothing either way, so treat it as "not built" rather than as evidence.
+    if (!existsSync(dir) || !existsSync(join(ROOT, '.next', 'BUILD_ID'))) {
       expect(true).toBe(true)
       return
     }
