@@ -30,15 +30,40 @@
 
 import { SECTION_ORDER, type SectionKey } from '@/lib/safety/sections'
 import { stableBoundary } from '@/lib/dictation/transcript-stability'
-import type { StructuredReportData } from '@/types/report'
+import type { StructuredReportData, SectionProvenanceValue } from '@/types/report'
 import type {
   LiveReportState,
   PatchLogEntry,
   PatchResult,
-  SectionPatch,
+  SectionOrigin,
   SectionState,
+  SectionPatch,
   StructuredReportPatch,
 } from '@/types/live-structuring'
+
+// ─── Provenance, in memory and on disk ────────────────────────────────────────
+//
+// R2.7C. Two names for the same three ideas already existed — the live state
+// calls the radiologist 'radiologist', the section router calls the same thing
+// 'physician_edit'. Rather than add a third, the persisted form reuses the
+// router's vocabulary and this pair of tables is the ONLY place the two meet.
+
+const TO_PERSISTED: Record<SectionOrigin, SectionProvenanceValue> = {
+  radiologist: 'physician_edit',
+  dictation:   'dictation',
+  template:    'template',
+}
+
+const FROM_PERSISTED: Record<SectionProvenanceValue, SectionOrigin> = {
+  physician_edit: 'radiologist',
+  dictation:      'dictation',
+  template:       'template',
+}
+
+/** Live-state origin → the value stored in `structured_data.sectionProvenance`. */
+export function toPersistedProvenance(origin: SectionOrigin): SectionProvenanceValue {
+  return TO_PERSISTED[origin]
+}
 
 // ─── State construction ───────────────────────────────────────────────────────
 
@@ -66,10 +91,19 @@ export function createLiveReportState(init?: {
 }
 
 /**
- * Seed live state from a report that already exists. Everything already in the
- * report was authored or approved by a human, so every non-empty section starts
- * LOCKED — re-opening a report for more dictation must not let the engine
- * silently rewrite previously reviewed content.
+ * Seed live state from a report that already exists.
+ *
+ * R2.7C — when the report records who wrote each section, that is used: only
+ * PHYSICIAN-authored sections lock. Dictated and template sections stay open,
+ * so continuing a dictation after a reload behaves the way it does before one.
+ * They are still protected — the coordinator only auto-applies a proposal that
+ * EXTENDS what is on screen; a rewrite is always held back as a suggestion.
+ *
+ * When the report does NOT record it — every report saved before R2.7C,
+ * including the ones already in production — the old conservative rule applies
+ * unchanged: any non-empty section is assumed to be the radiologist's and locks.
+ * Guessing "dictation" for those would hand pre-existing clinical text back to
+ * the engine, which is the one direction this must never fail in.
  */
 export function fromStructuredReportData(sd: StructuredReportData): LiveReportState {
   const state = createLiveReportState({ transcript: sd.dictationTranscript ?? '' })
@@ -82,13 +116,33 @@ export function fromStructuredReportData(sd: StructuredReportData): LiveReportSt
   }
   for (const key of SECTION_ORDER) {
     const value = text[key].trim()
-    state.sections[key] = {
-      text: value,
-      origin: value ? 'radiologist' : 'dictation',
-      locked: Boolean(value),
+    if (!value) {
+      state.sections[key] = { text: '', origin: 'dictation', locked: false }
+      continue
     }
+    const stored = sd.sectionProvenance?.[key]
+    const origin: SectionOrigin = stored ? (FROM_PERSISTED[stored] ?? 'radiologist') : 'radiologist'
+    state.sections[key] = { text: value, origin, locked: origin === 'radiologist' }
   }
   return state
+}
+
+/**
+ * R2.7C — the persisted authorship map for the sections that hold text.
+ *
+ * Empty sections are omitted: recording an origin for text that does not exist
+ * would make a later reload lock or unlock on the strength of a value nobody set.
+ */
+export function sectionProvenanceOf(
+  state: LiveReportState,
+): Partial<Record<SectionKey, SectionProvenanceValue>> {
+  const out: Partial<Record<SectionKey, SectionProvenanceValue>> = {}
+  for (const key of SECTION_ORDER) {
+    const section = state.sections[key]
+    if (!section.text.trim()) continue
+    out[key] = TO_PERSISTED[section.origin]
+  }
+  return out
 }
 
 // ─── Projection back into the canonical model ─────────────────────────────────
@@ -116,6 +170,9 @@ export function toStructuredReportData(
     conclusion: state.sections.conclusion.text,
     ...(recommendations ? { recommendations } : {}),
     dictationTranscript: state.transcript,
+    // R2.7C — authorship travels with the content, so a reload knows which
+    // sections the radiologist owns instead of assuming all of them.
+    sectionProvenance: sectionProvenanceOf(state),
   }
 }
 

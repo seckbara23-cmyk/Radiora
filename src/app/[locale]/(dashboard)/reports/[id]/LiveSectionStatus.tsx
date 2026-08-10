@@ -60,8 +60,19 @@ export function LiveSectionStatus({
 
   return (
     <div className="mb-1.5 flex flex-wrap items-center gap-1.5 font-sans">
+      {/* R2.7C(E) — this states WHO WROTE the section. It is not a control, and
+          production showed it being read as one: a pill of the same size and
+          shape as the real buttons beside it, which simply did nothing when
+          clicked. It is now a flat, square-cornered label with no button
+          affordance, and it is announced as a status rather than as an action.
+          The actionable counterpart is "Reprendre la dictée IA" below. */}
       {owned && (
-        <span className="rounded-full border border-slate-300 bg-slate-50 px-2 py-0.5 text-[10px] font-medium text-slate-700">
+        <span
+          role="status"
+          title={t('editedByYouHint')}
+          className="inline-flex items-center gap-1 rounded-sm border-l-2 border-slate-400 bg-slate-100/70 px-1.5 py-0.5 text-[10px] font-medium text-slate-600"
+        >
+          <span aria-hidden>✎</span>
           {t('editedByYou')}
         </span>
       )}

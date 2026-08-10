@@ -24,6 +24,8 @@ import { buildHpdDraft, type HpdStructuringMeta } from '@/lib/ai/hpd-draft'
 import { isReportContentLocked } from '@/lib/safety/immutability'
 import { canEditClinicalContent } from '@/lib/safety/authority'
 import { reportOwner, ownerColumns, audioOwnerColumns, ownerAuditMetadata } from '@/lib/dictation/owner'
+import { nextSourceTranscript } from '@/lib/dictation/transcription-state'
+import { ageLabel, displayPatientName, frenchSexLabel } from '@/lib/reports/patient-identity'
 import { AUDIO_BUCKET, ACCEPTED_AUDIO_EXT, MAX_AUDIO_BYTES } from '@/types/audio'
 import type { StructuredReportData } from '@/types/report'
 
@@ -50,7 +52,7 @@ async function loadWritableReport(reportId: string) {
   const supabase = await createClient()
   const { data: report, error } = await supabase
     .from('reports')
-    .select('id, status, clinic_id, study_id')
+    .select('id, status, clinic_id, study_id, patient_id')
     .eq('id', reportId)
     .maybeSingle()
 
@@ -88,7 +90,7 @@ export async function saveReportTranscript(
 
   const { data: existing, error: findError } = await supabase
     .from('transcriptions')
-    .select('id')
+    .select('id, raw_text')
     .eq('report_id', reportId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -103,9 +105,16 @@ export async function saveReportTranscript(
   let transcriptionId: string
 
   if (existing?.id) {
+    // R2.7C — the transcript box in the workspace is editable, so this call can
+    // carry a CLINICIAN-EDITED transcript. The edit belongs in the working copy;
+    // the provider/browser source is evidence and is only ever extended by more
+    // dictation, never rewritten by an edit. See nextSourceTranscript.
     const { error } = await supabase
       .from('transcriptions')
-      .update(payload)
+      .update({
+        ...payload,
+        raw_text: nextSourceTranscript((existing.raw_text as string) ?? '', rawText ?? ''),
+      })
       .eq('id', existing.id as string)
     if (error) return { error: error.message }
     transcriptionId = existing.id as string
@@ -278,11 +287,35 @@ export async function structureReportTranscript(reportId: string): Promise<Repor
     bodyPart = (study?.body_part as string | null) ?? null
   }
 
+  // R2.7C(F) — patient context for the HPD header, read through RLS.
+  //
+  // Omitting it is what produced the production defect: buildHpdDraft defaults
+  // these to '', the HPD engine renders `patientName || '—'`, and applying the
+  // draft wrote that em dash into the report's patient block permanently. The
+  // sibling queue action (lib/actions/structuring.ts) always loaded this; the
+  // report path simply never did.
+  let patientName = '', patientAge = '', patientSex = ''
+  if (report.patient_id) {
+    const { data: p } = await supabase
+      .from('patients')
+      .select('first_name, last_name, date_of_birth, sex')
+      .eq('id', report.patient_id as string)
+      .maybeSingle()
+    if (p) {
+      patientName = displayPatientName(p.last_name as string, p.first_name as string)
+      patientSex  = frenchSexLabel(p.sex as string)
+      patientAge  = ageLabel(p.date_of_birth as string | null)
+    }
+  }
+
   // The canonical pipeline — the same one the queue and R2.0 use.
   const { output, structuring } = buildHpdDraft({
     rawTranscript: source,
     modality,
     bodyPart,
+    patientName,
+    patientAge,
+    patientSex,
     locale: 'fr',
   })
 

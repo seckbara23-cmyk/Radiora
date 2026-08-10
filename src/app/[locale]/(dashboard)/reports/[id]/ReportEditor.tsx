@@ -11,7 +11,8 @@ import { useLiveStructuring, type AppliedSection } from '@/lib/hooks/use-live-st
 import type { SectionKey } from '@/lib/safety/sections'
 import { getSpecialForm, SPECIAL_LAYOUTS, type SpecialFormSchema } from '@/config/special-forms'
 import { emptySpecialForm, renderSpecialFormText, missingRequiredRows, cellKey } from '@/lib/reports/special-forms'
-import type { Report, StructuredReportData } from '@/types/report'
+import { withPatient } from '@/lib/reports/patient-identity'
+import type { Report, StructuredReportData, SectionProvenanceValue } from '@/types/report'
 import type { SpecialLayout } from '@/types/exam'
 import type { Template } from '@/types/template'
 import type { UserPhrasePreference } from '@/types/preference'
@@ -26,6 +27,22 @@ interface PatientInfo {
   name: string
   age:  string
   sex:  string
+}
+
+type EditableSection = keyof Pick<
+  StructuredReportData,
+  'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'
+>
+
+/** Clearing a section clears its authorship too — nobody owns empty text. */
+function omitProvenance(
+  map: StructuredReportData['sectionProvenance'],
+  key: EditableSection,
+): StructuredReportData['sectionProvenance'] {
+  if (!map) return map
+  const next = { ...map }
+  delete next[key]
+  return next
 }
 
 interface Props {
@@ -451,19 +468,26 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
   //  - Legacy report with content, no JSON  → keep the legacy editor (migration path).
   //  - New / empty report                   → start a fresh HPD document in French.
   const [structuredDraft, setStructuredDraft] = useState<StructuredReportData | null>(() => {
-    if (report.structuredData) return report.structuredData
+    // R2.7C(F) — patient identity is authoritative from the DB (`patientInfo`),
+    // never from a structuring draft. A stored report keeps its own block only
+    // when that block still names someone: a draft applied before R2.7C wrote
+    // the placeholder "—" into it, and re-reading the patient row heals it.
+    if (report.structuredData) return withPatient(report.structuredData, patientInfo)
     if (hasLegacyContent)      return null
     const { examType, examTitle } = buildExamInfo(modality, bodyPart)
+    const technique = buildDefaultTechnique(modality)
     return {
       language:        'fr',
       examType,
       examTitle,
       patient:         { name: patientInfo.name, age: patientInfo.age, sex: patientInfo.sex },
       indication:      '',
-      technique:       buildDefaultTechnique(modality),
+      technique,
       results:         '',
       conclusion:      '',
       recommendations: undefined,
+      // The protocol paragraph is the one string nobody dictated.
+      sectionProvenance: technique.trim() ? { technique: 'template' } : {},
     }
   })
 
@@ -495,7 +519,7 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
     base: report.structuredData ?? null,
     frozen: isFinalized,
     onApplied: (written: AppliedSection[]) => {
-      for (const s of written) writeSection(s.key, s.text)
+      for (const s of written) writeSection(s.key, s.text, s.origin)
       const keys = written.map((s) => s.key)
       setFlash((prev) => ({ ...prev, ...Object.fromEntries(keys.map((k) => [k, true])) }))
       window.setTimeout(() => {
@@ -508,12 +532,29 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
     },
   })
 
-  /** Write section text WITHOUT claiming the radiologist authored it. */
+  /**
+   * Write section text and record WHO wrote it.
+   *
+   * R2.7C(D) — the provenance saved here is what a later reload uses to decide
+   * which sections the radiologist owns, so it must be set on every write path
+   * rather than re-guessed from whether the section is empty.
+   */
   function writeSection(
     key: keyof Pick<StructuredReportData, 'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'>,
     value: string,
+    origin: SectionProvenanceValue = 'dictation',
   ) {
-    setStructuredDraft((prev) => (prev ? { ...prev, [key]: value } : null))
+    setStructuredDraft((prev) =>
+      prev
+        ? {
+            ...prev,
+            [key]: value,
+            sectionProvenance: value.trim()
+              ? { ...prev.sectionProvenance, [key]: origin }
+              : omitProvenance(prev.sectionProvenance, key),
+          }
+        : null,
+    )
     if (key === 'results')         setFindings(value)
     if (key === 'conclusion')      setImpression(value)
     if (key === 'recommendations') setRecommendations(value)
@@ -521,13 +562,14 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
 
   /**
    * A human edited this section. It becomes theirs: live AI may propose here
-   * afterwards but never writes again until they hand it back.
+   * afterwards but never writes again until they hand it back — and now that
+   * survives a save and reload, because the authorship is persisted.
    */
   function updateSection(
     key: keyof Pick<StructuredReportData, 'indication' | 'technique' | 'results' | 'conclusion' | 'recommendations'>,
     value: string,
   ) {
-    writeSection(key, value)
+    writeSection(key, value, 'physician_edit')
     live.notePhysicianEdit(key, value)
   }
 
@@ -547,13 +589,20 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
           : emptySpecialForm(layout)
       const results = renderSpecialFormText(form)
       setFindings(results)
+      const technique = prev.technique?.trim() ? prev.technique : schema.defaultTechnique
       return {
         ...prev,
         examType:  schema.examType,
         examTitle: schema.title,
-        technique: prev.technique?.trim() ? prev.technique : schema.defaultTechnique,
+        technique,
         specialForm: form,
         results,
+        // F18 measurements are typed by the radiologist; the protocol is boilerplate.
+        sectionProvenance: {
+          ...prev.sectionProvenance,
+          ...(results.trim() ? { results: 'physician_edit' as const } : {}),
+          ...(prev.technique?.trim() ? {} : { technique: 'template' as const }),
+        },
       }
     })
   }
@@ -564,11 +613,21 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
       const form = { ...prev.specialForm, values: { ...prev.specialForm.values, [key]: value } }
       const results = renderSpecialFormText(form)
       setFindings(results)
-      return { ...prev, specialForm: form, results }
+      return {
+        ...prev,
+        specialForm: form,
+        results,
+        sectionProvenance: { ...prev.sectionProvenance, results: 'physician_edit' },
+      }
     })
   }
 
-  function handleAiAccept(structuredData: StructuredReportData) {
+  function handleAiAccept(incoming: StructuredReportData) {
+    // R2.7C(F) — a structuring draft describes the CONTENT of the report, never
+    // who the patient is. Applying it must not let the draft's patient block
+    // (which is a placeholder when the run had no patient context) overwrite the
+    // identity resolved from the patient row.
+    const structuredData = withPatient(incoming, patientInfo)
     setStructuredDraft(structuredData)
     setFindings(structuredData.results)
     setImpression(structuredData.conclusion)
@@ -582,16 +641,24 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
   function convertToStructured() {
     if (isStructured) return
     const { examType, examTitle } = buildExamInfo(modality, bodyPart)
+    const technique = buildDefaultTechnique(modality)
     setStructuredDraft({
       language:        'fr',
       examType,
       examTitle,
       patient:         { name: patientInfo.name, age: patientInfo.age, sex: patientInfo.sex },
       indication:      '',
-      technique:       buildDefaultTechnique(modality),
+      technique,
       results:         findings,
       conclusion:      impression,
       recommendations: recommendations || undefined,
+      // Migrating a legacy report: its existing content was written by a human.
+      sectionProvenance: {
+        ...(technique.trim()       ? { technique: 'template' as const }            : {}),
+        ...(findings.trim()        ? { results: 'physician_edit' as const }        : {}),
+        ...(impression.trim()      ? { conclusion: 'physician_edit' as const }     : {}),
+        ...(recommendations.trim() ? { recommendations: 'physician_edit' as const } : {}),
+      },
     })
   }
 
@@ -609,6 +676,14 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
               results:         tpl.findingsTemplate,
               conclusion:      tpl.impressionTemplate,
               recommendations: tpl.recommendationsTemplate || undefined,
+              // Template text is machine-authored boilerplate until a human
+              // edits it, and must not read as the radiologist's own words.
+              sectionProvenance: {
+                ...prev.sectionProvenance,
+                ...(tpl.findingsTemplate.trim()        ? { results: 'template' as const }         : {}),
+                ...(tpl.impressionTemplate.trim()      ? { conclusion: 'template' as const }      : {}),
+                ...(tpl.recommendationsTemplate.trim() ? { recommendations: 'template' as const } : {}),
+              },
             }
           : null,
       )

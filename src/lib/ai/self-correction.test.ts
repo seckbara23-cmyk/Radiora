@@ -97,18 +97,53 @@ describe('detectSelfCorrections — R0.3 preservation-first', () => {
     const { corrected, events } = detectSelfCorrections(raw)
     expect(corrected).toContain('Foie normal')
     expect(corrected).toContain('pas de lésion focale')
-    expect(corrected).toContain('Vésicule lithiasique.')
+    expect(corrected).toContain('vésicule alithiasique')
+
+    // R2.7C(B) — CHANGED, deliberately. R0.3 asserted the replacement stayed in
+    // the text beside the finding it was meant to replace. That leaves the
+    // report asserting a gallbladder that is both alithiasique AND lithiasique,
+    // with nothing but a flag to say which the doctor meant. The finding now
+    // stands alone and the replacement travels as a proposal on the event —
+    // still visible to the radiologist, no longer clinical prose.
+    expect(corrected).not.toContain('Vésicule lithiasique.')
     const suggestions = events.filter((e) => e.applied === false)
     expect(suggestions.length).toBe(1)
     expect(suggestions[0].removed).toContain('Foie normal')
+    expect(suggestions[0].kept).toBe('Vésicule lithiasique')
   })
 
-  it('an unlocalizable "ou plutôt" replacement preserves the text and emits a review suggestion', () => {
+  it('an unlocalizable "ou plutôt" replacement keeps the finding and proposes the rest', () => {
     const raw = 'Radiographie du genou droit, ou plutôt il faut revoir le protocole complet.'
     const { corrected, events } = detectSelfCorrections(raw)
-    expect(corrected).toBe(raw) // verbatim — nothing deleted
+
+    // R2.7C(B) — CHANGED, deliberately. R0.3 kept the sentence verbatim, which
+    // meant "ou plutôt" was printed into a clinical section. Nothing is deleted:
+    // the finding stays, the retraction becomes a reviewable proposal, and the
+    // doctor's literal words remain in the immutable raw transcript.
+    expect(corrected).toBe('Radiographie du genou droit.')
+    expect(corrected).not.toContain('ou plutôt')
+
     const suggestions = events.filter((e) => e.applied === false)
     expect(suggestions.length).toBe(1)
+    expect(suggestions[0].removed).toBe('Radiographie du genou droit')
+    expect(suggestions[0].kept).toBe('il faut revoir le protocole complet')
+  })
+
+  it('no correction marker ever survives into the corrected text', () => {
+    // The R2.7C(B) invariant, checked across every refusal path at once.
+    // "Non" is exempt: after a question it is a dictated negative finding.
+    const MARKERS = /\b(?:je\s+(?:me\s+)?corrige|ou\s+plut[oô]t|non\s+plut[oô]t|remplacez?\s+par|je\s+reprends|c'est\s+faux)\b/i
+    const corpus = [
+      'Nodule de 12 mm et kyste de 8 mm. Je corrige, 14 mm.',
+      'Lésion rénale droite et kyste hépatique gauche. Je corrige, gauche.',
+      'Foie normal, pas de lésion focale, vésicule alithiasique. Je corrige, vésicule lithiasique.',
+      'Radiographie du genou droit, ou plutôt il faut revoir le protocole complet.',
+      'Épanchement pleural ? Je corrige, fine lame gauche.',
+      "Présence d'une lésion mesurant 8 mm, je corrige 9 mm, à corréler au contexte.",
+    ]
+    for (const raw of corpus) {
+      expect(detectSelfCorrections(raw).corrected, raw).not.toMatch(MARKERS)
+    }
   })
 
   it('single-word laterality swap remains localized: droit → gauche', () => {

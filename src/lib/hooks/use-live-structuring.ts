@@ -35,12 +35,15 @@ import {
   type LiveFlagCode,
   type SectionSuggestion,
 } from '@/lib/reports/live-coordinator'
+import { toPersistedProvenance } from '@/lib/reports/structured-patch'
 import type { SectionKey, SectionTextMap } from '@/lib/safety/sections'
-import type { StructuredReportData } from '@/types/report'
+import type { StructuredReportData, SectionProvenanceValue } from '@/types/report'
 
 export interface AppliedSection {
   key: SectionKey
   text: string
+  /** R2.7C — who authored it, in the form the report persists. */
+  origin: SectionProvenanceValue
 }
 
 export interface UseLiveStructuringOptions {
@@ -119,7 +122,11 @@ export function useLiveStructuring({
 
       const written = result.decisions
         .filter((d) => d.applied)
-        .map((d) => ({ key: d.key, text: d.proposedText }))
+        .map((d) => ({
+          key: d.key,
+          text: d.proposedText,
+          origin: toPersistedProvenance(d.origin),
+        }))
       if (written.length > 0) onAppliedRef.current(written)
     },
     [modality, bodyPart, commit, frozen],
@@ -134,7 +141,13 @@ export function useLiveStructuring({
     if (frozen) return
     const next = acceptSuggestion(freezeIfNeeded(ref.current, frozen), k)
     commit(next)
-    onAppliedRef.current([{ key: k, text: next.report.sections[k].text }])
+    // Accepting a suggestion does not make the doctor its author — the section
+    // keeps whoever owned it, exactly as `acceptSuggestion` decided.
+    onAppliedRef.current([{
+      key: k,
+      text: next.report.sections[k].text,
+      origin: toPersistedProvenance(next.report.sections[k].origin),
+    }])
   }, [commit, frozen])
 
   const reject = useCallback(

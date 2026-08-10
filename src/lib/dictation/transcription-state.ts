@@ -53,6 +53,36 @@ export function canRetryTranscription(stage: TranscriptionStage): boolean {
  * An exactly-repeated pass is not appended twice: a re-delivered completion
  * must not double the report's findings.
  */
+/**
+ * R2.7C — what the IMMUTABLE source transcript becomes when the workspace saves.
+ *
+ * `transcriptions.raw_text` is evidence: it is what the provider (or the
+ * browser recogniser) actually produced, and it is what a later reader relies
+ * on to check that the report says what the doctor said. The workspace shows
+ * that text in an EDITABLE box, and before R2.7C saving simply wrote the box
+ * back over `raw_text` — so the "original dictation" guarantee held only
+ * because nobody had edited it yet.
+ *
+ * `corrected_text` is the working copy and takes every edit. This function
+ * decides the source, and it only ever moves in one direction:
+ *
+ *   • nothing stored yet   → the incoming text IS the first capture;
+ *   • incoming EXTENDS it  → continued dictation, so the source grows;
+ *   • anything else        → an edit. The source is left exactly as it was.
+ *
+ * Whitespace-insensitive but case- and word-sensitive: a looser comparison
+ * would classify a genuine edit as continued dictation and overwrite evidence,
+ * which is the one direction this must not fail in.
+ */
+export function nextSourceTranscript(stored: string, incoming: string): string {
+  const previous = (stored ?? '').trim()
+  const next = (incoming ?? '').trim()
+  if (!previous) return next
+  if (!next) return previous
+  const flat = (s: string) => s.replace(/\s+/g, ' ')
+  return flat(next).startsWith(flat(previous)) ? next : previous
+}
+
 export function appendTranscriptPass(existing: string, next: string): string {
   const previous = (existing ?? '').trim()
   const addition = (next ?? '').trim()

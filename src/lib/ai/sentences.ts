@@ -43,6 +43,43 @@ export function splitSentences(text: string): Sentence[] {
   return out
 }
 
+/** A comma/semicolon/colon-delimited span inside one sentence. */
+export interface Clause {
+  /** Clause text, separator NOT included. */
+  text: string
+  /** Character offset of the clause start in the source string. */
+  start: number
+}
+
+/**
+ * R2.7C — split ONE sentence into its clauses.
+ *
+ * A dictated correction refers to the nearest thing the doctor just said, not
+ * to everything they have said since the last full stop. Radiologists dictate
+ * in long comma-runs — the production R2.7C transcript put four findings in one
+ * sentence — so "the previous sentence" is far too coarse a target: an
+ * unrelated measurement three clauses back made an otherwise unambiguous
+ * correction look ambiguous.
+ *
+ * The decimal rule from `splitSentences` applies here too, and matters more: a
+ * comma is the French decimal separator. Splitting "3,5 cm" into "3" and "5 cm"
+ * would report a lesion as 5 cm when the doctor said 3,5 cm.
+ */
+export function splitClauses(text: string): Clause[] {
+  const out: Clause[] = []
+  let start = 0
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (ch !== ',' && ch !== ';' && ch !== ':') continue
+    // Decimal separator, not a clause boundary.
+    if (ch === ',' && isDigit(text[i - 1]) && isDigit(text[i + 1])) continue
+    if (text.slice(start, i).trim()) out.push({ text: text.slice(start, i), start })
+    start = i + 1
+  }
+  if (text.slice(start).trim()) out.push({ text: text.slice(start), start })
+  return out
+}
+
 /** Accent- and case-folded, whitespace-collapsed. For comparison only. */
 export function fold(s: string): string {
   return (s ?? '')

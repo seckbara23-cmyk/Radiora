@@ -10,15 +10,50 @@
 // short, single-finding clause or a single comparable token/measurement. When
 // the intended correction cannot be safely localized — a multi-finding
 // sentence, an answer to a dictated question, a multi-word replacement with no
-// clear target — the original text is preserved VERBATIM and a review
-// suggestion (CorrectionEvent.applied === false) is emitted instead. It never
-// adds words. Bare "plutôt" is intentionally NOT treated as a corrector — in
-// radiology it is usually a qualifier ("plutôt hypoéchogène") — and bare
-// "correction" is NOT an inline marker either ("correction de scoliose" is
-// legitimate surgical history). Every action is recorded as a CorrectionEvent
-// for side-by-side review.
+// clear target — the ORIGINAL finding is preserved and a review suggestion
+// (CorrectionEvent.applied === false) is emitted instead. It never adds words.
+// Bare "plutôt" is intentionally NOT treated as a corrector — in radiology it is
+// usually a qualifier ("plutôt hypoéchogène") — and bare "correction" is NOT an
+// inline marker either ("correction de scoliose" is legitimate surgical
+// history). Every action is recorded as a CorrectionEvent for side-by-side
+// review.
+//
+// ─── R2.7C — what production proved ──────────────────────────────────────────
+//
+// The first real dictation through the phone → STT → structuring path was:
+//
+//   "… présence d'une petite lésion hypodense frontale droite mesurant 8 mm,
+//    je corrige 9 mm, aspect possiblement séculaire à corréler au contexte
+//    clinique."
+//
+// The marker was found and the target measurement was present and unique, yet
+// the correction was REFUSED, because the replacement parser required the
+// replacement to be a BARE measurement and this one carried the doctor's
+// continuing dictation with it. Two changes follow, and they are the reason
+// this module was reopened:
+//
+//   A. A replacement is read as "the new value, then whatever the doctor kept
+//      saying". The value replaces the old one; the continuation stays attached
+//      to the finding. Spelled-out units and numbers ("9 millimètres", "neuf
+//      millimètres"), a restated value ("elle mesure 9 mm") and a trailing "…"
+//      are all recognised as the same thing.
+//
+//   B. AN UNRESOLVED CORRECTION IS NEVER CLINICAL PROSE. Refusing to resolve is
+//      safe; printing "8 mm, je corrige 9 mm" into RÉSULTATS is not — it is
+//      exactly the malformed output R2.7C was opened to kill. When the engine
+//      refuses, the ORIGINAL finding stays in the section and the replacement
+//      travels on the CorrectionEvent as a proposal. No words are lost: the raw
+//      transcript is immutable and the event is persisted and displayed.
+//
+//      This deliberately supersedes the R0.3 rule that preserved the whole
+//      sentence verbatim, marker included. R0.3 was right that nothing may be
+//      DELETED; it was wrong that the marker could stay in a clinical section.
+//
+//   C. A correction targets the NEAREST preceding clause, not the whole
+//      accumulated sentence — see `splitClauses`. Ambiguity inside that clause
+//      still refuses.
 
-import { splitSentences } from '@/lib/ai/sentences'
+import { splitSentences, splitClauses, fold } from '@/lib/ai/sentences'
 import type { CorrectionEvent } from '@/types/structuring'
 
 /** A whole short clause that signals "retract what I just said". */
@@ -31,21 +66,86 @@ const STANDALONE_RETRACTION =
 const INLINE_REPLACEMENT =
   /\b(?:ou\s+plut[oô]t|non\s+plut[oô]t|je\s+me\s+corrige|je\s+corrige|remplacez?\s+par|remplacer\s+par)\b\s*[:,]?\s*/i
 
-/** Trailing measurement: number (int or decimal) + optional unit. */
-const MEASUREMENT_TAIL =
-  /(\d+(?:[.,]\d+)?\s*(?:mm³|cm³|mm3|cm3|ml|cc|mm|cm|m|%|°)?)\s*$/i
+// ─── Measurement vocabulary ───────────────────────────────────────────────────
+//
+// R2.7C: recognition, not normalisation. A measurement is only ever RECOGNISED
+// here so it can be swapped; the text written into the report is copied
+// verbatim from what the doctor said. "neuf millimètres" is never rewritten to
+// "9 mm" — that would be the engine putting its own words in a clinical section.
+
+/** French number words, longest alternatives first so "dix-sept" beats "dix". */
+const NUM_WORD =
+  '(?:z[ée]ro|dix[-\\s]?sept|dix[-\\s]?huit|dix[-\\s]?neuf|quatre[-\\s]?vingts?|' +
+  'quatorze|quinze|seize|onze|douze|treize|dix|vingt|trente|quarante|cinquante|' +
+  'soixante|cent|une?|deux|trois|quatre|cinq|six|sept|huit|neuf)' +
+  '(?:[-\\s](?:et[-\\s])?(?:une?|deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze))?'
+
+const NUM = `(?:\\d+(?:[.,]\\d+)?|${NUM_WORD})`
+
+/** Units. Spelled forms first so an abbreviation cannot claim their prefix. */
+const UNIT =
+  '(?:millim[eè]tres?|centim[eè]tres?|millilitres?|centilitres?|m[eè]tres?|' +
+  'degr[ée]s?|pour[-\\s]?cents?|mm³|cm³|mm3|cm3|mm|cm|ml|cc|m|%|°)'
+
+/**
+ * A complete measurement: a value (or a "12 x 8" pair) followed by a unit.
+ * The trailing guard stops the one-letter unit `m` from matching the first
+ * letter of an ordinary word ("8 masses").
+ */
+const MEASURE = `\\b${NUM}(?:\\s*[x×]\\s*${NUM})*\\s*${UNIT}(?![a-zA-ZÀ-ÿ])`
+
+/** Every measurement in a span. */
+const MEASUREMENT_GLOBAL = new RegExp(MEASURE, 'gi')
 
 /** A replacement that is nothing but a measurement. */
-const MEASUREMENT_ONLY =
-  /^\d+(?:[.,]\d+)?\s*(?:mm³|cm³|mm3|cm3|ml|cc|mm|cm|m|%|°)?$/i
+const MEASUREMENT_ONLY = new RegExp(`^${MEASURE}$`, 'i')
 
+/** Trailing measurement, for the inline single-sentence localizer. */
+const MEASUREMENT_TAIL = new RegExp(`(${MEASURE})\\s*$`, 'i')
+
+/** A measurement opening a replacement, with whatever follows it. */
+const MEASUREMENT_LEAD = new RegExp(`^\\s*(${MEASURE})`, 'i')
+
+/** Laterality and the words that qualify it. */
+const LATERALITY_GLOBAL =
+  /\b(?:droite?s?|gauches?|bilat[ée]rales?|bilat[ée]ral|m[ée]diane?s?)\b/gi
+
+/**
+ * A laterality opening a replacement. It must END the replacement or be
+ * followed by a separator: "gauche" and "gauche, à hauteur de L3" are laterality
+ * swaps, while "gauche du lobe supérieur" is left to the clause path, exactly as
+ * before R2.7C.
+ */
+const LATERALITY_LEAD =
+  /^\s*(?:[àa]\s+)?(droite?|gauche|bilat[ée]rale?|m[ée]diane?)(?=\s*(?:$|[,;:]))/i
+
+/**
+ * Words a doctor uses to RESTATE a value rather than to state a new finding:
+ * "je corrige, elle mesure 9 mm". Deliberately a CLOSED list — any word outside
+ * it means the replacement carries clinical content of its own, and the
+ * correction falls back to the (guarded) whole-clause path. Stored accent-folded.
+ */
+const RESTATEMENT_WORDS = new Set([
+  'elle', 'il', 'elles', 'ils', 'c', 'ce', "c'est", 'cest', 'cela', 'ca',
+  'le', 'la', 'les', 'l', 'de', 'd', 'du', 'des', 'a', 'est', 'sont',
+  'fait', 'font', 'mesure', 'mesures', 'mesurant', 'mesurent',
+  'environ', 'exactement', 'plus', 'precisement', 'en', 'realite',
+  'plutot', 'soit', 'non', 'taille', 'diametre', 'qui', 'que', 'plutôt',
+])
+
+// R2.7C — "…" (U+2026) is emitted by real transcription providers and was not
+// stripped, which alone was enough to make a clean correction unresolvable.
 function stripTrailingPunct(s: string): string {
-  return s.replace(/[.!?]+$/, '').trim()
+  return s.replace(/[.!?……]+$/, '').trim()
 }
 
 function capitalize(s: string): string {
   const t = s.trim()
   return t ? t[0].toUpperCase() + t.slice(1) : t
+}
+
+function matchesOf(text: string, re: RegExp): RegExpMatchArray[] {
+  return [...text.matchAll(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'))]
 }
 
 /** A clause carrying more than one finding (commas/semicolons) or a long one
@@ -77,7 +177,7 @@ interface Localized {
   inserted: string  // exactly what replaced it
 }
 
-// ─── R2.6: cross-sentence correction targets ──────────────────────────────────
+// ─── R2.6/R2.7C: resolving a correction against its target ────────────────────
 //
 // "Nodule du lobe supérieur droit mesurant 12 mm. Je corrige, 14 mm."
 //
@@ -87,18 +187,7 @@ interface Localized {
 // d'épanchement." it left both polarities standing, which is worse.
 //
 // Resolution is preservation-first and refuses ambiguity: a correction is only
-// applied when the target is UNIQUE in the preceding clause.
-
-/** Measurements, including "12 x 8 mm" pairs and both decimal separators. */
-const MEASUREMENT_GLOBAL =
-  /\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)*\s*(?:mm³|cm³|mm3|cm3|ml|cc|mm|cm|m|%|°)/gi
-
-/** Laterality and the words that qualify it. */
-const LATERALITY_GLOBAL =
-  /\b(?:droite?s?|gauches?|bilat[ée]rales?|bilat[ée]ral|m[ée]diane?s?)\b/gi
-
-const LATERALITY_ONLY =
-  /^(?:[àa]\s+)?(?:droite?|gauche|bilat[ée]rale?|m[ée]dian[e]?)$/i
+// applied when the target is UNIQUE in the nearest clause that contains one.
 
 export type ResolveOutcome =
   /** A unique target was found and replaced. */
@@ -108,13 +197,93 @@ export type ResolveOutcome =
   /** Not a targeted correction; the replacement supersedes the whole clause. */
   | { status: 'clause' }
 
-function matchesOf(text: string, re: RegExp): RegExpMatchArray[] {
-  return [...text.matchAll(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'))]
+/** The new value the doctor dictated, plus everything they said after it. */
+interface Replacement {
+  /** The token that replaces the old one — copied verbatim. */
+  value: string
+  /** The continuing dictation, separator and all. Re-attached, never dropped. */
+  rest: string
 }
 
 /**
- * Resolve a correction whose replacement is in the NEXT sentence against the
- * clause it corrects.
+ * R2.7C(A) — read a replacement that OPENS with a measurement.
+ *
+ * "9 mm, aspect possiblement séculaire à corréler au contexte clinique"
+ *   → value "9 mm", rest ", aspect possiblement séculaire à corréler…"
+ *
+ * A second measurement in the tail means this is a compound correction rather
+ * than one value plus a continuation, so it is refused: which measurement
+ * replaces which is exactly the kind of guess this module does not make.
+ */
+function leadMeasurement(repl: string): Replacement | null {
+  const m = repl.match(MEASUREMENT_LEAD)
+  if (!m) return null
+  const rest = repl.slice(m[0].length)
+  if (matchesOf(rest, MEASUREMENT_GLOBAL).length > 0) return null
+  if (INLINE_REPLACEMENT.test(rest) || STANDALONE_RETRACTION.test(rest.trim())) return null
+  return { value: m[1].trim(), rest }
+}
+
+/**
+ * R2.7C(A) — a replacement that RESTATES the value: "elle mesure 9 mm".
+ *
+ * Accepted only when every word around the single measurement is in the closed
+ * RESTATEMENT_WORDS list, so a replacement carrying any clinical content of its
+ * own can never be silently reduced to a number swap.
+ */
+function restatedMeasurement(repl: string): Replacement | null {
+  const found = matchesOf(repl, MEASUREMENT_GLOBAL)
+  if (found.length !== 1) return null
+  const hit = found[0]
+  const around = `${repl.slice(0, hit.index!)} ${repl.slice(hit.index! + hit[0].length)}`
+  const words = around.split(/[\s'’,;:.()]+/).map((w) => fold(w)).filter(Boolean)
+  if (words.length === 0) return null // a bare measurement — leadMeasurement's job
+  if (words.some((w) => !RESTATEMENT_WORDS.has(w))) return null
+  return { value: hit[0].trim(), rest: '' }
+}
+
+/** R2.7C(A) — the laterality equivalent of `leadMeasurement`. */
+function leadLaterality(repl: string): Replacement | null {
+  const m = repl.match(LATERALITY_LEAD)
+  if (!m) return null
+  const rest = repl.slice(m[0].length)
+  if (matchesOf(rest, LATERALITY_GLOBAL).length > 0) return null
+  if (INLINE_REPLACEMENT.test(rest)) return null
+  return { value: m[1], rest }
+}
+
+type Candidate = { at: number; text: string } | 'ambiguous' | null
+
+/**
+ * R2.7C(C) — find the correction's target in the NEAREST preceding clause that
+ * has one, scanning backwards. Ambiguity is judged INSIDE that clause: an
+ * unrelated measurement several clauses earlier is not a competing target, but
+ * two candidates in the clause the doctor just spoke still refuse.
+ */
+function nearestCandidate(target: string, re: RegExp): Candidate {
+  const clauses = splitClauses(target)
+  for (let i = clauses.length - 1; i >= 0; i--) {
+    const found = matchesOf(clauses[i].text, re)
+    if (found.length === 0) continue
+    if (found.length > 1) return 'ambiguous'
+    return { at: clauses[i].start + found[0].index!, text: found[0][0] }
+  }
+  return null
+}
+
+function swap(target: string, hit: { at: number; text: string }, r: Replacement): ResolveOutcome {
+  const replaced = target.slice(0, hit.at) + r.value + target.slice(hit.at + hit.text.length)
+  return {
+    status: 'applied',
+    // The continuation is re-attached exactly as dictated, separator included.
+    text: `${replaced}${r.rest}`.replace(/\s+$/, ''),
+    removed: hit.text.trim(),
+    inserted: r.value,
+  }
+}
+
+/**
+ * Resolve a correction whose replacement follows the clause it corrects.
  *
  * Only two things are targeted surgically, because only these two can be
  * matched without understanding the sentence: a measurement and a laterality.
@@ -126,35 +295,22 @@ export function resolveCorrectionTarget(previousClause: string, replacement: str
   const repl   = stripTrailingPunct(replacement).trim()
   if (!target || !repl) return { status: 'clause' }
 
-  // (a) measurement → measurement
-  if (MEASUREMENT_ONLY.test(repl) || /^\d+(?:[.,]\d+)?(?:\s*[x×]\s*\d+(?:[.,]\d+)?)+\s*\w*$/i.test(repl)) {
-    const found = matchesOf(target, MEASUREMENT_GLOBAL)
-    if (found.length === 0) return { status: 'clause' }
-    if (found.length > 1) return { status: 'ambiguous', reason: 'multiple_measurements' }
-    const hit = found[0]
-    const at  = hit.index!
-    return {
-      status: 'applied',
-      text: target.slice(0, at) + repl + target.slice(at + hit[0].length),
-      removed: hit[0].trim(),
-      inserted: repl,
-    }
+  // (a) measurement → measurement, carrying any continuation with it.
+  const measurement = leadMeasurement(repl) ?? restatedMeasurement(repl)
+  if (measurement) {
+    const hit = nearestCandidate(target, MEASUREMENT_GLOBAL)
+    if (hit === null) return { status: 'clause' }
+    if (hit === 'ambiguous') return { status: 'ambiguous', reason: 'multiple_measurements' }
+    return swap(target, hit, measurement)
   }
 
   // (b) laterality → laterality
-  if (LATERALITY_ONLY.test(repl)) {
-    const word = repl.replace(/^[àa]\s+/i, '')
-    const found = matchesOf(target, LATERALITY_GLOBAL)
-    if (found.length === 0) return { status: 'clause' }
-    if (found.length > 1) return { status: 'ambiguous', reason: 'multiple_laterality' }
-    const hit = found[0]
-    const at  = hit.index!
-    return {
-      status: 'applied',
-      text: target.slice(0, at) + word + target.slice(at + hit[0].length),
-      removed: hit[0].trim(),
-      inserted: word,
-    }
+  const side = leadLaterality(repl)
+  if (side) {
+    const hit = nearestCandidate(target, LATERALITY_GLOBAL)
+    if (hit === null) return { status: 'clause' }
+    if (hit === 'ambiguous') return { status: 'ambiguous', reason: 'multiple_laterality' }
+    return swap(target, hit, side)
   }
 
   return { status: 'clause' }
@@ -162,11 +318,12 @@ export function resolveCorrectionTarget(previousClause: string, replacement: str
 
 /**
  * R0.3 — try to localize an inline replacement to the smallest safe target.
- * Returns null when no safe localization exists (caller preserves verbatim).
+ * Returns null when no safe localization exists (the caller then preserves the
+ * ORIGINAL finding and raises a suggestion).
  *
- *   (a) measurement → measurement:  "… mesurant 12 mm, ou plutôt 14 mm."
- *       swaps only the trailing measurement, keeping lesion identity,
- *       laterality and location intact;
+ * Measurement and laterality are handled by `resolveCorrectionTarget` before
+ * this is reached. What remains here are the two shapes it does not cover:
+ *
  *   (b) single-word replacement:    "… du lobe droit, ou plutôt gauche."
  *       swaps exactly one word for one word;
  *   (c) morphological variant:      "… hyperéchogène ou plutôt hypoéchogène du foie."
@@ -179,7 +336,7 @@ function localizeInlineReplacement(before: string, after: string): Localized | n
   if (!beforeBare || !afterBare) return null
   const punct = after.match(/[.!?]+$/)?.[0] ?? ''
 
-  // (a) measurement ↔ measurement
+  // (a) measurement ↔ measurement — kept for the bare-tail case.
   const measTail = beforeBare.match(MEASUREMENT_TAIL)
   if (measTail && measTail.index !== undefined && MEASUREMENT_ONLY.test(afterBare)) {
     const head = beforeBare.slice(0, measTail.index).trimEnd()
@@ -210,10 +367,13 @@ function localizeInlineReplacement(before: string, after: string): Localized | n
 
 /**
  * Resolves dictated self-corrections (preservation-first).
- * Returns the corrected transcript plus the list of correction events —
- * applied edits (`applied: true`) and preserved-for-review suggestions
- * (`applied: false`). Raw-transcript provenance is the caller's concern: the
- * engine stores the untouched raw text alongside this output.
+ *
+ * Returns the corrected transcript plus the list of correction events — applied
+ * edits (`applied: true`) and held-back proposals (`applied: false`). For a
+ * held-back proposal `removed` is the ORIGINAL finding, which stays in the
+ * transcript, and `kept` is the replacement, which does NOT (R2.7C rule B).
+ * Raw-transcript provenance is the caller's concern: the engine stores the
+ * untouched raw text alongside this output.
  */
 export function detectSelfCorrections(raw: string): {
   corrected: string
@@ -226,9 +386,25 @@ export function detectSelfCorrections(raw: string): {
   const kept: string[] = []
   const events: CorrectionEvent[] = []
   let awaiting: { removed: string; punct: string; marker: string; index: number } | null = null
+  // R2.7C(B) — a retraction the engine refused to act on. The sentence that
+  // follows it is the proposal; it is recorded on the event and never written
+  // into clinical text beside the finding it was meant to replace.
+  let held: { removed: string; marker: string; index: number } | null = null
 
   for (const s of sentences) {
     const bare = stripTrailingPunct(s.text)
+
+    if (held) {
+      events.push({
+        marker:  held.marker,
+        removed: held.removed,
+        kept:    bare,
+        index:   held.index,
+        applied: false,
+      })
+      held = null
+      continue
+    }
 
     // Case 1 — standalone retraction ("Non.", "Je corrige.")
     if (STANDALONE_RETRACTION.test(bare)) {
@@ -236,17 +412,18 @@ export function detectSelfCorrections(raw: string): {
       const prevBare = stripTrailingPunct(prev)
 
       // R0.3 — "Question ? Non." is an ANSWER, not a retraction: deleting it
-      // would erase a dictated negative finding. Preserve verbatim + flag.
-      // Likewise a multi-finding/long clause is never deleted automatically.
-      if (prev && (/\?\s*$/.test(prev.trim()) || isTooMeaningfulToDrop(prevBare))) {
+      // would erase a dictated negative finding. It is genuine clinical content,
+      // so unlike every other refusal path it stays in the text.
+      if (prev && /\?\s*$/.test(prev.trim())) {
         kept.push(s.text)
-        events.push({
-          marker:  bare.toLowerCase(),
-          removed: prevBare,
-          kept:    '',
-          index:   s.start,
-          applied: false,
-        })
+        events.push({ marker: bare.toLowerCase(), removed: prevBare, kept: '', index: s.start, applied: false })
+        continue
+      }
+
+      // A multi-finding or long clause is never deleted automatically. The
+      // finding stays; the retraction and its replacement become a proposal.
+      if (prev && isTooMeaningfulToDrop(prevBare)) {
+        held = { removed: prevBare, marker: bare.toLowerCase(), index: s.start }
         continue
       }
 
@@ -265,7 +442,7 @@ export function detectSelfCorrections(raw: string): {
       // R2.6 — "Nodule du lobe supérieur droit de 12 mm. Non. 14 mm." replaces
       // only the measurement. Replacing the whole clause would throw away the
       // lesion, its lobe and its laterality to keep a bare number.
-      const resolved = resolveCorrectionTarget(awaiting.removed, stripTrailingPunct(s.text))
+      const resolved = resolveCorrectionTarget(awaiting.removed, bare)
 
       if (resolved.status === 'applied') {
         kept.push(`${resolved.text}${awaiting.punct}`)
@@ -282,13 +459,13 @@ export function detectSelfCorrections(raw: string): {
 
       if (resolved.status === 'ambiguous') {
         // Put the retracted clause back: with two candidate targets, deleting
-        // it would be a guess about which lesion the doctor meant.
+        // it would be a guess about which lesion the doctor meant. R2.7C(B) —
+        // the replacement is a proposal, not a second finding.
         kept.push(`${awaiting.removed}${awaiting.punct}`)
-        kept.push(s.text)
         events.push({
           marker:  awaiting.marker,
           removed: awaiting.removed,
-          kept:    stripTrailingPunct(s.text),
+          kept:    bare,
           index:   awaiting.index,
           applied: false,
         })
@@ -300,7 +477,7 @@ export function detectSelfCorrections(raw: string): {
       events.push({
         marker:  awaiting.marker,
         removed: awaiting.removed,
-        kept:    stripTrailingPunct(s.text),
+        kept:    bare,
         index:   awaiting.index,
         applied: true,
       })
@@ -341,10 +518,13 @@ export function detectSelfCorrections(raw: string): {
             continue
           }
 
-          if (resolved.status === 'ambiguous') {
-            // Two candidate lesions. Never guess which one — preserve both the
-            // original and the correction, and raise it for review.
-            kept.push(s.text)
+          // R2.7C(B) — ambiguous, or a whole-clause replacement the preservation
+          // guards refuse: the finding stays, the proposal travels on the event.
+          if (
+            resolved.status === 'ambiguous' ||
+            /\?\s*$/.test(prev.trim()) ||
+            isTooMeaningfulToDrop(prevBare)
+          ) {
             events.push({
               marker,
               removed: prevBare,
@@ -355,29 +535,14 @@ export function detectSelfCorrections(raw: string): {
             continue
           }
 
-          // Whole-clause replacement. Same preservation guards as a standalone
-          // retraction: an answer to a question or a multi-finding clause is
-          // too meaningful to delete automatically.
-          if (!/\?\s*$/.test(prev.trim()) && !isTooMeaningfulToDrop(prevBare)) {
-            kept.pop()
-            kept.push(capitalize(after))
-            events.push({
-              marker,
-              removed: prevBare,
-              kept:    stripTrailingPunct(after),
-              index:   s.start + m.index,
-              applied: true,
-            })
-            continue
-          }
-
-          kept.push(s.text)
+          kept.pop()
+          kept.push(capitalize(after))
           events.push({
             marker,
             removed: prevBare,
             kept:    stripTrailingPunct(after),
             index:   s.start + m.index,
-            applied: false,
+            applied: true,
           })
           continue
         }
@@ -395,25 +560,46 @@ export function detectSelfCorrections(raw: string): {
       }
 
       if (after && before) {
-        const localized = localizeInlineReplacement(before, after)
-        if (localized) {
-          kept.push(capitalize(localized.text))
+        // R2.7C — THE PRODUCTION CASE. `before` ends at the value being
+        // corrected; `after` opens with the new value and may carry the rest of
+        // the sentence with it.
+        const beforeBare = before.replace(/[,;:]+$/, '').trim()
+        const punct      = after.match(/[.!?……]+$/)?.[0] ?? '.'
+        const resolved   = resolveCorrectionTarget(beforeBare, after)
+
+        if (resolved.status === 'applied') {
+          kept.push(`${capitalize(resolved.text)}${punct}`)
           events.push({
             marker:  m[0].trim().toLowerCase(),
-            removed: localized.removed,
-            kept:    localized.inserted,
+            removed: resolved.removed,
+            kept:    resolved.inserted,
             index:   s.start + m.index,
             applied: true,
           })
           continue
         }
-        // R0.3 — no safe target: preserve the whole sentence verbatim and
-        // surface a review suggestion rather than deleting the preceding
-        // clause (which carried lesion identity / laterality / location).
-        kept.push(s.text)
+
+        if (resolved.status !== 'ambiguous') {
+          const localized = localizeInlineReplacement(before, after)
+          if (localized) {
+            kept.push(capitalize(localized.text))
+            events.push({
+              marker:  m[0].trim().toLowerCase(),
+              removed: localized.removed,
+              kept:    localized.inserted,
+              index:   s.start + m.index,
+              applied: true,
+            })
+            continue
+          }
+        }
+
+        // R2.7C(B) — no safe target. The ORIGINAL finding is kept; the marker
+        // and the unresolved replacement never become clinical prose.
+        kept.push(`${beforeBare}${punct}`)
         events.push({
           marker:  m[0].trim().toLowerCase(),
-          removed: stripTrailingPunct(before),
+          removed: beforeBare,
           kept:    stripTrailingPunct(after),
           index:   s.start + m.index,
           applied: false,
@@ -425,7 +611,11 @@ export function detectSelfCorrections(raw: string): {
     kept.push(s.text)
   }
 
-  // A trailing retraction with no replacement still removes the prior clause.
+  // A retraction with no replacement after it still holds back the correction.
+  if (held) {
+    events.push({ marker: held.marker, removed: held.removed, kept: '', index: held.index, applied: false })
+  }
+
   const corrected = kept.join(' ').replace(/\s+/g, ' ').trim()
   return { corrected, events }
 }

@@ -28,6 +28,7 @@ import {
   studyStatusVariant,
 } from '@/components/ui/badge'
 import { getReportSafetyContext } from '@/lib/data/safety'
+import { ageLabel, displayPatientName, frenchSexLabel } from '@/lib/reports/patient-identity'
 import { getReportDeliveries } from '@/lib/data/deliveries'
 import { ReportEditor } from './ReportEditor'
 import { ReportExportActions } from './ReportExportActions'
@@ -61,25 +62,6 @@ function WorkspaceSection({
       {children}
     </section>
   )
-}
-
-// French sex labels for the HPD document header.
-const SEX_FR: Record<string, string> = {
-  male:    'Masculin',
-  female:  'Féminin',
-  other:   'Autre',
-  unknown: '',
-}
-
-function computeAge(dob: string | undefined): string {
-  if (!dob) return ''
-  const birth = new Date(dob)
-  if (Number.isNaN(birth.getTime())) return ''
-  const now = new Date()
-  let age = now.getFullYear() - birth.getFullYear()
-  const m = now.getMonth() - birth.getMonth()
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--
-  return age >= 0 ? `${age} ans` : ''
 }
 
 export default async function ReportPage({ params }: Props) {
@@ -190,10 +172,14 @@ export default async function ReportPage({ params }: Props) {
           modality={study?.modality ?? null}
           bodyPart={study?.bodyPart ?? null}
           initialPhrases={initialPhrases}
+          // R2.7C(F) — the patient row is the ONLY authority for identity. The
+          // editor resolves the report's stored block against this rather than
+          // trusting it, so a placeholder written by an earlier structuring run
+          // cannot survive.
           patientInfo={{
-            name: patient ? `${patient.lastName.toUpperCase()} ${patient.firstName}`.trim() : '',
-            age:  computeAge(patient?.dateOfBirth),
-            sex:  patient ? (SEX_FR[patient.sex] ?? '') : '',
+            name: patient ? displayPatientName(patient.lastName, patient.firstName) : '',
+            age:  ageLabel(patient?.dateOfBirth),
+            sex:  patient ? frenchSexLabel(patient.sex) : '',
           }}
           examDate={study?.studyDate ?? report.createdAt.slice(0, 10)}
           // R2.3 — the report-owned transcript (R2.2) so a reload reconstructs

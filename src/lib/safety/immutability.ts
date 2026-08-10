@@ -19,9 +19,30 @@ export type ReportWriteKind =
   | 'finalize'           // finalizeReport — validate and sign
   | 'amend'              // amendReport — re-open a finalized report
 
+/**
+ * R2.7C — a stable, locale-independent identifier for each refusal.
+ *
+ * `reason` stays exactly as it was: it is the developer-facing explanation and
+ * several callers log it. What it must NOT be is the string shown to a French
+ * radiologist — production displayed "Only a radiologist can validate and sign
+ * reports." on /fr. Server actions now map this code through next-intl and the
+ * predicate that produced it is untouched, so localizing the message cannot
+ * change who is allowed to sign.
+ */
+export type ReportWriteDenial =
+  | 'radiologist_only_sign'
+  | 'radiologist_only_structuring'
+  | 'no_permission_edit'
+  | 'no_permission_amend'
+  | 'amend_requires_finalized'
+  | 'already_finalized'
+  | 'finalized_immutable'
+
 export interface ReportWriteCheck {
   allowed: boolean
   reason:  string | null
+  /** Present whenever `allowed` is false. */
+  code?:   ReportWriteDenial
 }
 
 /** A report whose clinical content is locked against direct edits. */
@@ -48,7 +69,11 @@ export function evaluateReportWrite(input: {
   switch (kind) {
     case 'finalize':
       if (!canSignReports(actorRole)) {
-        return { allowed: false, reason: 'Only a radiologist can validate and sign reports.' }
+        return {
+          allowed: false,
+          code: 'radiologist_only_sign',
+          reason: 'Only a radiologist can validate and sign reports.',
+        }
       }
       break
     case 'structuring_accept':
@@ -56,18 +81,30 @@ export function evaluateReportWrite(input: {
       // editorial act on diagnostic content — the authority contract keeps it
       // radiologist-only (see the module comment in lib/actions/structuring.ts).
       if (!canSignReports(actorRole)) {
-        return { allowed: false, reason: 'Only a radiologist can apply the structured report.' }
+        return {
+          allowed: false,
+          code: 'radiologist_only_structuring',
+          reason: 'Only a radiologist can apply the structured report.',
+        }
       }
       break
     case 'draft_save':
     case 'ai_accept':
       if (!canEditClinicalContent(actorRole)) {
-        return { allowed: false, reason: 'You do not have permission to edit reports.' }
+        return {
+          allowed: false,
+          code: 'no_permission_edit',
+          reason: 'You do not have permission to edit reports.',
+        }
       }
       break
     case 'amend':
       if (!canEditClinicalContent(actorRole)) {
-        return { allowed: false, reason: 'You do not have permission to amend reports.' }
+        return {
+          allowed: false,
+          code: 'no_permission_amend',
+          reason: 'You do not have permission to amend reports.',
+        }
       }
       break
   }
@@ -78,17 +115,21 @@ export function evaluateReportWrite(input: {
   if (kind === 'amend') {
     return isReportContentLocked(currentStatus)
       ? OK
-      : { allowed: false, reason: 'Only a finalized report can be amended.' }
+      : {
+          allowed: false,
+          code: 'amend_requires_finalized',
+          reason: 'Only a finalized report can be amended.',
+        }
   }
 
   if (isReportContentLocked(currentStatus)) {
-    return {
-      allowed: false,
-      reason:
-        kind === 'finalize'
-          ? 'Report is already finalized.'
-          : 'Finalized reports cannot be modified. Use "Amend Report" to re-open the report first.',
-    }
+    return kind === 'finalize'
+      ? { allowed: false, code: 'already_finalized', reason: 'Report is already finalized.' }
+      : {
+          allowed: false,
+          code: 'finalized_immutable',
+          reason: 'Finalized reports cannot be modified. Use "Amend Report" to re-open the report first.',
+        }
   }
 
   return OK

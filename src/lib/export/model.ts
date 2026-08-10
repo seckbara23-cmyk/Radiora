@@ -9,6 +9,7 @@
 import type { StructuredReportData } from '@/types/report'
 import { buildSignatureName, coerceSignatureStyle } from '@/lib/profile/signature'
 import { buildSpecialFormTable, type SpecialFormTable } from '@/lib/reports/special-forms'
+import { isPlaceholderIdentity } from '@/lib/reports/patient-identity'
 
 export type { SpecialFormTable } from '@/lib/reports/special-forms'
 
@@ -213,8 +214,14 @@ export function buildReportExportModel(input: ReportExportInput): ReportExportMo
     : '—'
   const examDate = clean(study?.studyDate) || report.createdAt.slice(0, 10)
   const examNumber = clean(study?.accessionNumber) || '—'
-  const age = clean(sd?.patient?.age) || computeAge(patient?.dateOfBirth)
-  const sex = clean(sd?.patient?.sex) || (patient ? SEX_FR[patient.sex] ?? '' : '')
+  // R2.7C — a stored "—" is an ABSENCE that was accidentally written down, not
+  // a fact about the patient. Reports saved before the R2.7C patient-context fix
+  // carry exactly that, and preferring it over the patient row printed "ÂGE: —"
+  // onto the PDF for a patient whose date of birth the database holds.
+  const storedAge = clean(sd?.patient?.age)
+  const storedSex = clean(sd?.patient?.sex)
+  const age = (isPlaceholderIdentity(storedAge) ? '' : storedAge) || computeAge(patient?.dateOfBirth)
+  const sex = (isPlaceholderIdentity(storedSex) ? '' : storedSex) || (patient ? SEX_FR[patient.sex] ?? '' : '')
   const service = clean(sd?.patient?.serviceOrWard)
 
   const patientFields: ExportPatientField[] = [

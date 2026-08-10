@@ -469,7 +469,7 @@
     "exportSectionTitle": "Export",
     "exportSectionDesc": "Export to Word or PDF, or print the report.",
     "filenameLabel": "File name",
-    "filenameExample": "PatientName_ExamType_ExamNumber",
+    "filenameExample": "YYYYMMDD_PatientName_ExamType_ExamNumber",
     "filenameAuto": "The file name is generated automatically.",
     "archiveSectionTitle": "Archiving",
     "archiveSectionDesc": "Every report stays archived and traceable.",
@@ -1007,6 +1007,11 @@
   },
   "live": {
     "editedByYou": "Edited by you",
+    "editedByYouHint": "You wrote this section, so AI dictation no longer writes into it. Use “Resume AI dictation” to hand it back.",
+    "unresolvedCorrections": "Corrections not applied",
+    "unresolvedCorrectionsHint": "Radiora could not determine with certainty what this correction replaced. The original finding has been kept — review it and correct the section yourself if needed.",
+    "proposedReplacement": "Proposed replacement",
+    "originalFinding": "Finding kept",
     "aiSuggestion": "AI suggestion",
     "accept": "Accept",
     "reject": "Dismiss",
@@ -1024,6 +1029,21 @@
       "sectionInferred": "Section proposed by AI",
       "physicianOwned": "Edited by the radiologist — AI suggestion available"
     }
+  },
+  "reportErrors": {
+    "radiologistOnlySign": "Only a radiologist can validate and sign reports.",
+    "radiologistOnlyStructuring": "Only a radiologist can apply the structured report.",
+    "noPermissionCreate": "You do not have permission to create reports.",
+    "noPermissionEdit": "You do not have permission to edit reports.",
+    "noPermissionAmend": "You do not have permission to amend reports.",
+    "amendRequiresFinalized": "Only a finalized report can be amended.",
+    "alreadyFinalized": "This report is already finalized.",
+    "finalizedImmutable": "A finalized report cannot be modified. Use “Amend report” to re-open it first.",
+    "missingFields": "Required fields are missing.",
+    "missingReportId": "Missing report ID.",
+    "reportNotFound": "Report not found.",
+    "reportNotFinalized": "Report not found, or it is not finalized.",
+    "amendReasonRequired": "A reason is required to amend a finalized report."
   },
   "reportEditor": {
     "applyTemplatePlaceholder": "Apply a template…",

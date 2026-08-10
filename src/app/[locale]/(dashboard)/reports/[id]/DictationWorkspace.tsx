@@ -95,6 +95,7 @@ export function DictationWorkspace({
   onStableTranscript,
 }: Props) {
   const t = useTranslations('workspace')
+  const tLive = useTranslations('live')
 
   const [state, setState] = useState<WorkspaceState>(
     initialTranscript.trim() ? 'transcription_ready' : 'ready_to_dictate',
@@ -391,6 +392,10 @@ export function DictationWorkspace({
     onApply(draft)
   }
 
+  // R2.7C(B) — corrections the engine held back rather than applied. Their text
+  // is deliberately NOT in the clinical sections, so this is where it is seen.
+  const unresolvedCorrections = (meta?.correctionEvents ?? []).filter((e) => e.applied === false)
+
   const busy = isBusy(state) || isPending
   const committedText = canonicalTranscript(live)
   // Read straight from the recogniser: the guess is never mirrored into state.
@@ -589,6 +594,32 @@ export function DictationWorkspace({
             <p className="mt-0.5 text-[11px] text-gray-600">
               {t('corrections', { count: meta.correctionEvents.length })}
             </p>
+          )}
+
+          {/* R2.7C(B) — a correction the engine refused to resolve no longer
+              leaks into RÉSULTATS as "… 8 mm, je corrige 9 mm". The original
+              finding stays in the section and the replacement is shown HERE, so
+              the doctor can still see every word they dictated and decide. */}
+          {unresolvedCorrections.length > 0 && (
+            <div className="mt-2 rounded-md border border-amber-300 bg-amber-50 p-2">
+              <p className="text-[11px] font-semibold text-amber-900">
+                ⚠ {tLive('unresolvedCorrections')}
+              </p>
+              <p className="mt-0.5 text-[10px] leading-snug text-amber-800">
+                {tLive('unresolvedCorrectionsHint')}
+              </p>
+              <ul className="mt-1.5 space-y-1.5">
+                {unresolvedCorrections.map((e, i) => (
+                  <li key={i} className="text-[11px] leading-snug">
+                    <span className="font-medium text-amber-900">{tLive('originalFinding')} : </span>
+                    <span className="text-slate-700">{e.removed || '—'}</span>
+                    <br />
+                    <span className="font-medium text-amber-900">{tLive('proposedReplacement')} : </span>
+                    <span className="text-slate-700">{e.kept || '—'}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           <button

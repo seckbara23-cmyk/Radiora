@@ -54,7 +54,7 @@ import {
 } from '@/lib/reports/structured-patch'
 import type { HpdStructuringMeta } from '@/lib/ai/hpd-draft'
 import type { StructuredReportData } from '@/types/report'
-import type { LiveReportState, SectionPatch } from '@/types/live-structuring'
+import type { LiveReportState, SectionOrigin, SectionPatch } from '@/types/live-structuring'
 
 // ─── Classification vocabulary ────────────────────────────────────────────────
 
@@ -119,6 +119,8 @@ export interface SectionDecision {
   proposedText: string
   /** True only when the text was actually written into the section. */
   applied: boolean
+  /** R2.7C — who authored the proposed text, so the editor can persist it. */
+  origin: SectionOrigin
 }
 
 export interface LiveCoordinatorState {
@@ -391,12 +393,13 @@ export function reconcile(
     }
 
     const applied = classification === 'SAFE_AUTO_APPLY' || classification === 'REVIEW_REQUIRED'
+    const origin: SectionOrigin = autoFilled ? 'template' : 'dictation'
 
     if (applied) {
       writable.push({
         key: k,
         text: proposed[k],
-        origin: autoFilled ? 'template' : 'dictation',
+        origin,
         confidence: score?.confidence,
         reviewRequired: reasons.length > 0,
         kind: meta.correctionEvents.length > 0 ? 'correction' : 'dictated',
@@ -420,6 +423,7 @@ export function reconcile(
       previousText: previous[k],
       proposedText: proposed[k],
       applied,
+      origin,
     })
   }
 

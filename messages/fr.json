@@ -469,7 +469,7 @@
     "exportSectionTitle": "Export",
     "exportSectionDesc": "Exportez en Word ou PDF, ou imprimez le compte rendu.",
     "filenameLabel": "Nom de fichier",
-    "filenameExample": "NomPatient_TypeExamen_NumExamen",
+    "filenameExample": "AAAAMMJJ_NomPatient_TypeExamen_NumExamen",
     "filenameAuto": "Le nom du fichier est généré automatiquement.",
     "archiveSectionTitle": "Archivage",
     "archiveSectionDesc": "Chaque compte rendu reste archivé et traçable.",
@@ -1007,6 +1007,11 @@
   },
   "live": {
     "editedByYou": "Modifié par vous",
+    "editedByYouHint": "Section rédigée par vous : la dictée IA n’y écrit plus. Utilisez « Reprendre la dictée IA » pour la lui rendre.",
+    "unresolvedCorrections": "Corrections non appliquées",
+    "unresolvedCorrectionsHint": "Radiora n’a pas pu déterminer avec certitude ce que cette correction remplaçait. Le constat d’origine est conservé ; vérifiez et corrigez la section vous-même si nécessaire.",
+    "proposedReplacement": "Remplacement proposé",
+    "originalFinding": "Constat conservé",
     "aiSuggestion": "Suggestion IA",
     "accept": "Accepter",
     "reject": "Refuser",
@@ -1024,6 +1029,21 @@
       "sectionInferred": "Section proposée par l’IA",
       "physicianOwned": "Contenu modifié par le radiologue — suggestion IA disponible"
     }
+  },
+  "reportErrors": {
+    "radiologistOnlySign": "Seul un radiologue peut valider et signer les comptes rendus.",
+    "radiologistOnlyStructuring": "Seul un radiologue peut appliquer le compte rendu structuré.",
+    "noPermissionCreate": "Vous n’avez pas l’autorisation de créer des comptes rendus.",
+    "noPermissionEdit": "Vous n’avez pas l’autorisation de modifier les comptes rendus.",
+    "noPermissionAmend": "Vous n’avez pas l’autorisation de rectifier les comptes rendus.",
+    "amendRequiresFinalized": "Seul un compte rendu validé peut être rectifié.",
+    "alreadyFinalized": "Ce compte rendu est déjà validé.",
+    "finalizedImmutable": "Un compte rendu validé ne peut pas être modifié. Utilisez « Rectifier le compte rendu » pour le rouvrir.",
+    "missingFields": "Champs obligatoires manquants.",
+    "missingReportId": "Identifiant du compte rendu manquant.",
+    "reportNotFound": "Compte rendu introuvable.",
+    "reportNotFinalized": "Compte rendu introuvable ou non validé.",
+    "amendReasonRequired": "Un motif est obligatoire pour rectifier un compte rendu validé."
   },
   "reportEditor": {
     "applyTemplatePlaceholder": "Appliquer un modèle…",

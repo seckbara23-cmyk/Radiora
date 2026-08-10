@@ -14,6 +14,10 @@ import { logAudit } from '@/lib/actions/audit'
 import { clinicCanWrite, READ_ONLY_MESSAGE } from '@/lib/billing/access'
 import { canSignReports } from '@/lib/safety/authority'
 import { evaluateReportWrite } from '@/lib/safety/immutability'
+// R2.7C(G) — the report workspace speaks the doctor's language. The
+// authorization predicates above are untouched; only their messages are
+// localized, at this boundary, where the request locale exists.
+import { reportError, reportWriteError } from '@/lib/actions/report-messages'
 import { createReportVersion, type VersionDb, type VersionSnapshotInput } from '@/lib/reports/versioning'
 import { evaluateSigningReadiness, describeBlockers } from '@/lib/safety/signing-gate'
 import { getReportSafetyContext } from '@/lib/data/safety'
@@ -74,7 +78,7 @@ export async function createReport(
   const user = await requireCurrentUser()
 
   if (!REPORT_WRITE_ROLES.includes(user.role as WriteRole)) {
-    return { error: 'You do not have permission to create reports.' }
+    return { error: await reportError('no_permission_create') }
   }
 
   // Subscription gate: a lapsed clinic is read-only — no new reports.
@@ -85,7 +89,7 @@ export async function createReport(
   const studyId   = ((formData.get('study_id')   as string) ?? '').trim()
   const patientId = ((formData.get('patient_id') as string) ?? '').trim()
 
-  if (!studyId || !patientId) return { error: 'Missing required fields.' }
+  if (!studyId || !patientId) return { error: await reportError('missing_fields') }
 
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -123,7 +127,7 @@ export async function saveDraftReport(
   const user = await requireCurrentUser()
 
   if (!REPORT_WRITE_ROLES.includes(user.role as WriteRole)) {
-    return { error: 'You do not have permission to edit reports.' }
+    return { error: await reportError('no_permission_edit_report') }
   }
 
   if (!(await clinicCanWrite(user.clinicId))) {
@@ -136,7 +140,7 @@ export async function saveDraftReport(
   const recommendations = ((formData.get('recommendations') as string) ?? '').trim() || null
   const structuredData  = parseStructuredDataField(formData.get('structured_data') as string | null)
 
-  if (!id) return { error: 'Missing report ID.' }
+  if (!id) return { error: await reportError('missing_report_id') }
 
   const supabase = await createClient()
 
@@ -146,13 +150,13 @@ export async function saveDraftReport(
     .eq('id', id)
     .single()
 
-  if (readError || !existing) return { error: 'Report not found.' }
+  if (readError || !existing) return { error: await reportError('report_not_found') }
 
   // R0.2 — finalized content is immutable outside the amendment workflow.
   const gate = evaluateReportWrite({
     kind: 'draft_save', currentStatus: existing.status as string, actorRole: user.role,
   })
-  if (!gate.allowed) return { error: gate.reason }
+  if (!gate.allowed) return { error: await reportWriteError(gate) }
 
   const updatePayload: Record<string, unknown> = { findings, impression, recommendations }
   if (structuredData) {
@@ -200,7 +204,7 @@ export async function finalizeReport(
   // Only a radiologist may validate and sign. clinic_admin/super_admin have no
   // clinical signing authority by default — see canSignReports().
   if (!canSignReports(user.role)) {
-    return { error: 'Only a radiologist can validate and sign reports.' }
+    return { error: await reportError('radiologist_only_sign') }
   }
 
   if (!(await clinicCanWrite(user.clinicId))) {
@@ -214,7 +218,7 @@ export async function finalizeReport(
   const recommendations = ((formData.get('recommendations') as string) ?? '').trim() || null
   const structuredData  = parseStructuredDataField(formData.get('structured_data') as string | null)
 
-  if (!id || !studyId) return { error: 'Missing required fields.' }
+  if (!id || !studyId) return { error: await reportError('missing_fields') }
 
   // ── Signing gate ────────────────────────────────────────────────────────────
   // Block signing if any required section is empty, assesses to LOW confidence,
@@ -244,12 +248,12 @@ export async function finalizeReport(
     .eq('id', id)
     .single()
 
-  if (readError || !existing) return { error: 'Report not found.' }
+  if (readError || !existing) return { error: await reportError('report_not_found') }
 
   const gate = evaluateReportWrite({
     kind: 'finalize', currentStatus: existing.status as string, actorRole: user.role,
   })
-  if (!gate.allowed) return { error: gate.reason }
+  if (!gate.allowed) return { error: await reportWriteError(gate) }
 
   const updatePayload: Record<string, unknown> = {
     findings,
@@ -309,7 +313,7 @@ export async function amendReport(
   const user = await requireCurrentUser()
 
   if (!AMEND_ROLES.includes(user.role as AmendRole)) {
-    return { error: 'You do not have permission to amend reports.' }
+    return { error: await reportError('no_permission_amend_report') }
   }
 
   if (!(await clinicCanWrite(user.clinicId))) {
@@ -319,8 +323,8 @@ export async function amendReport(
   const id           = ((formData.get('id')            as string) ?? '').trim()
   const changeReason = ((formData.get('change_reason') as string) ?? '').trim()
 
-  if (!id)           return { error: 'Missing report ID.' }
-  if (!changeReason) return { error: 'A reason is required to amend a finalized report.' }
+  if (!id)           return { error: await reportError('missing_report_id') }
+  if (!changeReason) return { error: await reportError('amend_reason_required') }
 
   const supabase = await createClient()
 
@@ -331,7 +335,7 @@ export async function amendReport(
     .eq('status', 'finalized')
     .single()
 
-  if (readError || !current) return { error: 'Report not found or is not in a finalized state.' }
+  if (readError || !current) return { error: await reportError('report_not_finalized') }
 
   // R0.2 — the pre-amendment snapshot is the only preserved copy of the signed
   // document (the DB trigger clears signed_at when the status leaves
