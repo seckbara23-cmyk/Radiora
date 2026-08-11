@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
 import { SenegalBar, SenegalStar } from '@/components/ui/senegal-accents'
 import { LocaleSwitch } from '@/components/marketing/locale-switch'
+import { RadioraMark } from '@/components/brand/radiora-mark'
 
 // Phase 5H — public marketing site shell (nav + footer). Wraps Home, Features,
 // Pricing, Security and Contact.
@@ -41,11 +42,14 @@ export default async function MarketingLayout({
           the page as Radiora, so the header itself stays quiet. */}
       <header className="sticky top-0 z-30 border-b border-gray-100 bg-white">
         <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
+          {/* R2.9 polish — brand convergence. The header used a generic
+              document glyph while the login page used the provisional
+              RadioraMark, so the public surface carried two different marks.
+              Both now use the SAME component. It remains provisional and is
+              still not an approved corporate logo; no third identity was
+              created, and the "Radiora Medical" wordmark is unchanged. */}
           <Link href="/" className="flex items-center gap-2.5">
-            <svg className="h-7 w-7 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
-            </svg>
+            <RadioraMark className="h-7 w-7 text-sm" />
             <span className="text-lg font-semibold tracking-tight text-gray-900">Radiora Medical</span>
           </Link>
 
@@ -86,10 +90,7 @@ export default async function MarketingLayout({
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-9 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="flex items-center gap-2.5">
-              <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
-                  d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
-              </svg>
+              <RadioraMark className="h-6 w-6 text-xs" />
               <span className="font-semibold tracking-tight text-gray-900">Radiora Medical</span>
             </div>
             <p className="mt-2 max-w-sm text-sm text-gray-500">{t('footer.tagline')}</p>

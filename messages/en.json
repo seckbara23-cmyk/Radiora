@@ -2197,8 +2197,8 @@
     "trial": {
       "headline": "Your dictation. Your report. Your validation.",
       "subtext2": "New to Radiora? 30-day free trial, no credit card.",
-      "primary": "Sign in to Radiora",
-      "secondary": "Create an account"
+      "primary": "Create an account",
+      "secondary": "Sign in"
     },
     "capabilities": [
       {

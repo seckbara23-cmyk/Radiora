@@ -64,7 +64,7 @@ export default async function MarketingHome({
     <>
       {/* ── 1. Hero ── */}
       <section className="bg-white">
-        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 pb-16 pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:gap-10 lg:pb-20 lg:pt-20">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 pb-12 pt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,35rem)] lg:gap-10 lg:pb-16 lg:pt-14">
 
           <div>
             <h1 className="text-4xl font-bold leading-[1.12] tracking-tight text-gray-900 sm:text-5xl">
@@ -72,11 +72,11 @@ export default async function MarketingHome({
               <br />
               <span className="text-blue-600">{t('home.heroHighlight')}</span>
             </h1>
-            <p className="mt-5 max-w-md text-base leading-relaxed text-gray-500">
+            <p className="mt-4 max-w-md text-base leading-relaxed text-gray-500">
               {t('home.heroDesc')}
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/signup"
                 className="rounded-xl bg-blue-600 px-6 py-3 text-center text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
@@ -95,7 +95,7 @@ export default async function MarketingHome({
             </div>
 
             {/* Three compact capability indicators */}
-            <ul className="mt-10 grid grid-cols-3 gap-4 border-t border-gray-100 pt-7">
+            <ul className="mt-8 grid grid-cols-3 gap-4 border-t border-gray-100 pt-6">
               {capabilities.map((cap, i) => (
                 <li key={i}>
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
@@ -110,7 +110,7 @@ export default async function MarketingHome({
 
           {/* The product itself, as the explanation. */}
           <ProductMockup
-            className="mx-auto w-full max-w-[30rem] lg:mr-0"
+            className="mx-auto w-full max-w-[35rem] lg:mr-0"
             labels={{
               alt:            tL('mockup.alt'),
               newReport:      tL('mockup.newReport'),

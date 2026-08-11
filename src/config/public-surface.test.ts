@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fr from '../../messages/fr.json'
@@ -170,6 +170,27 @@ describe('CTA hierarchy: both paths reachable, emphasis per surface', () => {
   it('the final CTA still carries BOTH sign-in and sign-up', () => {
     expect(LANDING_SECTIONS).toMatch(/href="\/login"/)
     expect(LANDING_SECTIONS).toMatch(/href="\/signup"/)
+  })
+
+  it('final CTA: acquisition is the filled primary, sign-in the outlined secondary', () => {
+    // R2.9 polish. The final CTA is the acquisition moment, so /signup is the
+    // white filled button and /login is the ring-outlined one — the inverse of
+    // the header, which stays sign-in-first for returning clinicians.
+    const cta = LANDING_SECTIONS.slice(LANDING_SECTIONS.indexOf('trial-heading'))
+    const signupAt = cta.indexOf('href="/signup"')
+    const loginAt = cta.indexOf('href="/login"')
+    expect(signupAt).toBeGreaterThan(-1)
+    expect(loginAt).toBeGreaterThan(-1)
+    expect(signupAt, 'signup comes first in the final CTA').toBeLessThan(loginAt)
+    expect(cta.slice(signupAt, signupAt + 200)).toContain('bg-white')
+    expect(cta.slice(loginAt, loginAt + 200)).toContain('ring-white/40')
+  })
+
+  it('the two CTA surfaces have OPPOSITE emphasis, and neither drops a path', () => {
+    // Header: /login filled. Final CTA: /signup filled. Both surfaces offer both.
+    expect(MKT_LAYOUT).toMatch(/href="\/login"[\s\S]{0,160}bg-blue-600/)
+    expect(MKT_LAYOUT).toMatch(/href="\/signup"/)
+    expect(LANDING_SECTIONS).toMatch(/href="\/signup"[\s\S]{0,200}bg-white/)
   })
 })
 
@@ -426,12 +447,26 @@ describe('login: the provisional brand mark is isolated, not claimed as approved
     expect(raw).toMatch(/not.*approved|no approved/i)
   })
 
-  it('has no consumer outside the login page — a deliberate scope boundary', () => {
-    // The marketing header keeps its own existing icon; this pass is scoped
-    // to the login page, and adopting the mark elsewhere is a follow-up
-    // decision, not something this pass makes silently.
-    expect(MKT_LAYOUT).not.toContain('RadioraMark')
-    expect(MARK.length).toBeGreaterThan(0) // the file itself has content
+  it('R2.9 polish — the public surface now shares ONE mark, not three', () => {
+    // R2.8 deliberately left the marketing header on its own generic document
+    // glyph, calling adoption a follow-up decision. That decision has since
+    // been made: header, footer and login all render the SAME component, and
+    // the old inline glyph is gone rather than left as a second identity.
+    expect(MKT_LAYOUT).toContain("import { RadioraMark } from '@/components/brand/radiora-mark'")
+    expect((MKT_LAYOUT.match(/<RadioraMark/g) ?? []).length).toBe(2) // header + footer
+    expect(LOGIN).toContain('<RadioraMark')
+    // The generic document-outline path the header used before.
+    expect(MKT_LAYOUT).not.toContain('M9 3H5a2 2 0 00-2 2v4m6-6h10')
+    expect(MARK.length).toBeGreaterThan(0)
+  })
+
+  it('no third brand asset was introduced', () => {
+    // Exactly one brand component exists, and nothing imports a logo image.
+    expect(existsSync(new URL('../components/brand/radiora-mark.tsx', import.meta.url))).toBe(true)
+    for (const [name, src] of [['layout', MKT_LAYOUT], ['home', MKT_HOME], ['login', LOGIN]] as const) {
+      expect(src, name).not.toMatch(/logo\.(svg|png|jpg|webp)/i)
+      expect(src, name).not.toContain('next/image')
+    }
   })
 
   it('is a pure presentational component — no data, no network, no auth import', () => {

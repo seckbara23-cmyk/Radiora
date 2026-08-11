@@ -2197,8 +2197,8 @@
     "trial": {
       "headline": "Votre dictée. Votre compte rendu. Votre validation.",
       "subtext2": "Nouveau sur Radiora ? Essai gratuit de 30 jours, sans carte bancaire.",
-      "primary": "Se connecter à Radiora",
-      "secondary": "Créer un compte"
+      "primary": "Créer un compte",
+      "secondary": "Se connecter"
     },
     "capabilities": [
       {

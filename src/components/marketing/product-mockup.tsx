@@ -77,9 +77,9 @@ function Waveform({ className = '' }: { className?: string }) {
 
 function ReportSection({ label, text }: { label: string; text: string }) {
   return (
-    <div className="rounded-md border border-gray-100 bg-white px-2.5 py-1.5">
-      <p className="text-[6px] font-bold uppercase tracking-[0.09em] text-blue-600">{label}</p>
-      <p className="mt-0.5 text-[7px] leading-snug text-gray-600">{text}</p>
+    <div className="rounded-md border border-gray-100 bg-white px-3 py-2">
+      <p className="text-[7px] font-bold uppercase tracking-[0.09em] text-blue-600">{label}</p>
+      <p className="mt-0.5 text-[8px] leading-snug text-gray-600">{text}</p>
     </div>
   )
 }
@@ -108,35 +108,35 @@ export function ProductMockup({
 
         <div className="flex">
           {/* Sidebar — the real R2.1 navigation: three clinical items, nothing else */}
-          <aside className="hidden w-[104px] shrink-0 border-r border-gray-100 bg-gray-50/70 p-2.5 sm:block">
+          <aside className="hidden w-[124px] shrink-0 border-r border-gray-100 bg-gray-50/70 p-3 sm:block">
             <div className="flex items-center gap-1">
-              <span className="flex h-3.5 w-3.5 items-center justify-center rounded bg-blue-600 text-[6px] font-extrabold text-white">R</span>
-              <span className="text-[7px] font-bold tracking-tight text-gray-900">RADIORA</span>
+              <span className="flex h-4 w-4 items-center justify-center rounded bg-blue-600 text-[7px] font-extrabold text-white">R</span>
+              <span className="text-[8px] font-bold tracking-tight text-gray-900">RADIORA</span>
             </div>
-            <div className="mt-2.5 rounded bg-blue-600 px-1.5 py-1 text-[6px] font-semibold text-white">
+            <div className="mt-3 rounded bg-blue-600 px-2 py-1.5 text-[7px] font-semibold text-white">
               + {labels.newReport}
             </div>
-            <div className="mt-1 rounded px-1.5 py-1 text-[6px] font-medium text-gray-500">{labels.reports}</div>
-            <div className="rounded px-1.5 py-1 text-[6px] font-medium text-gray-500">{labels.templates}</div>
+            <div className="mt-1 rounded px-2 py-1.5 text-[7px] font-medium text-gray-500">{labels.reports}</div>
+            <div className="rounded px-2 py-1.5 text-[7px] font-medium text-gray-500">{labels.templates}</div>
           </aside>
 
           {/* Document */}
-          <div className="min-w-0 flex-1 p-3">
+          <div className="min-w-0 flex-1 p-3.5">
             {/* Patient / exam strip */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 rounded-md border border-gray-100 bg-gray-50/60 px-2.5 py-1.5">
+            <div className="flex flex-wrap gap-x-5 gap-y-1 rounded-md border border-gray-100 bg-gray-50/60 px-3 py-2">
               {[
                 [labels.patientLabel, labels.patientValue],
                 [labels.examLabel, labels.examValue],
                 [labels.dateLabel, labels.dateValue],
               ].map(([k, v]) => (
                 <div key={k}>
-                  <p className="text-[5.5px] uppercase tracking-wide text-gray-400">{k}</p>
-                  <p className="text-[7px] font-semibold text-gray-800">{v}</p>
+                  <p className="text-[6.5px] uppercase tracking-wide text-gray-400">{k}</p>
+                  <p className="text-[8px] font-semibold text-gray-800">{v}</p>
                 </div>
               ))}
             </div>
 
-            <div className="mt-2 space-y-1.5">
+            <div className="mt-2.5 space-y-2">
               <ReportSection label={sectionLabels.indication} text={report.indication} />
               <ReportSection label={sectionLabels.technique}  text={report.technique} />
               <ReportSection label={sectionLabels.results}    text={report.results} />
@@ -144,11 +144,11 @@ export function ProductMockup({
             </div>
 
             {/* One dominant next action, exactly as the workstation behaves */}
-            <div className="mt-2.5 flex items-center justify-end gap-1.5">
-              <span className="rounded border border-gray-200 px-2 py-1 text-[6px] font-semibold text-gray-500">
+            <div className="mt-3 flex items-center justify-end gap-2">
+              <span className="rounded border border-gray-200 px-2.5 py-1.5 text-[7px] font-semibold text-gray-500">
                 {labels.saveDraft}
               </span>
-              <span className="rounded bg-blue-600 px-2 py-1 text-[6px] font-semibold text-white">
+              <span className="rounded bg-blue-600 px-2.5 py-1.5 text-[7px] font-semibold text-white">
                 {labels.reviewSign}
               </span>
             </div>
@@ -160,21 +160,21 @@ export function ProductMockup({
           Mobile dictation is a core input, not an accessory, so it sits in
           front of the workstation rather than beside it. Hidden below `sm:`
           where the overlap would cover the report it is meant to explain. */}
-      <div className="absolute -bottom-6 -left-6 hidden w-[112px] overflow-hidden rounded-[14px] border-[3px] border-slate-800 bg-white shadow-xl shadow-slate-900/20 sm:block">
-        <div className="bg-slate-800 px-2 pb-1 pt-1.5">
-          <p className="text-[6px] font-semibold text-white">{labels.phoneTitle}</p>
-          <p className="text-[5.5px] text-slate-300">{labels.phoneSubtitle}</p>
+      <div className="absolute -bottom-7 -left-7 hidden w-[132px] overflow-hidden rounded-[14px] border-[3px] border-slate-800 bg-white shadow-xl shadow-slate-900/20 sm:block">
+        <div className="bg-slate-800 px-2.5 pb-1.5 pt-2">
+          <p className="text-[7px] font-semibold text-white">{labels.phoneTitle}</p>
+          <p className="text-[6.5px] text-slate-300">{labels.phoneSubtitle}</p>
         </div>
-        <div className="px-2 py-2.5">
-          <Waveform className="h-6 w-full text-blue-500" />
-          <p className="mt-1.5 text-center text-[9px] font-bold tabular-nums tracking-tight text-gray-900">
+        <div className="px-2.5 py-3">
+          <Waveform className="h-7 w-full text-blue-500" />
+          <p className="mt-2 text-center text-[11px] font-bold tabular-nums tracking-tight text-gray-900">
             {labels.phoneTimer}
           </p>
-          <p className="mt-0.5 flex items-center justify-center gap-1 text-[5.5px] font-medium text-red-600">
+          <p className="mt-1 flex items-center justify-center gap-1 text-[6.5px] font-medium text-red-600">
             <span className="h-1 w-1 rounded-full bg-red-600" />
             {labels.phoneRecording}
           </p>
-          <div className="mt-2 rounded bg-blue-600 px-1.5 py-1 text-center text-[6px] font-semibold text-white">
+          <div className="mt-2.5 rounded bg-blue-600 px-2 py-1.5 text-center text-[7px] font-semibold text-white">
             {labels.phoneSend}
           </div>
         </div>

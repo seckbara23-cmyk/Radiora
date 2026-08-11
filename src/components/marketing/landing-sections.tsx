@@ -125,12 +125,12 @@ export async function CoreWorkflow() {
   const steps = t.raw('workflow.steps') as Array<{ label: string; desc: string }>
   return (
     <section id="workflow" aria-labelledby="workflow-heading" className="scroll-mt-20 border-t border-gray-100 bg-white">
-      <div className="mx-auto max-w-6xl px-6 py-16">
+      <div className="mx-auto max-w-6xl px-6 py-12">
         <h2 id="workflow-heading" className="text-center text-2xl font-bold tracking-tight text-gray-900">
           {t('workflow.title')}
         </h2>
 
-        <ol className="mt-10 grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 lg:grid-cols-6">
+        <ol className="mt-8 grid grid-cols-2 gap-x-4 gap-y-7 sm:grid-cols-3 lg:grid-cols-6">
           {steps.map((step, i) => (
             <li key={i} className="relative flex flex-col items-center text-center">
               <span className="flex h-11 w-11 items-center justify-center rounded-full border border-blue-100 bg-blue-50 text-blue-600">
@@ -173,12 +173,12 @@ export async function RadioraInAction() {
 
   return (
     <section aria-labelledby="action-heading" className="border-t border-gray-100 bg-white">
-      <div className="mx-auto max-w-6xl px-6 py-16">
-        <div className="grid gap-6 rounded-3xl bg-slate-50 p-6 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-8 lg:p-8">
+      <div className="mx-auto max-w-6xl px-6 py-12">
+        <div className="grid gap-6 rounded-3xl bg-slate-50 p-6 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:gap-8 lg:p-9">
 
           {/* Explanation */}
           <div>
-            <h2 id="action-heading" className="text-xl font-bold tracking-tight text-gray-900">
+            <h2 id="action-heading" className="text-2xl font-bold tracking-tight text-gray-900">
               {t('action.heading')}
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-gray-600">{t('action.body')}</p>
@@ -204,15 +204,15 @@ export async function RadioraInAction() {
           {/* Speech → structure */}
           <div className="grid items-stretch gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
             {/* Dictation */}
-            <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-3.5">
+            <div className="flex flex-col rounded-xl border border-gray-200 bg-white p-4">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-semibold text-gray-900">{t('action.liveTitle')}</p>
+                <p className="text-xs font-semibold text-gray-900">{t('action.liveTitle')}</p>
                 <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-1.5 py-0.5 text-[9px] font-medium text-red-600">
                   <span className="h-1 w-1 rounded-full bg-red-500" />
                   {t('action.liveBadge')}
                 </span>
               </div>
-              <p className="mt-2.5 flex-1 text-[11px] leading-relaxed text-gray-600">{t('action.dictation')}</p>
+              <p className="mt-3 flex-1 text-xs leading-relaxed text-gray-600">{t('action.dictation')}</p>
               <div className="mt-3 flex items-center gap-2 border-t border-gray-100 pt-2.5">
                 <Waveform className="h-5 flex-1 text-blue-500" />
                 <span className="text-[10px] font-semibold tabular-nums text-gray-500">{t('action.liveTimer')}</span>
@@ -227,18 +227,18 @@ export async function RadioraInAction() {
             </div>
 
             {/* Structured report */}
-            <div className="rounded-xl border border-gray-200 bg-white p-3.5">
+            <div className="rounded-xl border border-gray-200 bg-white p-4">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-semibold text-gray-900">{t('action.structuredTitle')}</p>
+                <p className="text-xs font-semibold text-gray-900">{t('action.structuredTitle')}</p>
                 <span className="rounded-full bg-blue-50 px-1.5 py-0.5 text-[9px] font-medium text-blue-700">
                   {t('action.structuredBadge')}
                 </span>
               </div>
-              <div className="mt-2.5 space-y-1.5">
+              <div className="mt-3 space-y-2">
                 {sections.map(([label, text]) => (
                   <div key={label} className="border-l-2 border-blue-100 pl-2">
-                    <p className="text-[8px] font-bold uppercase tracking-[0.08em] text-blue-600">{label}</p>
-                    <p className="mt-0.5 text-[10px] leading-snug text-gray-600">{text}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.08em] text-blue-600">{label}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-gray-600">{text}</p>
                   </div>
                 ))}
               </div>
@@ -258,7 +258,7 @@ export async function ValuePoints() {
   const values = t.raw('values') as Array<{ title: string; desc: string }>
   return (
     <section aria-label={t('action.heading')} className="border-t border-gray-100 bg-white">
-      <div className="mx-auto grid max-w-6xl gap-8 px-6 py-14 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-7 px-6 py-11 sm:grid-cols-2 lg:grid-cols-4">
         {values.map((v, i) => (
           <div key={i} className="flex items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600">
@@ -280,22 +280,26 @@ export async function TrialCta() {
   const t = await getTranslations('landing')
   return (
     <section aria-labelledby="trial-heading" className="bg-blue-600">
-      <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 px-6 py-14 text-center md:flex-row md:justify-between md:text-left">
+      <div className="mx-auto flex max-w-5xl flex-col items-center gap-6 px-6 py-12 text-center md:flex-row md:justify-between md:text-left">
         <div>
           <h2 id="trial-heading" className="text-2xl font-bold tracking-tight text-white">
             {t('trial.headline')}
           </h2>
           <p className="mt-1.5 text-sm text-blue-100">{t('trial.subtext2')}</p>
         </div>
+        {/* R2.9 polish — the final CTA is the acquisition moment, so account
+            creation is the filled primary here and sign-in is the outlined
+            secondary. The HEADER keeps the opposite emphasis for returning
+            clinicians; neither path is removed from either surface. */}
         <div className="flex shrink-0 flex-col gap-3 sm:flex-row">
           <Link
-            href="/login"
+            href="/signup"
             className="rounded-xl bg-white px-6 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-blue-50"
           >
             {t('trial.primary')}
           </Link>
           <Link
-            href="/signup"
+            href="/login"
             className="rounded-xl px-6 py-3 text-sm font-medium text-white ring-1 ring-inset ring-white/40 transition hover:bg-blue-500"
           >
             {t('trial.secondary')}
