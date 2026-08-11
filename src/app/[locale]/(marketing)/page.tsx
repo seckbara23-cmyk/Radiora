@@ -1,20 +1,50 @@
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { Link } from '@/i18n/navigation'
-import { SenegalStar } from '@/components/ui/senegal-accents'
-import { RadiologyScanMark } from '@/components/marketing/radiology-visual'
-import { RadioraDemo } from '@/components/marketing/radiora-demo'
+import { ProductMockup } from '@/components/marketing/product-mockup'
 import {
-  ResultsBanner,
   CoreWorkflow,
-  SenegalSection,
-  MobileDictation,
-  AiAssistSection,
-  ReportOutputSection,
-  TrustStripSection,
-  WhyRadiora,
-  PilotTestimonial,
+  RadioraInAction,
+  ValuePoints,
   TrialCta,
 } from '@/components/marketing/landing-sections'
+
+// R2.8 landing rebuild — the homepage explains Radiora in seconds.
+//
+// It had grown to nine sections that each restated the same workflow, so a
+// visitor had to read a long page to learn one idea. It is now five:
+//
+//   hero (with the product mockup) → lifecycle → Radiora en action
+//   → four value points → final CTA
+//
+// The heavy interactive demo (~450 lines of client JS) moved off the homepage
+// entirely; /demo still composes it, so nothing was lost and the landing page
+// now ships almost no client JavaScript.
+
+const CAPABILITY_ICONS = [
+  // Dictate
+  (c: string) => (
+    <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M19 11a7 7 0 01-14 0M12 18v3" />
+    </svg>
+  ),
+  // Phone via QR
+  (c: string) => (
+    <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3.5" y="3.5" width="6" height="6" strokeWidth={1.6} />
+      <rect x="14.5" y="3.5" width="6" height="6" strokeWidth={1.6} />
+      <rect x="3.5" y="14.5" width="6" height="6" strokeWidth={1.6} />
+      <path strokeLinecap="round" strokeWidth={1.6} d="M14.5 15h2.5v2.5M20.5 15v2M15 20.5h5.5" />
+    </svg>
+  ),
+  // AI structures
+  (c: string) => (
+    <svg className={c} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="7" y="7" width="10" height="10" rx="1.5" strokeWidth={1.6} />
+      <path strokeLinecap="round" strokeWidth={1.6} d="M9 3v2m6-2v2M9 19v2m6-2v2M3 9h2m-2 6h2m14-6h2m-2 6h2" />
+    </svg>
+  ),
+]
 
 export default async function MarketingHome({
   params,
@@ -23,93 +53,109 @@ export default async function MarketingHome({
 }) {
   const { locale } = await params
   setRequestLocale(locale)
-  const t = await getTranslations('marketing')
+
+  const t  = await getTranslations('marketing')
+  const tL = await getTranslations('landing')
+  const tE = await getTranslations('reportEditor')
+
+  const capabilities = tL.raw('capabilities') as Array<{ label: string; desc: string }>
 
   return (
     <>
-      {/* Hero — R2.8: calm single-tone wash instead of a diagonal tri-color
-          gradient; "Se connecter" is the primary action (most visitors already
-          have an account), the trial stays one line below as a plain link. */}
-      <section className="relative overflow-hidden bg-slate-50">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-24 lg:grid-cols-[1fr_auto]">
-          <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-            <div className="mb-8 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-4 py-1.5 text-xs font-medium text-emerald-700 ring-1 ring-inset ring-emerald-600/20">
-              <SenegalStar className="text-[#00853F]" />
-              {t('home.badge')}
-            </div>
-            <h1 className="max-w-xl text-4xl font-bold leading-tight tracking-tight text-gray-900 sm:text-5xl">
-              {t('home.hero')}{' '}
+      {/* ── 1. Hero ── */}
+      <section className="bg-white">
+        <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 pb-16 pt-14 lg:grid-cols-[minmax(0,1fr)_minmax(0,30rem)] lg:gap-10 lg:pb-20 lg:pt-20">
+
+          <div>
+            <h1 className="text-4xl font-bold leading-[1.12] tracking-tight text-gray-900 sm:text-5xl">
+              {t('home.hero')}
+              <br />
               <span className="text-blue-600">{t('home.heroHighlight')}</span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-gray-500">{t('home.heroDesc')}</p>
-            <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row lg:items-start">
+            <p className="mt-5 max-w-md text-base leading-relaxed text-gray-500">
+              {t('home.heroDesc')}
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/login"
-                className="rounded-xl bg-blue-600 px-7 py-3.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
+                href="/signup"
+                className="rounded-xl bg-blue-600 px-6 py-3 text-center text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
               >
-                {t('signIn')}
+                {t('ctaShort')}
               </Link>
               <Link
                 href="/#workflow"
-                className="rounded-xl px-6 py-3.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 px-6 py-3 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
               >
-                {t('home.secondary')} →
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+                {t('home.secondary')}
               </Link>
             </div>
-            <p className="mt-6 text-sm text-gray-500">
-              {t('home.trialHint')}{' '}
-              <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-700">
-                {t('cta')}
-              </Link>
-            </p>
-            <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-gray-400 lg:justify-start">
-              <SenegalStar className="text-[#00853F] opacity-70" />
-              {t('home.trust')}
-            </p>
+
+            {/* Three compact capability indicators */}
+            <ul className="mt-10 grid grid-cols-3 gap-4 border-t border-gray-100 pt-7">
+              {capabilities.map((cap, i) => (
+                <li key={i}>
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                    {CAPABILITY_ICONS[i]('h-4 w-4')}
+                  </span>
+                  <p className="mt-2 text-[13px] font-semibold text-gray-900">{cap.label}</p>
+                  <p className="mt-0.5 text-[11px] leading-snug text-gray-500">{cap.desc}</p>
+                </li>
+              ))}
+            </ul>
           </div>
 
-          {/* Decorative radiology mark — abstract, never a real study. Hidden on
-              small screens so it never competes with the copy or the CTAs. */}
-          <RadiologyScanMark className="hidden h-64 w-64 shrink-0 text-blue-600/25 lg:block" />
+          {/* The product itself, as the explanation. */}
+          <ProductMockup
+            className="mx-auto w-full max-w-[30rem] lg:mr-0"
+            labels={{
+              alt:            tL('mockup.alt'),
+              newReport:      tL('mockup.newReport'),
+              reports:        tL('mockup.reports'),
+              templates:      tL('mockup.templates'),
+              patientLabel:   tL('mockup.patientLabel'),
+              examLabel:      tL('mockup.examLabel'),
+              dateLabel:      tL('mockup.dateLabel'),
+              patientValue:   tL('mockup.patientValue'),
+              examValue:      tL('mockup.examValue'),
+              dateValue:      tL('mockup.dateValue'),
+              saveDraft:      tL('mockup.saveDraft'),
+              reviewSign:     tL('mockup.reviewSign'),
+              phoneTitle:     tL('mockup.phoneTitle'),
+              phoneSubtitle:  tL('mockup.phoneSubtitle'),
+              phoneTimer:     tL('mockup.phoneTimer'),
+              phoneRecording: tL('mockup.phoneRecording'),
+              phoneSend:      tL('mockup.phoneSend'),
+            }}
+            report={{
+              indication: tL('action.report.indication'),
+              technique:  tL('action.report.technique'),
+              results:    tL('action.report.results'),
+              conclusion: tL('action.report.conclusion'),
+            }}
+            sectionLabels={{
+              indication: tE('indicationLabel'),
+              technique:  tE('techniqueLabel'),
+              results:    tE('resultsLabel'),
+              conclusion: tE('conclusionLabel'),
+            }}
+          />
         </div>
       </section>
 
-      {/* Six-stage core workflow — anchors the header's "Fonctionnement" link
-          and the hero's secondary CTA. */}
+      {/* ── 2. Lifecycle ── */}
       <CoreWorkflow />
 
-      {/* Interactive AI demo — real pipeline, client-side only, no network. */}
-      <section className="border-t border-gray-100 bg-white">
-        <div className="mx-auto max-w-6xl px-6 py-16">
-          <ResultsBanner />
-          <div className="mt-10">
-            <RadioraDemo />
-          </div>
-        </div>
-      </section>
+      {/* ── 3. Speech → structured report ── */}
+      <RadioraInAction />
 
-      {/* Dictation modes: computer / phone / import, phone flow detailed */}
-      <MobileDictation />
+      {/* ── 4. Four value points ── */}
+      <ValuePoints />
 
-      {/* AI assists, radiologist decides — the authority statement, prominent */}
-      <AiAssistSection />
-
-      {/* What comes out the other end */}
-      <ReportOutputSection />
-
-      {/* Trust strip — factual claims only, links to /security for detail */}
-      <TrustStripSection />
-
-      {/* Why Radiora — six-card benefits grid */}
-      <WhyRadiora />
-
-      {/* Built with Senegalese radiologists */}
-      <SenegalSection />
-
-      {/* Pilot testimonial */}
-      <PilotTestimonial />
-
-      {/* Final CTA */}
+      {/* ── 5. Final CTA ── */}
       <TrialCta />
     </>
   )

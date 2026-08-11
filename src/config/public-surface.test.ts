@@ -137,48 +137,74 @@ describe('locale switch: the proven dashboard pattern, extracted and reused', ()
 
 // ── CTA hierarchy: "Se connecter" is primary; the trial is never removed ──────
 
-describe('CTA hierarchy favors sign-in without deleting the trial path', () => {
-  it('marketing header: /login is styled as the filled primary button', () => {
+describe('CTA hierarchy: both paths reachable, emphasis per surface', () => {
+  // R2.8 landing rebuild — the HERO emphasis flipped, deliberately. R2.8 made
+  // "Se connecter" the hero's primary action on the reasoning that most
+  // visitors already have an account; the approved reference makes account
+  // creation the hero's primary and "See how it works" its secondary. The
+  // reference wins for the hero. The HEADER keeps sign-in as its primary, so
+  // a returning clinician still has a one-click path from anywhere on the page.
+  //
+  // What must never change is that BOTH paths exist and neither is dropped.
+
+  it('header: /login remains the filled primary button', () => {
     const headerBlock = MKT_LAYOUT.slice(MKT_LAYOUT.indexOf('<LocaleSwitch'))
-    const loginLink = headerBlock.slice(headerBlock.indexOf("href=\"/login\""), headerBlock.indexOf("href=\"/login\"") + 200)
+    const loginLink = headerBlock.slice(headerBlock.indexOf('href="/login"'), headerBlock.indexOf('href="/login"') + 200)
     expect(loginLink).toContain('bg-blue-600')
   })
 
-  it('hero: /login is the primary CTA', () => {
-    expect(MKT_HOME).toMatch(/href="\/login"[\s\S]{0,120}bg-blue-600/)
+  it('header still offers the trial too', () => {
+    expect(MKT_LAYOUT).toMatch(/href="\/signup"/)
   })
 
-  it('hero: the trial is offered as a plain link underneath, not deleted', () => {
-    expect(MKT_HOME).toContain("t('home.trialHint')")
-    expect(MKT_HOME).toMatch(/href="\/signup"/)
+  it('hero: account creation is the primary action, per the reference', () => {
+    expect(MKT_HOME).toMatch(/href="\/signup"[\s\S]{0,160}bg-blue-600/)
+  })
+
+  it('hero: "how it works" is the secondary action and anchors the lifecycle', () => {
+    expect(MKT_HOME).toContain('href="/#workflow"')
+    expect(MKT_HOME).toContain("t('home.secondary')")
+    expect(LANDING_SECTIONS).toContain('id="workflow"')
+  })
+
+  it('the final CTA still carries BOTH sign-in and sign-up', () => {
+    expect(LANDING_SECTIONS).toMatch(/href="\/login"/)
+    expect(LANDING_SECTIONS).toMatch(/href="\/signup"/)
   })
 })
 
 // ── AI copy stays within the safety invariant ──────────────────────────────────
 
 describe('AI-assistance copy never claims autonomous diagnosis or signing', () => {
-  it('fr.landing.aiAssist makes no forbidden claim', () => {
-    const block = (fr as { landing: { aiAssist: Record<string, unknown> } }).landing.aiAssist
-    const text = JSON.stringify(block)
+  // R2.8 landing rebuild — SAME CONTRACTS, NEW KEY PATH. The standalone
+  // "L'IA assiste" section was removed from the homepage, so its copy moved
+  // from `landing.aiAssist.*` into `landing.action.*`, where it is rendered
+  // beside the speech-to-report demo. Nothing was weakened: the boundary
+  // sentence is byte-identical, and the authority sentence is now the FULL
+  // canonical wording ("L'IA assiste — le radiologue reste…"), a superset of
+  // the fragment this previously pinned.
+  const aiCopy = (b: typeof fr | typeof en) =>
+    (b as { landing: { action: Record<string, unknown> } }).landing.action
+
+  it('fr makes no forbidden claim', () => {
+    const text = JSON.stringify(aiCopy(fr))
     // The boundary sentence legitimately CONTAINS "diagnostic" — to DENY it.
     expect(text).toMatch(/ne pose pas de diagnostic/)
-    expect(text).not.toMatch(/\bpose un diagnostic\b/i)
+    expect(text).not.toMatch(/pose un diagnostic/i)
   })
 
-  it('en.landing.aiAssist makes no forbidden claim', () => {
-    const block = (en as { landing: { aiAssist: Record<string, unknown> } }).landing.aiAssist
-    const text = JSON.stringify(block)
-    expect(text).toMatch(/never makes a diagnosis/)
+  it('en makes no forbidden claim', () => {
+    expect(JSON.stringify(aiCopy(en))).toMatch(/never makes a diagnosis/)
   })
 
-  it('fr.landing.aiAssist states the authority invariant verbatim', () => {
-    expect((fr as { landing: { aiAssist: { authority: string } } }).landing.aiAssist.authority)
-      .toBe("Le radiologue reste l'autorité médicale finale.")
+  it('fr states the authority invariant verbatim', () => {
+    expect((fr as { landing: { action: { authority: string } } }).landing.action.authority)
+      .toBe("L'IA assiste — le radiologue reste l'autorité médicale finale.")
   })
 
-  it('en.landing.aiAssist states the authority invariant', () => {
-    expect((en as { landing: { aiAssist: { authority: string } } }).landing.aiAssist.authority)
-      .toBe('The radiologist remains the final medical authority.')
+  it('en states the authority invariant', () => {
+    expect((en as { landing: { action: { authority: string } } }).landing.action.authority)
+      .toBe('AI assists — the radiologist remains the final medical authority.')
   })
 
   it('neither locale claims AI validates or signs — exact required wording', () => {
@@ -186,12 +212,18 @@ describe('AI-assistance copy never claims autonomous diagnosis or signing', () =
     // fait jamais X" / "never Xs") makes a bare regex for "the forbidden
     // claim" unreliable — it cannot distinguish "makes a diagnosis" from
     // "never makes a diagnosis" without re-deriving the same sentence.
-    expect((fr as { landing: { aiAssist: { boundary: string } } }).landing.aiAssist.boundary).toBe(
+    expect((fr as { landing: { action: { boundary: string } } }).landing.action.boundary).toBe(
       "L'IA ne pose pas de diagnostic, ne valide et ne signe jamais un compte rendu.",
     )
-    expect((en as { landing: { aiAssist: { boundary: string } } }).landing.aiAssist.boundary).toBe(
+    expect((en as { landing: { action: { boundary: string } } }).landing.action.boundary).toBe(
       'AI never makes a diagnosis, and never validates or signs a report.',
     )
+  })
+
+  it('both safety sentences are actually rendered on the homepage', () => {
+    const sections = readFileSync(join(ROOT, 'src/components/marketing/landing-sections.tsx'), 'utf8')
+    expect(sections).toContain("t('action.authority')")
+    expect(sections).toContain("t('action.boundary')")
   })
 
   it('the core workflow copy still names the radiologist as who signs', () => {
@@ -334,10 +366,17 @@ describe('fr/en parity for every namespace R2.8 touched', () => {
     }
   })
 
-  it('landing.modes covers exactly computer, phone and import in both locales', () => {
+  it('the hero states the three dictation capabilities in both locales', () => {
+    // R2.8 rebuild: the standalone dictation-modes section was removed, so the
+    // product truth "computer / phone-via-QR / AI structures" is now carried by
+    // the hero's three capability indicators. Same claim, fewer sections.
     for (const [locale, data] of [['fr', fr], ['en', en]] as const) {
-      const modes = (data as { landing: { modes: Record<string, unknown> } }).landing.modes
-      expect(Object.keys(modes).sort(), locale).toEqual(['computer', 'heading', 'import', 'phone'])
+      const caps = (data as { landing: { capabilities: Array<{ label: string; desc: string }> } }).landing.capabilities
+      expect(caps, locale).toHaveLength(3)
+      for (const c of caps) {
+        expect(c.label, locale).toBeTruthy()
+        expect(c.desc, locale).toBeTruthy()
+      }
     }
   })
 })

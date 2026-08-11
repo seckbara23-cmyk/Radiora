@@ -76,10 +76,15 @@ export default async function MarketingLayout({
 
       <main className="flex-1">{children}</main>
 
-      {/* Footer */}
+      {/* Footer — R2.8 rebuild: one compact row, not a four-column enterprise
+          block. The reference footer lists Careers / Help center / Documentation
+          / Status / Privacy / Terms, and NONE of those pages exist in this
+          repository — shipping them would be six dead links. Only routes that
+          actually resolve are linked here; the rest belong to whichever phase
+          builds those pages. */}
       <footer className="border-t border-gray-100 bg-gray-50">
-        <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 sm:grid-cols-2 md:grid-cols-4">
-          <div className="sm:col-span-2 md:col-span-2">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-6 py-9 md:flex-row md:items-center md:justify-between">
+          <div>
             <div className="flex items-center gap-2.5">
               <svg className="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8}
@@ -87,30 +92,20 @@ export default async function MarketingLayout({
               </svg>
               <span className="font-semibold tracking-tight text-gray-900">Radiora Medical</span>
             </div>
-            <p className="mt-3 max-w-sm text-sm text-gray-500">{t('footer.tagline')}</p>
+            <p className="mt-2 max-w-sm text-sm text-gray-500">{t('footer.tagline')}</p>
           </div>
 
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('footer.productHeading')}</h4>
-            <ul className="mt-3 space-y-2 text-sm text-gray-600">
-              <li><Link href="/features" className="transition hover:text-gray-900">{t('nav.features')}</Link></li>
-              <li><Link href="/pricing" className="transition hover:text-gray-900">{t('nav.pricing')}</Link></li>
-              <li><Link href="/security" className="transition hover:text-gray-900">{t('nav.security')}</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-400">{t('footer.companyHeading')}</h4>
-            <ul className="mt-3 space-y-2 text-sm text-gray-600">
-              <li><Link href="/support" className="transition hover:text-gray-900">{tSupport('title')}</Link></li>
-              <li><Link href="/contact" className="transition hover:text-gray-900">{t('nav.contact')}</Link></li>
-              <li><Link href="/login" className="transition hover:text-gray-900">{t('signIn')}</Link></li>
-              <li><Link href="/signup" className="transition hover:text-gray-900">{t('ctaShort')}</Link></li>
-            </ul>
-          </div>
+          <nav aria-label={t('footer.productHeading')} className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600">
+            <Link href="/features" className="transition hover:text-gray-900">{t('nav.features')}</Link>
+            <Link href="/security" className="transition hover:text-gray-900">{t('nav.security')}</Link>
+            <Link href="/pricing" className="transition hover:text-gray-900">{t('nav.pricing')}</Link>
+            <Link href="/support" className="transition hover:text-gray-900">{tSupport('title')}</Link>
+            <Link href="/contact" className="transition hover:text-gray-900">{t('nav.contact')}</Link>
+          </nav>
         </div>
+
         <div className="border-t border-gray-100">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-5 sm:flex-row sm:gap-3">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-4 sm:flex-row sm:gap-3">
             <p className="flex items-center gap-1.5 text-xs text-gray-400">
               <SenegalStar className="text-[#00853F] opacity-70" />
               {t('footer.rights', { year: new Date().getFullYear() })}

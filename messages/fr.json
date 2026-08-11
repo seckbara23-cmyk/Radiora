@@ -1935,22 +1935,10 @@
       "builtBy": "Conçu par Teranga Tech"
     },
     "home": {
-      "badge": "Radiologie assistée par IA",
       "hero": "Dictez. Radiora structure.",
       "heroHighlight": "Vous validez.",
       "heroDesc": "Transformez votre dictée en compte rendu radiologique structuré, relu et prêt à signer. L'IA assiste — le radiologue reste l'autorité médicale finale.",
-      "secondary": "Voir comment ça fonctionne",
-      "trust": "Conçu pour les radiologues indépendants, les centres d'imagerie, les cliniques et les hôpitaux.",
-      "trialHint": "Nouveau sur Radiora ?",
-      "highlightsHeading": "Pourquoi Radiora",
-      "highlights": [
-        { "title": "Comptes rendus plus rapides", "desc": "Modèles structurés et dictée vocale pour réduire le temps de rédaction." },
-        { "title": "Assistance IA", "desc": "Structuration et aide à la rédaction, toujours validées par le radiologue." },
-        { "title": "Multi-établissements", "desc": "Gérez plusieurs cliniques avec un accès basé sur les rôles." },
-        { "title": "Paiement local", "desc": "Abonnements via Wave et Orange Money, en FCFA." }
-      ],
-      "bandTitle": "Prêt à essayer Radiora ?",
-      "bandDesc": "Lancez votre essai gratuit de 30 jours. Aucune carte bancaire requise."
+      "secondary": "Voir comment ça fonctionne"
     },
     "features": {
       "title": "Tout ce dont votre service de radiologie a besoin",
@@ -2177,121 +2165,114 @@
         "Aucune donnée enregistrée dans la démonstration"
       ]
     },
-    "senegal": {
-      "title": "Conçu avec des radiologues sénégalais",
-      "body": "Radiora a été développé en collaboration avec des radiologues exerçant au Sénégal afin de répondre aux réalités des vacations d'imagerie à fort volume.",
-      "modalities": ["Scanner", "IRM", "Échographie", "Radiographie conventionnelle"],
-      "footer": "Optimisé pour des vacations de 20 à 50 examens par jour."
-    },
     "workflow": {
       "title": "Le parcours Radiora",
-      "subtitle": "Six étapes, de la dictée à l'envoi sécurisé.",
       "steps": [
-        { "label": "Dictez", "desc": "Sur ordinateur, téléphone ou fichier importé." },
-        { "label": "Structuration IA", "desc": "Le texte libre devient un compte rendu structuré." },
-        { "label": "Relisez", "desc": "Vous corrigez et complétez à volonté." },
-        { "label": "Signez", "desc": "Seul le radiologue valide et signe." },
-        { "label": "Exportez", "desc": "PDF ou Word, prêts à l'emploi." },
-        { "label": "Envoyez", "desc": "Transmission sécurisée, traçable." }
+        {
+          "label": "Dictez",
+          "desc": "Sur ordinateur, téléphone ou fichier importé."
+        },
+        {
+          "label": "Structuration IA",
+          "desc": "Le texte libre devient un compte rendu structuré."
+        },
+        {
+          "label": "Relisez",
+          "desc": "Vous corrigez et complétez à volonté."
+        },
+        {
+          "label": "Signez",
+          "desc": "Seul le radiologue valide et signe."
+        },
+        {
+          "label": "Exportez",
+          "desc": "PDF ou Word, prêts à l'emploi."
+        },
+        {
+          "label": "Envoyez",
+          "desc": "Transmission sécurisée, traçable."
+        }
       ]
-    },
-    "modes": {
-      "heading": "Trois façons de dicter",
-      "computer": { "label": "Ordinateur", "desc": "Microphone du poste de travail, en direct." },
-      "phone": { "label": "Téléphone", "desc": "Connexion instantanée par QR code sécurisé, sans application." },
-      "import": { "label": "Fichier importé", "desc": "Importez un enregistrement existant." }
-    },
-    "aiAssist": {
-      "heading": "L'IA assiste, le radiologue décide",
-      "authority": "Le radiologue reste l'autorité médicale finale.",
-      "points": [
-        "Structure le texte libre en sections du compte rendu",
-        "Repère les corrections dictées et les incohérences",
-        "Prépare le compte rendu pour la relecture"
-      ],
-      "boundary": "L'IA ne pose pas de diagnostic, ne valide et ne signe jamais un compte rendu."
-    },
-    "output": {
-      "heading": "Un compte rendu prêt à l'emploi",
-      "items": [
-        { "label": "PDF", "desc": "Mise en page professionnelle, prête à imprimer." },
-        { "label": "Word (DOCX)", "desc": "Modifiable pour vos besoins internes." },
-        { "label": "Impression directe", "desc": "Depuis l'aperçu du compte rendu." },
-        { "label": "Envoi sécurisé", "desc": "Lien protégé, avec expiration et révocation." }
-      ]
-    },
-    "trustStrip": {
-      "heading": "Isolation stricte, traçabilité complète",
-      "points": [
-        "Isolation des données par établissement (RLS)",
-        "Accès basé sur les rôles, du radiologue au secrétariat",
-        "Piste d'audit complète sur chaque action sensible",
-        "Seul le radiologue valide et signe un compte rendu"
-      ],
-      "link": "En savoir plus sur la sécurité"
-    },
-    "mobile": {
-      "title": "La dictée, où que vous soyez",
-      "subtitle": "Ordinateur, téléphone ou fichier importé — un seul flux jusqu'à l'envoi sécurisé.",
-      "phoneExample": "Exemple : dictée par téléphone",
-      "steps": [
-        "Téléphone",
-        "QR sécurisé",
-        "Dictée",
-        "Structuration IA",
-        "Validation radiologue",
-        "Export PDF / Word",
-        "Envoi sécurisé"
-      ],
-      "note1": "Aucune application à installer.",
-      "note2": "Connexion instantanée par QR code sécurisé."
-    },
-    "roi": {
-      "title": "Gagnez plusieurs heures chaque semaine",
-      "volume": "40 examens par jour",
-      "withoutTitle": "Sans Radiora",
-      "withoutSteps": [
-        "Dictaphone",
-        "Transfert USB",
-        "Saisie secrétaire",
-        "Correction manuelle",
-        "Impression"
-      ],
-      "withTitle": "Avec Radiora",
-      "withSteps": [
-        "Téléphone ou dictée web",
-        "Structuration automatique",
-        "Validation radiologue",
-        "Export PDF / DOCX",
-        "Livraison sécurisée"
-      ],
-      "footer": "Réduisez les tâches administratives et concentrez-vous sur l'interprétation médicale."
-    },
-    "testimonial": {
-      "badge": "Programme pilote Sénégal",
-      "name": "Dr Abibou BA",
-      "role": "Radiologue",
-      "quote": "Radiora réduit considérablement le temps consacré à la rédaction des comptes rendus tout en conservant la validation finale par le radiologue.",
-      "note": "Témoignage recueilli dans le cadre du programme pilote."
     },
     "trial": {
       "headline": "Votre dictée. Votre compte rendu. Votre validation.",
-      "subtext1": "Connectez-vous pour continuer votre travail.",
       "subtext2": "Nouveau sur Radiora ? Essai gratuit de 30 jours, sans carte bancaire.",
       "primary": "Se connecter à Radiora",
       "secondary": "Créer un compte"
     },
-    "why": {
-      "heading": "Pourquoi Radiora ?",
-      "subtitle": "L'essentiel, en six points.",
-      "themes": [
-        { "icon": "⏱", "title": "Gain de temps", "desc": "Du téléphone au PDF validé en quelques minutes." },
-        { "icon": "🩺", "title": "Validation médicale", "desc": "Le radiologue valide et signe chaque compte rendu. L'IA assiste, jamais ne décide." },
-        { "icon": "📱", "title": "Dictée mobile", "desc": "Votre téléphone devient un microphone sécurisé via QR code, sans application." },
-        { "icon": "🔒", "title": "Sécurité", "desc": "Archivage, audit complet et envoi sécurisé protégé par mot de passe." },
-        { "icon": "🎯", "title": "Adaptation au radiologue", "desc": "Style, vocabulaire, signature et établissement personnalisés." },
-        { "icon": "🇸🇳", "title": "Conçu au Sénégal", "desc": "Développé avec des radiologues sénégalais, pour les vacations à fort volume." }
-      ]
-    }
+    "capabilities": [
+      {
+        "label": "Dictez",
+        "desc": "Ordinateur ou téléphone"
+      },
+      {
+        "label": "Téléphone via QR",
+        "desc": "Dictée mobile sécurisée"
+      },
+      {
+        "label": "L'IA structure",
+        "desc": "Comprend votre compte rendu"
+      }
+    ],
+    "mockup": {
+      "alt": "Aperçu de Radiora : un compte rendu structuré sur ordinateur et la dictée en cours sur téléphone.",
+      "newReport": "Nouveau compte rendu",
+      "reports": "Comptes rendus",
+      "templates": "Modèles",
+      "patientLabel": "Patient",
+      "examLabel": "Examen",
+      "dateLabel": "Date",
+      "patientValue": "Mamadou Diop",
+      "examValue": "Scanner cérébral",
+      "dateValue": "05 août 2026",
+      "saveDraft": "Brouillon",
+      "reviewSign": "Relire et signer",
+      "phoneTitle": "Radiora Mobile",
+      "phoneSubtitle": "Scanner cérébral — Dictée",
+      "phoneTimer": "00:42",
+      "phoneRecording": "Enregistrement",
+      "phoneSend": "Envoyer l'enregistrement"
+    },
+    "action": {
+      "heading": "Radiora en action",
+      "body": "Dictez naturellement. Radiora écoute, comprend et remplit les bonnes sections du compte rendu — en temps réel.",
+      "points": [
+        "Structuration IA par section",
+        "Corrections dictées comprises",
+        "Sécurité médicale par conception"
+      ],
+      "authority": "L'IA assiste — le radiologue reste l'autorité médicale finale.",
+      "boundary": "L'IA ne pose pas de diagnostic, ne valide et ne signe jamais un compte rendu.",
+      "liveTitle": "Dictée en direct",
+      "liveBadge": "Écoute…",
+      "liveTimer": "01:18",
+      "dictation": "Indication traumatisme crânien. Scanner cérébral sans injection. Pas d'hémorragie intracrânienne. Je corrige, petite hyperdensité frontale droite.",
+      "structuredTitle": "Compte rendu structuré",
+      "structuredBadge": "IA en assistance",
+      "report": {
+        "indication": "Traumatisme crânien.",
+        "technique": "Scanner cérébral sans injection.",
+        "results": "Petite hyperdensité frontale droite.",
+        "conclusion": "Aspect compatible avec une contusion frontale droite."
+      }
+    },
+    "values": [
+      {
+        "title": "Gain de temps",
+        "desc": "Du micro au PDF validé en quelques minutes."
+      },
+      {
+        "title": "Validation médicale",
+        "desc": "Le radiologue valide et signe chaque compte rendu."
+      },
+      {
+        "title": "Dictée mobile",
+        "desc": "Votre téléphone devient un micro sécurisé, sans application."
+      },
+      {
+        "title": "Sécurité et traçabilité",
+        "desc": "Isolation par établissement et piste d'audit complète."
+      }
+    ]
   }
 }

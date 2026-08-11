@@ -1935,22 +1935,10 @@
       "builtBy": "Built by Teranga Tech"
     },
     "home": {
-      "badge": "AI-assisted radiology",
       "hero": "Dictate. Radiora structures.",
       "heroHighlight": "You validate.",
       "heroDesc": "Turn your dictation into a structured radiology report, reviewed and ready to sign. AI assists — the radiologist remains the final medical authority.",
-      "secondary": "See how it works",
-      "trust": "Built for independent radiologists, imaging centers, clinics and hospitals.",
-      "trialHint": "New to Radiora?",
-      "highlightsHeading": "Why Radiora",
-      "highlights": [
-        { "title": "Faster reports", "desc": "Structured templates and voice dictation cut reporting time." },
-        { "title": "AI assistance", "desc": "Structuring and drafting help, always validated by the radiologist." },
-        { "title": "Multi-facility", "desc": "Run multiple clinics with role-based access." },
-        { "title": "Local payments", "desc": "Subscriptions via Wave and Orange Money, in FCFA." }
-      ],
-      "bandTitle": "Ready to try Radiora?",
-      "bandDesc": "Start your 30-day free trial. No credit card required."
+      "secondary": "See how it works"
     },
     "features": {
       "title": "Everything your radiology service needs",
@@ -2177,121 +2165,114 @@
         "No data stored in the demo"
       ]
     },
-    "senegal": {
-      "title": "Built with Senegalese radiologists",
-      "body": "Radiora was developed in collaboration with radiologists practising in Senegal to meet the realities of high-volume imaging sessions.",
-      "modalities": ["CT", "MRI", "Ultrasound", "Conventional X-ray"],
-      "footer": "Optimized for sessions of 20 to 50 exams per day."
-    },
     "workflow": {
       "title": "The Radiora journey",
-      "subtitle": "Six steps, from dictation to secure delivery.",
       "steps": [
-        { "label": "Dictate", "desc": "On computer, phone or an imported file." },
-        { "label": "AI structuring", "desc": "Free text becomes a structured report." },
-        { "label": "Review", "desc": "You correct and complete as needed." },
-        { "label": "Sign", "desc": "Only the radiologist validates and signs." },
-        { "label": "Export", "desc": "PDF or Word, ready to use." },
-        { "label": "Send", "desc": "Secure, traceable delivery." }
+        {
+          "label": "Dictate",
+          "desc": "On computer, phone or an imported file."
+        },
+        {
+          "label": "AI structuring",
+          "desc": "Free text becomes a structured report."
+        },
+        {
+          "label": "Review",
+          "desc": "You correct and complete as needed."
+        },
+        {
+          "label": "Sign",
+          "desc": "Only the radiologist validates and signs."
+        },
+        {
+          "label": "Export",
+          "desc": "PDF or Word, ready to use."
+        },
+        {
+          "label": "Send",
+          "desc": "Secure, traceable delivery."
+        }
       ]
-    },
-    "modes": {
-      "heading": "Three ways to dictate",
-      "computer": { "label": "Computer", "desc": "Live workstation microphone." },
-      "phone": { "label": "Phone", "desc": "Instant connection via secure QR code, no app." },
-      "import": { "label": "Imported file", "desc": "Import an existing recording." }
-    },
-    "aiAssist": {
-      "heading": "AI assists, the radiologist decides",
-      "authority": "The radiologist remains the final medical authority.",
-      "points": [
-        "Structures free text into report sections",
-        "Flags dictated corrections and inconsistencies",
-        "Prepares the report for review"
-      ],
-      "boundary": "AI never makes a diagnosis, and never validates or signs a report."
-    },
-    "output": {
-      "heading": "A report ready to use",
-      "items": [
-        { "label": "PDF", "desc": "Professional layout, ready to print." },
-        { "label": "Word (DOCX)", "desc": "Editable for your internal needs." },
-        { "label": "Direct print", "desc": "From the report preview." },
-        { "label": "Secure delivery", "desc": "Protected link, with expiry and revocation." }
-      ]
-    },
-    "trustStrip": {
-      "heading": "Strict isolation, full traceability",
-      "points": [
-        "Per-facility data isolation (RLS)",
-        "Role-based access, from radiologist to front desk",
-        "Full audit trail on every sensitive action",
-        "Only the radiologist validates and signs a report"
-      ],
-      "link": "Learn more about security"
-    },
-    "mobile": {
-      "title": "Dictate wherever you are",
-      "subtitle": "Computer, phone or an imported file — one single flow through to secure delivery.",
-      "phoneExample": "Example: phone dictation",
-      "steps": [
-        "Phone",
-        "Secure QR",
-        "Dictation",
-        "AI structuring",
-        "Radiologist validation",
-        "Export PDF / Word",
-        "Secure delivery"
-      ],
-      "note1": "No app to install.",
-      "note2": "Instant connection via secure QR code."
-    },
-    "roi": {
-      "title": "Save several hours every week",
-      "volume": "40 exams per day",
-      "withoutTitle": "Without Radiora",
-      "withoutSteps": [
-        "Dictaphone",
-        "USB transfer",
-        "Secretary typing",
-        "Manual correction",
-        "Printing"
-      ],
-      "withTitle": "With Radiora",
-      "withSteps": [
-        "Phone or web dictation",
-        "Automatic structuring",
-        "Radiologist validation",
-        "PDF / DOCX export",
-        "Secure delivery"
-      ],
-      "footer": "Reduce administrative tasks and focus on medical interpretation."
-    },
-    "testimonial": {
-      "badge": "Senegal pilot program",
-      "name": "Dr Abibou BA",
-      "role": "Radiologist",
-      "quote": "Radiora significantly reduces the time spent writing reports while keeping final validation by the radiologist.",
-      "note": "Testimonial collected as part of the pilot program."
     },
     "trial": {
       "headline": "Your dictation. Your report. Your validation.",
-      "subtext1": "Sign in to continue your work.",
       "subtext2": "New to Radiora? 30-day free trial, no credit card.",
       "primary": "Sign in to Radiora",
       "secondary": "Create an account"
     },
-    "why": {
-      "heading": "Why Radiora?",
-      "subtitle": "The essentials, in six points.",
-      "themes": [
-        { "icon": "⏱", "title": "Time saved", "desc": "From phone to validated PDF in minutes." },
-        { "icon": "🩺", "title": "Medical validation", "desc": "The radiologist validates and signs every report. AI assists, never decides." },
-        { "icon": "📱", "title": "Mobile dictation", "desc": "Your phone becomes a secure microphone via QR code — no app." },
-        { "icon": "🔒", "title": "Security", "desc": "Archiving, full audit trail and password-protected secure delivery." },
-        { "icon": "🎯", "title": "Radiologist-adapted", "desc": "Personalized style, vocabulary, signature and institution." },
-        { "icon": "🇸🇳", "title": "Built in Senegal", "desc": "Developed with Senegalese radiologists for high-volume sessions." }
-      ]
-    }
+    "capabilities": [
+      {
+        "label": "Dictate",
+        "desc": "Computer or phone"
+      },
+      {
+        "label": "Phone via QR",
+        "desc": "Secure mobile dictation"
+      },
+      {
+        "label": "AI structures",
+        "desc": "Understands your report"
+      }
+    ],
+    "mockup": {
+      "alt": "Preview of Radiora: a structured report on a workstation, with dictation in progress on a phone.",
+      "newReport": "New report",
+      "reports": "Reports",
+      "templates": "Templates",
+      "patientLabel": "Patient",
+      "examLabel": "Exam",
+      "dateLabel": "Date",
+      "patientValue": "Mamadou Diop",
+      "examValue": "CT brain",
+      "dateValue": "05 Aug 2026",
+      "saveDraft": "Draft",
+      "reviewSign": "Review and sign",
+      "phoneTitle": "Radiora Mobile",
+      "phoneSubtitle": "CT brain — Dictation",
+      "phoneTimer": "00:42",
+      "phoneRecording": "Recording",
+      "phoneSend": "Send recording"
+    },
+    "action": {
+      "heading": "See Radiora in action",
+      "body": "Dictate naturally. Radiora listens, understands and fills the right sections of the report — in real time.",
+      "points": [
+        "Section-aware AI structuring",
+        "Dictated corrections understood",
+        "Medical safety by design"
+      ],
+      "authority": "AI assists — the radiologist remains the final medical authority.",
+      "boundary": "AI never makes a diagnosis, and never validates or signs a report.",
+      "liveTitle": "Live dictation",
+      "liveBadge": "Listening…",
+      "liveTimer": "01:18",
+      "dictation": "Indication head trauma. CT brain without contrast. No intracranial haemorrhage. Correction, small right frontal hyperdensity.",
+      "structuredTitle": "Structured report",
+      "structuredBadge": "AI assisting",
+      "report": {
+        "indication": "Head trauma.",
+        "technique": "CT brain without contrast.",
+        "results": "Small right frontal hyperdensity.",
+        "conclusion": "Appearance compatible with a right frontal contusion."
+      }
+    },
+    "values": [
+      {
+        "title": "Save time",
+        "desc": "From microphone to validated PDF in minutes."
+      },
+      {
+        "title": "Medical validation",
+        "desc": "The radiologist validates and signs every report."
+      },
+      {
+        "title": "Mobile dictation",
+        "desc": "Your phone becomes a secure microphone — no app."
+      },
+      {
+        "title": "Security and traceability",
+        "desc": "Per-facility isolation and a full audit trail."
+      }
+    ]
   }
 }
