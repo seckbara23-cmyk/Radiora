@@ -59,7 +59,10 @@ export function LiveSectionStatus({
   const ordered = FLAG_ORDER.filter((f) => flags.includes(f))
 
   return (
-    <div className="mb-1.5 flex flex-wrap items-center gap-1.5 font-sans">
+    // R2.9 — provenance is SYSTEM metadata about the report, not part of it.
+    // It sits in a muted, smaller row so the clinical text stays the dominant
+    // thing on the page; the R2.7C semantics behind every chip are unchanged.
+    <div className="mb-1.5 flex flex-wrap items-center gap-1.5 font-sans opacity-80 transition-opacity hover:opacity-100">
       {/* R2.7C(E) — this states WHO WROTE the section. It is not a control, and
           production showed it being read as one: a pill of the same size and
           shape as the real buttons beside it, which simply did nothing when

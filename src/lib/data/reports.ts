@@ -55,7 +55,7 @@ export interface ReportListItem {
   examType?: string
   createdAt: string
   updatedAt: string
-  study: { modality: string; bodyPart: string; accessionNumber: string } | null
+  study: { modality: string; bodyPart: string; accessionNumber: string; studyDate: string } | null
   patient: { firstName: string; lastName: string; mrn: string } | null
   /** R2.1 — a secure delivery exists for this report. Drives the "Envoyé"
    *  display status. False for roles whose RLS hides report_deliveries. */
@@ -94,7 +94,7 @@ export async function getReportsList(opts?: {
   const [studiesRes, patientsRes, deliveriesRes] = await Promise.all([
     supabase
       .from('studies')
-      .select('id, modality, body_part, accession_number')
+      .select('id, modality, body_part, accession_number, study_date')
       .in('id', studyIds),
     supabase
       .from('patients')
@@ -124,7 +124,7 @@ export async function getReportsList(opts?: {
       examType:  (r.exam_type as string | null) ?? undefined,
       createdAt: r.created_at as string,
       updatedAt: r.updated_at as string,
-      study:   s ? { modality: s.modality as string, bodyPart: s.body_part as string, accessionNumber: s.accession_number as string } : null,
+      study:   s ? { modality: s.modality as string, bodyPart: s.body_part as string, accessionNumber: s.accession_number as string, studyDate: s.study_date as string } : null,
       patient: p ? { firstName: p.first_name as string, lastName: p.last_name as string, mrn: p.mrn as string } : null,
       delivered: deliveredIds.has(r.id as string),
     }

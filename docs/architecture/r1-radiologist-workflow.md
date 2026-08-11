@@ -651,6 +651,12 @@ R1 did **not**, and R2's early gates must not:
 - Introduce an administrative clinical override.
 - Delete `VoiceDictationPanel`, `SmartStructuringPanel` or the vacation queue.
   They stay until their replacements are proven.
+  <!-- RETIRED IN R2.9 for the two report-page panels only: the replacement
+       workflow is production-proven, both files were shown to have zero
+       consumers, and they were deleted. The vacation queue and
+       LiveDictationPanel are UNAFFECTED and this non-goal still binds them.
+       See the "Superseded in R2.9" note in the R2.3 appendix. -->
+
 - Ingest, commit or expose any real report or patient document.
 - Redesign the dashboard, sidebar or navigation.
 - Add a fourth status machine or a `reports.transcript_text` column.
@@ -921,6 +927,23 @@ pipeline. Nothing was rebuilt:
 `VoiceDictationPanel`, `LiveDictationPanel` and `SmartStructuringPanel` remain in
 the repository and still serve the vacation queue; only the report editor stopped
 composing them.
+
+> **Superseded in R2.9.** The retention rule above (and the matching non-goal
+> "Delete `VoiceDictationPanel`, `SmartStructuringPanel` or the vacation queue —
+> they stay until their replacements are proven") was **conditional**, and the
+> condition is now met: the replacement workflow shipped in R2.3 and was proven
+> in production through R2.7C. An R2.9 repository-wide proof found
+> `VoiceDictationPanel.tsx` and `SmartStructuringPanel.tsx` had **zero** static
+> imports, zero JSX usage, zero dynamic/lazy imports, no route, story or e2e
+> consumer, and no behavioural test dependency — their only remaining mentions
+> were one comment in `lib/actions/ai.ts` and one test asserting their *absence*
+> from the editor. Both files were deleted in R2.9 (940 lines). Their server
+> actions (`lib/actions/voice.ts`, `lib/actions/ai.ts`, `lib/actions/vocabulary.ts`)
+> were **not** touched, and no replacement or new abstraction was introduced.
+>
+> `LiveDictationPanel` is **not** covered by this: it is still composed by the
+> (frozen) vacation queue and stays exactly where it is. The retention rule
+> remains in force for the vacation queue itself.
 
 ### State model
 

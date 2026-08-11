@@ -124,7 +124,12 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                 <tr className="border-b border-gray-100 bg-gray-50">
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">{t('patient')}</th>
                   <th className="hidden px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 md:table-cell">{t('study' as 'all')}</th>
-                  <th className="hidden px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 sm:table-cell">{t('updated' as 'all')}</th>
+                  {/* R2.9 — exam date answers "which examination is this?";
+                      last activity answers "what have I already done to it?".
+                      The queue needs both, so they are separate columns and the
+                      exam date is the one kept at the wider breakpoint. */}
+                  <th className="hidden px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 md:table-cell">{t('examDate')}</th>
+                  <th className="hidden px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500 lg:table-cell">{t('updated' as 'all')}</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-gray-500">{t('status' as 'all')}</th>
                   <th className="px-6 py-3" />
                 </tr>
@@ -150,7 +155,10 @@ export default async function ReportsPage({ params, searchParams }: Props) {
                           </div>
                         ) : <span className="text-gray-400">—</span>}
                       </td>
-                      <td className="hidden px-6 py-3.5 text-xs text-gray-500 sm:table-cell">{r.updatedAt.slice(0, 10)}</td>
+                      <td className="hidden px-6 py-3.5 text-xs text-gray-600 md:table-cell">
+                        {r.study ? r.study.studyDate : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="hidden px-6 py-3.5 text-xs text-gray-500 lg:table-cell">{r.updatedAt.slice(0, 10)}</td>
                       <td className="px-6 py-3.5">
                         <Badge variant={displayStatusVariant[display]}>{tSt(`display.${display}` as Parameters<typeof tSt>[0])}</Badge>
                       </td>

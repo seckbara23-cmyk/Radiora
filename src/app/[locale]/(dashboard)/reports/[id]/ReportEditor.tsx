@@ -12,6 +12,8 @@ import type { SectionKey } from '@/lib/safety/sections'
 import { getSpecialForm, SPECIAL_LAYOUTS, type SpecialFormSchema } from '@/config/special-forms'
 import { emptySpecialForm, renderSpecialFormText, missingRequiredRows, cellKey } from '@/lib/reports/special-forms'
 import { withPatient } from '@/lib/reports/patient-identity'
+import { ReviewSummary, useSigningReadiness } from './ReviewSummary'
+import type { SectionConfidence } from '@/types/structuring'
 import type { Report, StructuredReportData, SectionProvenanceValue } from '@/types/report'
 import type { SpecialLayout } from '@/types/exam'
 import type { Template } from '@/types/template'
@@ -49,6 +51,9 @@ interface Props {
   report:         Report
   canWrite:       boolean
   canAmend:       boolean
+  /** R2.9 — radiologist-only, from canSignReports. NOT clinical-write authority:
+   *  a clinic admin may correct a draft but may never validate or sign it. */
+  canSign:        boolean
   templates:      Template[]
   modality:       string | null
   bodyPart:       string | null
@@ -57,6 +62,10 @@ interface Props {
   examDate:       string
   /** R2.3 — transcript already stored for this report (report-owned, R2.2). */
   initialTranscript?: string
+  /** R2.9 — the signing gate's own inputs, so the live readiness shown beside
+   *  the Sign button is the same verdict finalizeReport will reach. */
+  aiConfidence?:      SectionConfidence[] | null
+  cleanedTranscript?: string | null
 }
 
 // ─── Live document editor ─────────────────────────────────────────────────────
@@ -452,7 +461,7 @@ function LegacyEditor({
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export function ReportEditor({ report, canWrite, canAmend, templates, modality, bodyPart, initialPhrases, patientInfo, examDate, initialTranscript = '' }: Props) {
+export function ReportEditor({ report, canWrite, canAmend, canSign, templates, modality, bodyPart, initialPhrases, patientInfo, examDate, initialTranscript = '', aiConfidence = null, cleanedTranscript = null }: Props) {
   const t = useTranslations('reportEditor')
 
   const isFinalized = report.status === 'finalized'
@@ -506,6 +515,16 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
   const specialForm = structuredDraft?.specialForm ?? null
   const hasSpecialForm = Boolean(specialForm)
   const specialIncomplete = specialForm ? missingRequiredRows(specialForm).length > 0 : false
+
+  // R2.9 — the exact content `finalizeReport` will receive in the form, so the
+  // readiness shown next to the Sign button is the server's verdict in advance.
+  const reviewContent = {
+    structuredData:  structuredDraft,
+    findings,
+    impression,
+    recommendations: recommendations || null,
+  }
+  const readiness = useSigningReadiness(reviewContent, aiConfidence)
 
   // ── R2.5 live structuring ───────────────────────────────────────────────────
   // The coordinator decides; this component applies what it decided. Sections
@@ -725,7 +744,11 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
             <option value="">{t('applyTemplatePlaceholder')}</option>
             {templates.map((tmpl) => (
               <option key={tmpl.id} value={tmpl.id}>
-                {tmpl.isPersonal ? '★ ' : ''}{tmpl.title}{tmpl.modality ? ` (${tmpl.modality})` : ''}
+                {/* A <select> option cannot hold an icon, so "personal" is a
+                    WORD rather than a ★ glyph — which rendered as a coloured
+                    emoji on some platforms and meant nothing to a first-time
+                    user either way. */}
+                {tmpl.isPersonal ? `${t('templatePersonal')} · ` : ''}{tmpl.title}{tmpl.modality ? ` (${tmpl.modality})` : ''}
               </option>
             ))}
           </select>
@@ -763,15 +786,21 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
       {/* ── Dictation workspace (R2.3) ── (free-text exams only) ──────────────
           One clinical question — computer / phone / import — over the same
           report-owned transcript and the canonical structuring pipeline. It
-          replaces the three technical panels the doctor used to choose between
-          (classic recording, live dictation, AI structuring); those components
-          remain in the repository and still serve the vacation queue. */}
+          replaced the three technical panels the doctor used to choose between
+          (classic recording, live dictation, AI structuring); the two that were
+          only ever composed here — VoiceDictationPanel and
+          SmartStructuringPanel — were deleted in R2.9 once proven unreachable.
+          LiveDictationPanel remains, still serving the vacation queue. */}
       {/* R2.5 — dictation on the left, the report filling in on the right. On
-          narrow screens they stack in the same order. */}
+          narrow screens they stack in the same order.
+          R2.9 — the page no longer caps this at 896px, so the document column
+          gets the width a radiologist's screen actually has. The dictation rail
+          keeps a fixed comfortable width and every extra pixel goes to the
+          report, which is the thing being read. */}
       <div
         className={
           isEditable && !hasSpecialForm
-            ? 'grid gap-4 lg:grid-cols-[minmax(0,21rem)_minmax(0,1fr)] lg:items-start'
+            ? 'grid gap-5 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start'
             : ''
         }
       >
@@ -902,19 +931,31 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
         </div>
       )}
 
-      {/* ── Action buttons ───────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-gray-100">
-        {isFinalized ? (
-          canAmend && !showAmendPanel && (
-            <button
-              type="button" onClick={() => setShowAmendPanel(true)}
-              className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-lg transition"
-            >
-              {t('amendReport')}
-            </button>
-          )
-        ) : (
-          <>
+      {/* ── Review + action ──────────────────────────────────────────
+          R2.9 — validation and the act it authorises are now the same region.
+          The blockers above the button are computed from the draft ON SCREEN
+          with the same pure function `finalizeReport` runs on the submitted
+          form, so this is a preview of the server's verdict, not a second
+          opinion that can disagree with it. */}
+      {!isFinalized && (
+        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+          <ReviewSummary
+            content={reviewContent}
+            aiConfidence={aiConfidence}
+            rawTranscript={initialTranscript || null}
+            cleanedTranscript={cleanedTranscript}
+            readiness={readiness}
+            canSign={canSign}
+          />
+
+          {/* Only a radiologist validates and signs. A clinic admin may correct
+              a draft (canWrite) but must never be offered the signing action —
+              before R2.9 the button was enabled for them and failed server-side. */}
+          {!canSign && canWrite && (
+            <p className="text-xs leading-relaxed text-gray-500">{t('signRadiologistOnly')}</p>
+          )}
+
+          <div className="flex flex-wrap items-center justify-end gap-3 border-t border-gray-100 pt-4">
             <button
               type="submit" name="_submit" value="save"
               disabled={isPending || !canWrite}
@@ -922,17 +963,36 @@ export function ReportEditor({ report, canWrite, canAmend, templates, modality, 
             >
               {isPending ? t('saving') : t('saveDraft')}
             </button>
-            <button
-              type="submit" name="_submit" value="finalize"
-              disabled={isPending || !canWrite || specialIncomplete}
-              title={specialIncomplete ? t('specialIncomplete') : undefined}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white text-sm font-semibold rounded-lg transition"
-            >
-              {isPending ? t('finalizing') : t('finalizeReport')}
-            </button>
-          </>
-        )}
-      </div>
+            {canSign && (
+              <button
+                type="submit" name="_submit" value="finalize"
+                disabled={isPending || !canWrite || specialIncomplete || !readiness.canSign}
+                title={
+                  specialIncomplete ? t('specialIncomplete')
+                  : !readiness.canSign ? t('signBlockedHint')
+                  : undefined
+                }
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-semibold rounded-lg transition"
+              >
+                {isPending ? t('finalizing') : t('finalizeReport')}
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* A signed report: the only remaining editorial act is a formal amendment.
+          Everything else it is now for lives in SignedActions, outside this form. */}
+      {isFinalized && canAmend && !showAmendPanel && (
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-2 border-t border-gray-100">
+          <button
+            type="button" onClick={() => setShowAmendPanel(true)}
+            className="px-5 py-2 bg-white border border-amber-300 hover:bg-amber-50 text-amber-800 text-sm font-semibold rounded-lg transition"
+          >
+            {t('amendReport')}
+          </button>
+        </div>
+      )}
 
       {!isFinalized && (
         <p className="text-xs text-gray-400 text-right">{t('disclaimer')}</p>

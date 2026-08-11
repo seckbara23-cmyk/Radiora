@@ -9,8 +9,31 @@
 // appendix for the measured limits.
 export const maxDuration = 300
 
-import type { ReactNode } from 'react'
-import { Link } from '@/i18n/navigation'
+// ─── R2.9 — the radiologist's workstation ────────────────────────────────────
+//
+// This page used to be six numbered stages (Canevas · Correction · Validation ·
+// Prévisualisation · Export · Archivage) stacked inside a 896px column, plus
+// three more panels below them. The dictation/report workstation the product is
+// actually built around was "Section 1 of 6", squeezed to less than half the
+// width of the screen a radiologist reports on.
+//
+// It is now ONE surface:
+//
+//   context strip  →  workstation (dictation | document)  →  state-dependent actions
+//
+// The six lifecycle steps from the product concept are a LIFECYCLE, not six UI
+// pages: the report's stage is a badge in the context strip, and the single
+// next action follows from state. Nothing became a wizard.
+//
+// What moved, and nothing more:
+//   • validation blockers  → beside the Sign button (ReviewSummary, live)
+//   • preview/export/delivery → one region that appears once signed
+//   • version history      → contextual, below the workstation
+//   • frozen panels        → removed from the active surface (see below)
+//
+// No server action, gate, migration, export renderer or R2.7C behaviour was
+// touched by this file.
+
 import { notFound } from 'next/navigation'
 import { getTranslations, setRequestLocale } from 'next-intl/server'
 import { requireCurrentUser } from '@/lib/auth/get-current-user'
@@ -21,56 +44,25 @@ import { getTemplates } from '@/lib/data/templates'
 import { getReportVersions } from '@/lib/data/report-versions'
 import { getUserPhrases } from '@/lib/data/preferences'
 import { getHospitalHeaders } from '@/lib/data/hospital-headers'
-import {
-  Badge,
-  reportStatusVariant,
-  studyPriorityVariant,
-  studyStatusVariant,
-} from '@/components/ui/badge'
 import { getReportSafetyContext } from '@/lib/data/safety'
-import { ageLabel, displayPatientName, frenchSexLabel } from '@/lib/reports/patient-identity'
 import { getReportDeliveries } from '@/lib/data/deliveries'
+import { canEditClinicalContent, canSignReports } from '@/lib/safety/authority'
+import { ageLabel, displayPatientName, frenchSexLabel } from '@/lib/reports/patient-identity'
+import { ReportContextHeader } from './ReportContextHeader'
 import { ReportEditor } from './ReportEditor'
 import { ReportExportActions } from './ReportExportActions'
 import { SecureDeliveryPanel } from './SecureDeliveryPanel'
-import { SafetyReviewPanel } from './SafetyReviewPanel'
+import { SignedActions } from './SignedActions'
 import { VersionHistory } from './VersionHistory'
-import { PatientExplanationPanel } from './PatientExplanationPanel'
-import { ReportTranslationPanel } from './ReportTranslationPanel'
-import { ExplanationTranslationPanel } from './ExplanationTranslationPanel'
-import { getExplanationByReport } from '@/lib/data/explanations'
-import { getTranslationByReport, getTranslationByExplanation } from '@/lib/data/translations'
 
 type Props = { params: Promise<{ id: string; locale: string }> }
-
-// Large numbered section header for the radiologist's report workspace
-// (presentation Screen 6). Presentational only — frames existing components.
-function WorkspaceSection({
-  n, title, desc, children,
-}: { n: number; title: string; desc: string; children: ReactNode }) {
-  return (
-    <section className="space-y-3">
-      <div className="flex items-start gap-3">
-        <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-600">
-          {n}
-        </span>
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <p className="mt-0.5 text-sm text-gray-500">{desc}</p>
-        </div>
-      </div>
-      {children}
-    </section>
-  )
-}
 
 export default async function ReportPage({ params }: Props) {
   const { id, locale } = await params
   setRequestLocale(locale)
   const user = await requireCurrentUser()
 
-  const t   = await getTranslations('reports')
-  const tSt = await getTranslations('statuses')
+  const t = await getTranslations('reports')
 
   const report = await getReport(id)
   if (!report) notFound()
@@ -88,229 +80,102 @@ export default async function ReportPage({ params }: Props) {
     getHospitalHeaders({ activeOnly: true }),
   ])
 
-  const canWrite  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
-  const canAmend  = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
-  const canReview = ['super_admin', 'clinic_admin', 'radiologist'].includes(user.role)
+  // R2.9 — authority comes from lib/safety/authority.ts, not from an inline
+  // role array. The page previously rebuilt ['super_admin','clinic_admin',
+  // 'radiologist'] by hand three times, which is how the Sign button ended up
+  // enabled for clinic admins who can never succeed at using it.
+  const canWrite = canEditClinicalContent(user.role)
+  const canSign  = canSignReports(user.role)
 
   const isFinalized = report.status === 'finalized'
-
-  const explanation = canReview && isFinalized
-    ? await getExplanationByReport(id)
-    : null
-
-  const deliveries = canReview && isFinalized ? await getReportDeliveries(id) : []
-  const nowISO = new Date().toISOString()
-
-  const [reportTranslation, explanationTranslation] = await Promise.all([
-    canReview && isFinalized
-      ? getTranslationByReport(id)
-      : Promise.resolve(null),
-    canReview && explanation?.status === 'approved'
-      ? getTranslationByExplanation(explanation.id)
-      : Promise.resolve(null),
-  ])
+  const deliveries  = canWrite && isFinalized ? await getReportDeliveries(id) : []
+  const nowISO      = new Date().toISOString()
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="mx-auto max-w-6xl space-y-6">
 
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <Link
-            href={`/studies/${report.studyId}`}
-            className="text-sm text-gray-500 hover:text-gray-700 transition"
-          >
-            ← {study ? `${study.modality} — ${study.bodyPart}` : ''}
-          </Link>
-          <h1 className="mt-1.5 text-xl font-semibold text-gray-900">{t('workspaceTitle')}</h1>
-          <p className="mt-0.5 text-sm text-gray-500">{t('workspaceSubtitle')}</p>
-          {patient && (
-            <p className="mt-1 text-sm font-medium text-gray-600">
-              {patient.firstName} {patient.lastName}&nbsp;&middot;&nbsp;MRN {patient.mrn}
-            </p>
-          )}
-        </div>
-        <div className="mt-6 flex shrink-0 flex-col items-end gap-2">
-          <Badge variant={reportStatusVariant[report.status]}>
-            {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
-          </Badge>
-        </div>
-      </div>
+      <ReportContextHeader
+        status={report.status}
+        delivered={deliveries.length > 0}
+        patientName={patient ? displayPatientName(patient.lastName, patient.firstName) : ''}
+        patientMrn={patient?.mrn ?? null}
+        modality={study?.modality ?? null}
+        bodyPart={study?.bodyPart ?? null}
+        studyDate={study?.studyDate ?? null}
+      />
 
-      {/* Study context bar */}
-      {study && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-5 py-3 text-sm">
-          <span className="rounded-md bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-700">
-            {study.modality}
-          </span>
-          <span className="text-gray-700 font-medium">{study.bodyPart}</span>
-          <span className="text-gray-400">{study.studyDate}</span>
-          <Badge variant={studyPriorityVariant[study.priority]}>
-            {tSt(`priority.${study.priority}` as Parameters<typeof tSt>[0])}
-          </Badge>
-          <Badge variant={studyStatusVariant[study.status]}>
-            {tSt(`study.${study.status}` as Parameters<typeof tSt>[0])}
-          </Badge>
-          {study.description && (
-            <span className="text-gray-500 hidden sm:inline truncate max-w-xs">{study.description}</span>
-          )}
-        </div>
+      {/* ── The workstation ──
+          Dictation and the report document, side by side, at the full width of
+          the page. This is the product; everything else on this page supports it. */}
+      <ReportEditor
+        report={report}
+        canWrite={canWrite}
+        canAmend={canWrite}
+        canSign={canSign}
+        templates={templates}
+        modality={study?.modality ?? null}
+        bodyPart={study?.bodyPart ?? null}
+        initialPhrases={initialPhrases}
+        // R2.7C(F) — the patient row is the ONLY authority for identity. The
+        // editor resolves the report's stored block against this rather than
+        // trusting it, so a placeholder written by an earlier structuring run
+        // cannot survive.
+        patientInfo={{
+          name: patient ? displayPatientName(patient.lastName, patient.firstName) : '',
+          age:  ageLabel(patient?.dateOfBirth),
+          sex:  patient ? frenchSexLabel(patient.sex) : '',
+        }}
+        examDate={study?.studyDate ?? report.createdAt.slice(0, 10)}
+        // R2.3 — the report-owned transcript (R2.2) so a reload reconstructs
+        // the dictation relationship, not just the report content.
+        initialTranscript={safetyContext?.rawTranscript ?? ''}
+        // R2.9 — the signing gate's own inputs, so the editor can show the
+        // radiologist the SAME verdict finalizeReport will reach.
+        aiConfidence={safetyContext?.aiConfidence ?? null}
+        cleanedTranscript={safetyContext?.cleanedTranscript ?? null}
+      />
+
+      {/* ── Once signed, this is what the report is for ── */}
+      {isFinalized && (
+        <SignedActions
+          previewHref="print"
+          exportActions={
+            <ReportExportActions
+              reportId={id}
+              headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
+            />
+          }
+          deliveryPanel={
+            canWrite ? (
+              <SecureDeliveryPanel
+                reportId={id}
+                locale={locale}
+                headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
+                deliveries={deliveries}
+                nowISO={nowISO}
+              />
+            ) : undefined
+          }
+        />
       )}
 
-      {/* ── 1. Canevas du compte rendu ── (HPD editor — reused) */}
-      <WorkspaceSection
-        n={1}
-        title={t('sectionCanvasTitle')}
-        desc={t('sectionCanvasDesc')}
-      >
-        <p className="-mt-1 text-xs text-gray-400">{t('sectionCanvasTemplates')}</p>
-        <ReportEditor
-          report={report}
-          canWrite={canWrite}
-          canAmend={canAmend}
-          templates={templates}
-          modality={study?.modality ?? null}
-          bodyPart={study?.bodyPart ?? null}
-          initialPhrases={initialPhrases}
-          // R2.7C(F) — the patient row is the ONLY authority for identity. The
-          // editor resolves the report's stored block against this rather than
-          // trusting it, so a placeholder written by an earlier structuring run
-          // cannot survive.
-          patientInfo={{
-            name: patient ? displayPatientName(patient.lastName, patient.firstName) : '',
-            age:  ageLabel(patient?.dateOfBirth),
-            sex:  patient ? frenchSexLabel(patient.sex) : '',
-          }}
-          examDate={study?.studyDate ?? report.createdAt.slice(0, 10)}
-          // R2.3 — the report-owned transcript (R2.2) so a reload reconstructs
-          // the dictation relationship, not just the report content.
-          initialTranscript={safetyContext?.rawTranscript ?? ''}
-        />
-      </WorkspaceSection>
-
-      {/* ── 2. Correction médicale ── (correction history — reused) */}
-      <WorkspaceSection
-        n={2}
-        title={t('sectionCorrectionTitle')}
-        desc={t('sectionCorrectionDesc')}
-      >
+      {/* ── Correction history — contextual, not a stage of the workflow ── */}
+      <section aria-labelledby="history-heading" className="space-y-2">
+        <h2 id="history-heading" className="text-sm font-semibold text-gray-700">
+          {t('sectionCorrectionTitle')}
+        </h2>
         <VersionHistory versions={versions} />
-      </WorkspaceSection>
+      </section>
 
-      {/* ── 3. Validation ── (clinical safety review — reused, pre-finalize) */}
-      {canReview && !isFinalized && (
-        <WorkspaceSection
-          n={3}
-          title={t('sectionValidationTitle')}
-          desc={t('sectionValidationDesc')}
-        >
-          <SafetyReviewPanel report={report} safety={safetyContext} />
-        </WorkspaceSection>
-      )}
-
-      {/* ── 4. Prévisualisation ── (document preview + draft/final status) */}
-      <WorkspaceSection
-        n={4}
-        title={t('previewSectionTitle')}
-        desc={t('previewSectionDesc')}
-      >
-        <div className="rounded-xl border border-gray-200 bg-white p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="inline-flex items-center gap-2 text-sm text-gray-600">
-              {t('previewStatusLabel')} :
-              <Badge variant={reportStatusVariant[report.status]}>
-                {tSt(`report.${report.status}` as Parameters<typeof tSt>[0])}
-              </Badge>
-            </span>
-            <a
-              href="print"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-            >
-              <span aria-hidden>🔍</span> {t('previewOpen')}
-            </a>
-          </div>
-          <p className="mt-3 text-xs text-gray-400">{t('previewValidateNote')}</p>
-        </div>
-      </WorkspaceSection>
-
-      {/* ── 5. Export ── (Word / PDF / print — reused actions + filename convention) */}
-      <WorkspaceSection
-        n={5}
-        title={t('exportSectionTitle')}
-        desc={t('exportSectionDesc')}
-      >
-        <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-5">
-          <ReportExportActions
-            reportId={id}
-            headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
-          />
-          <div className="border-t border-gray-100 pt-3">
-            <p className="text-xs font-medium text-gray-500">{t('filenameLabel')}</p>
-            <p className="mt-1 inline-block rounded bg-gray-100 px-2 py-1 font-mono text-xs text-gray-700">
-              {t('filenameExample')}
-            </p>
-            <p className="mt-2 text-xs text-gray-400">{t('filenameAuto')}</p>
-          </div>
-        </div>
-      </WorkspaceSection>
-
-      {/* ── 6. Archivage ── (persistence, secure delivery, audit, batch ZIP) */}
-      <WorkspaceSection
-        n={6}
-        title={t('archiveSectionTitle')}
-        desc={t('archiveSectionDesc')}
-      >
-        {canReview && isFinalized && (
-          <SecureDeliveryPanel
-            reportId={id}
-            locale={locale}
-            headers={hospitalHeaders.map((h) => ({ id: h.id, name: h.name }))}
-            deliveries={deliveries}
-            nowISO={nowISO}
-          />
-        )}
-        <div className="mt-3 rounded-xl border border-gray-200 bg-white p-5">
-          <p className="text-sm text-gray-600">{t('archiveNote')}</p>
-          <Link
-            href="/reports"
-            className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
-          >
-            {t('archiveBatchLink')}
-          </Link>
-        </div>
-      </WorkspaceSection>
-
-      {canReview && isFinalized && (
-        <PatientExplanationPanel
-          reportId={id}
-          modality={study?.modality ?? null}
-          bodyPart={study?.bodyPart ?? null}
-          initialExplanation={explanation}
-        />
-      )}
-
-      {canReview && isFinalized && (
-        <ReportTranslationPanel
-          reportId={id}
-          sourceFindings={report.findings}
-          sourceImpression={report.impression}
-          sourceRecommendations={report.recommendations ?? ''}
-          initialTranslation={reportTranslation}
-        />
-      )}
-
-      {canReview && isFinalized && explanation?.status === 'approved' && (
-        <ExplanationTranslationPanel
-          explanationId={explanation.id}
-          reportId={id}
-          sourceExplanation={explanation.explanationText}
-          sourceDisclaimer={explanation.disclaimer}
-          initialTranslation={explanationTranslation}
-        />
-      )}
-
+      {/*
+        R2.9 — the patient-explanation and report-translation panels are NOT
+        rendered here any more. product-scope.ts classifies patient_explanations
+        and report_translations as FROZEN, yet they were still being composed
+        onto the live report page: the registry and the runtime disagreed.
+        This removes them from the ACTIVE SURFACE only — their routes, server
+        actions, tables, RLS policies and history are all untouched, exactly as
+        the R2.1 freeze intends.
+      */}
     </div>
   )
 }

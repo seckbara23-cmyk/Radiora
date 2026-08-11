@@ -51,15 +51,32 @@ export function ReportExportActions({
         </select>
       </label>
 
+      {/* R2.9 — the emoji (📄 📝 🖨️) are replaced by the same restrained
+          stroke-icon treatment R2.8 established on the public surface. The
+          authenticated workstation should read as clinical software, and an
+          emoji also renders differently on every OS the clinic might use. */}
       <div className="flex flex-wrap items-center gap-2">
         <a href={`/api/reports/${reportId}/pdf${qs}`} className={btn} aria-label={t('pdf')}>
-          <span aria-hidden>📄</span> {t('pdf')}
+          <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M7 3.5h7l3 3v14H7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M12 10v6m0 0l-2.2-2.2M12 16l2.2-2.2" />
+          </svg>
+          {t('pdf')}
         </a>
         <a href={`/api/reports/${reportId}/docx${qs}`} className={btn} aria-label={t('word')}>
-          <span aria-hidden>📝</span> {t('word')}
+          <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M7 3.5h7l3 3v14H7z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M9.5 11h5M9.5 14h5" />
+          </svg>
+          {t('word')}
         </a>
         <button type="button" onClick={handlePrint} disabled={isPending} className={btn}>
-          <span aria-hidden>🖨️</span> {isPending ? t('opening') : t('print')}
+          <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M7 8.5V3.5h10v5" />
+            <rect x="4" y="8.5" width="16" height="8" rx="1.5" strokeWidth={1.6} />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M7 15h10v5.5H7z" />
+          </svg>
+          {isPending ? t('opening') : t('print')}
         </button>
       </div>
     </div>

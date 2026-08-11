@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, existsSync } from 'node:fs'
 import { evaluateReportWrite, isReportContentLocked } from '@/lib/safety/immutability'
 import { canSignReports } from '@/lib/safety/authority'
 import { visibleNavHrefs } from '@/config/navigation'
@@ -68,10 +68,33 @@ describe('no duplicate systems were built', () => {
   })
 
   it('the three technical panels are gone from the report editor', () => {
+    // Scan CODE, not prose — same rule the forbidden-terminology test below
+    // states. R2.9's editor comment legitimately NAMES the two panels it
+    // deleted; what must be absent is an import or a rendered element.
+    const editorCode = code(EDITOR)
     for (const gone of ['VoiceDictationPanel', 'LiveDictationPanel', 'SmartStructuringPanel']) {
-      expect(EDITOR, gone).not.toContain(gone)
+      expect(editorCode, gone).not.toContain(gone)
     }
-    expect(EDITOR).toContain('DictationWorkspace')
+    expect(editorCode).toContain('DictationWorkspace')
+  })
+
+  it('R2.9 — the two unreachable panels are deleted, not merely unreferenced', () => {
+    // Their retention rule in the R1 freeze was conditional on the replacement
+    // workflow being unproven. It shipped in R2.3 and was proven in production
+    // through R2.7C, so the files were removed. This is the stronger contract:
+    // absence from disk, not just absence from one importer.
+    for (const gone of ['VoiceDictationPanel', 'SmartStructuringPanel']) {
+      expect(
+        existsSync(new URL(`../../app/[locale]/(dashboard)/reports/[id]/${gone}.tsx`, import.meta.url)),
+        gone,
+      ).toBe(false)
+    }
+  })
+
+  it('LiveDictationPanel is NOT deleted — the vacation queue still composes it', () => {
+    // The R1 retention rule still binds the queue; R2.9 retired it only for the
+    // two report-page panels.
+    expect(existsSync(new URL('../../components/dictation/LiveDictationPanel.tsx', import.meta.url))).toBe(true)
   })
 
   it('creates no report, patient or study of its own', () => {
