@@ -151,7 +151,74 @@ describe('45-46. multiple dictation passes', () => {
   })
 
   it('the service appends rather than replacing the canonical transcript', () => {
-    expect(CODE).toContain('appendTranscriptPass(')
+    // R2.7C-MULTIPASS-FIX-01: the append moved behind applyTranscriptPass so
+    // that raw_text and corrected_text are advanced separately. The rule is
+    // still appendTranscriptPass underneath — see working-transcript.test.ts —
+    // and the action must not reach around it for either column.
+    expect(CODE).toContain('applyTranscriptPass(')
+    expect(CODE).not.toContain('appendTranscriptPass(')
+  })
+})
+
+describe('R2.7C-MULTIPASS-FIX-01 — a second pass keeps the working copy', () => {
+  // The defect: `corrected_text: canonical` — the raw append written into the
+  // working copy, so a second phone or import pass reverted every clinician
+  // edit to the provider's words. raw_text was always right.
+
+  it('the working copy is never derived from the raw canonical', () => {
+    expect(CODE).not.toMatch(/corrected_text:\s*canonical/)
+    expect(CODE).toMatch(/raw_text:\s*canonical,\s*corrected_text:\s*working/)
+  })
+
+  it('both columns are advanced by the one pure rule', () => {
+    expect(CODE).toMatch(/import \{\s*applyTranscriptPass,/)
+    expect(CODE).toMatch(/applyTranscriptPass\(\s*\{\s*raw:/)
+    expect(CODE).toContain('const canonical = next.raw')
+    expect(CODE).toContain('const working   = next.corrected')
+  })
+
+  it('the row is re-read AFTER the provider returns and BEFORE it is written', () => {
+    // The provider call takes seconds; an edit saved meanwhile must not be
+    // overwritten by a copy read before the call.
+    const call   = CODE.indexOf('provider.transcribe')
+    const reread = CODE.indexOf("select('raw_text, corrected_text')")
+    const write  = CODE.indexOf('raw_text: canonical')
+    expect(reread).toBeGreaterThan(call)
+    expect(reread).toBeLessThan(write)
+    expect(CODE).toContain('if (currentError || !current) return fail(')
+  })
+
+  it('the top-of-action read no longer carries a transcript to write back', () => {
+    expect(CODE).toContain("select('id, audio_asset_id')")
+    expect(CODE).not.toContain("select('id, raw_text, audio_asset_id')")
+    expect(CODE).not.toContain('transcription.raw_text')
+  })
+
+  it('the workspace receives the working copy, not the evidence column', () => {
+    expect(CODE).toContain("stage: 'completed', transcript: working")
+    expect(CODE).not.toContain('transcript: canonical')
+  })
+
+  it('no failure path touches the transcript row', () => {
+    // Failed and empty passes leave both columns exactly as they were: the only
+    // writes to `transcriptions` come after a successful provider call.
+    const failBody = CODE.slice(CODE.indexOf('const fail = async'), CODE.indexOf('.from(AUDIO_BUCKET)'))
+    expect(failBody).not.toContain("from('transcriptions')")
+    const firstWrite = CODE.indexOf("from('transcriptions')\n    .update(")
+    expect(firstWrite).toBeGreaterThan(CODE.indexOf('provider.transcribe'))
+  })
+
+  it('signed content stays protected: the lock check precedes every transcript read and write', () => {
+    expect(CODE.indexOf('isReportContentLocked')).toBeLessThan(CODE.indexOf("from('transcriptions')"))
+  })
+
+  it('phone and import both attach to the ONE report-owned row the rule assumes', () => {
+    // If either path ever inserted a second row per pass, the append rule would
+    // be operating on the wrong row and these must be revisited together.
+    const IMPORT = read('lib/actions/report-dictation.ts')
+    const PHONE  = read('lib/actions/dictation.ts')
+    expect(IMPORT).toContain('.update({ audio_asset_id: assetId })')
+    expect(PHONE).toContain('.update({ audio_asset_id: assetId })')
   })
 })
 
@@ -294,3 +361,39 @@ describe('the lifecycle vocabulary', () => {
     expect(isTranscriptionBusy('completed')).toBe(false)
   })
 })
+
+describe('R2.7C release gate — a transcript cannot be edited in-session while its transcription is in flight', () => {
+  // The STT action re-reads the row after the provider returns, which covers
+  // the seconds the provider takes. What it cannot cover is an edit SAVED in
+  // the milliseconds between that re-read and the write: the write is a plain
+  // UPDATE, so the last writer wins. Inside ONE browser session that cannot
+  // happen — transcription runs inside a React transition, and the transcript
+  // box and its Save control are disabled while a transition is pending. These
+  // assertions pin that gate so a UI refactor cannot silently reopen the
+  // same-session race. The cross-session window is recorded in the release
+  // gate report and in the last test below.
+  const WORKSPACE = read('app/[locale]/(dashboard)/reports/[id]/DictationWorkspace.tsx')
+
+  it('transcription runs inside a pending transition', () => {
+    expect(WORKSPACE).toMatch(/function runTranscription\([^)]*\)\s*\{[\s\S]{0,200}startTransition\(async \(\) => \{/)
+  })
+
+  it('busy includes the pending transition', () => {
+    expect(WORKSPACE).toMatch(/const busy = isBusy\(state\) \|\| isPending/)
+  })
+
+  it('the transcript box and its Save control are disabled while busy', () => {
+    expect(WORKSPACE).toMatch(/id="workspace-transcript"[\s\S]{0,200}disabled=\{busy\}/)
+    expect(WORKSPACE).toMatch(/onClick=\{saveTranscript\}[\s\S]{0,80}disabled=\{busy/)
+  })
+
+  it('the transcript write is one UPDATE keyed by row id — last writer wins, by design for now', () => {
+    // No lock, no version column, no compare-and-set. The cross-session window
+    // is one database round trip wide. Closing it is a deliberate follow-up
+    // (compare-and-set on the trigger-maintained `updated_at`), and when that
+    // lands this assertion is the one to rewrite.
+    expect(CODE).toMatch(/\.update\(\{ raw_text: canonical, corrected_text: working \}\)\s*\.eq\('id', transcriptionId\)/)
+  })
+})
+
+// Release-gate assertions above: see the commit message for the concurrency findings.

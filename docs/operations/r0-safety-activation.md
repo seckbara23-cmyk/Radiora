@@ -27,10 +27,16 @@ or patient information.
 | 042 | R0.8A | Radiologist-only clinical authority | **Applied** (succeeded on re-run) |
 | 043 | R0.8B | Database-enforced delivery expiry | **Applied** |
 | 044 | R2.2 | Report-linked dictation ownership | **Applied** — verified, 16 PASS |
+| 045 | R2.7A | `transcription_runs` claim table, RLS, clinic guard | **Applied** — verified; structure re-confirmed 2026-11-05 |
+| 046 | R2.7B | Owner-clinic trigger repair (`to_jsonb` reads) | **Applied** — verified; safe body + 3 triggers re-confirmed 2026-11-05 |
 
-**Next operator action:** run `supabase/verify/R0_8A_clinical_authority.sql`
-(expect 11 `PASS` notices, zero `FAIL`). Migration 043 must not be run until it
-passes.
+**Next operator action:** none for migrations 001–046 — every migration in the
+repository is applied. The open item is not a migration: it is the R2.7C
+closure E2E, documented in `docs/operations/stt-activation.md`.
+
+> This paragraph previously pointed at the R0_8A verifier as the gate before
+> 043. 043 has since been applied (table above); the procedure further down is
+> retained as the record of how the R0.8 slice was activated.
 
 ---
 
@@ -61,7 +67,7 @@ Applied successfully. Production inspection confirmed:
 
 ---
 
-## Awaiting operator activation
+## Applied — retained activation records (042, 043)
 
 ### Migration 042 — radiologist-only clinical authority (R0.8A)
 
@@ -160,7 +166,7 @@ Re-running is safe if ever needed: the migration is idempotent
 (`CREATE OR REPLACE` plus `DROP TRIGGER IF EXISTS` / `CREATE TRIGGER`) and
 touches no row data.
 
-**Step 2 — verify the authority gate. ← NEXT**
+**Step 2 — verify the authority gate.** *(historical — 043 has since been applied)*
 `supabase/verify/R0_8A_clinical_authority.sql` — expect **11 `PASS` notices**,
 numbered 1 to 11, and zero `FAIL`. It is an attack simulation wrapped in a
 transaction that **rolls back**, so it leaves no fixtures behind.
@@ -260,10 +266,10 @@ attempted; the vacation-queue workflow is unaffected either way.
 
 ## Migration 045 — transcription runs (R2.7A)
 
-**Status: awaiting manual application.** Automatic speech-to-text is inert until
-this is applied AND a provider is configured; nothing else regresses in the
-meantime — phone and imported audio still attach to the report exactly as they
-did in R2.7, and the transcript can still be typed.
+**Status: APPLIED and verified in production.** Re-confirmed by read-only
+schema inspection on 2026-11-05: the `transcription_runs` table and its partial
+unique claim index are present, and completed runs exist. The procedure below is
+retained as the record of what was applied; do not re-run it.
 
 ### Why it was needed
 
@@ -343,9 +349,11 @@ Radiora makes no claim about them.
 
 ## Migration 046 — owner-clinic trigger repair (R2.7B)
 
-**Status: awaiting manual application. This one is urgent.**
+**Status: APPLIED and verified in production.** Re-confirmed on 2026-11-05: the
+function body carries no plan-time `new.<column>` reference and all three
+triggers are attached. Retained as the record of the defect and its repair.
 
-### What is broken right now
+### What was broken before 046
 
 Migration 044 attached ONE trigger function to THREE tables that do not share
 ownership columns:
@@ -436,13 +444,16 @@ Run in the Supabase SQL editor, in order:
 ## Speech-to-text activation (R2.7C)
 
 Migrations 044, 045 and 046 are applied and verified; the database side of
-automatic transcription is complete. What remains is **provider configuration**,
-which is documented separately and in full in:
+automatic transcription is complete. **Provider configuration is also done in
+production** — read-only inspection on 2026-11-05 found completed
+`transcription_runs` rows and no failed run. What remains is the **R2.7C closure
+E2E**, documented separately and in full in:
 
 **`docs/operations/stt-activation.md`**
 
-Short version: add the `STT_*` variables to the Vercel project, **redeploy**
-(Vercel does not apply new variables to an existing deployment), then check
-`GET /api/admin/stt-health` as `super_admin`. Until that is done, transcription
-reports itself unavailable and phone/imported audio behaves exactly as it did in
-R2.7 — the recording attaches to the report and the transcript can be typed.
+For a new installation: add the `STT_*` variables to the Vercel project,
+**redeploy** (Vercel does not apply new variables to an existing deployment),
+then check `GET /api/admin/stt-health` as `clinic_admin` or `super_admin`.
+Until that is done, transcription reports itself unavailable and phone/imported
+audio behaves exactly as it did in R2.7 — the recording attaches to the report
+and the transcript can be typed.
