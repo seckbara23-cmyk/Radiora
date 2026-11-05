@@ -1,11 +1,20 @@
 # Speech-to-text — activation and operations
 
-**Status: CODE READY. PROVIDER NOT CONFIGURED. NOT E2E VERIFIED.**
+**Status: CODE READY. PROVIDER CONFIGURED IN PRODUCTION. R2.7C CLOSURE E2E NOT YET RUN.**
 
-Automatic transcription is built, tested and deployed, and is **inert** until an
-operator configures a provider. Until then Radiora reports it unavailable and
-phone/imported audio behaves exactly as it did in R2.7: the recording attaches
-to the report and the transcript can be typed.
+Automatic transcription is built, tested and deployed. Migrations 044–046 are
+applied, and the production installation has an operator-configured provider:
+read-only inspection on 2026-11-05 found completed `transcription_runs` rows
+(the first on 2026-08-10) with verbatim raw transcripts and zero failed runs.
+
+What has **not** happened is the closure E2E in section 4 below, run on a
+synthetic fixture against the current build. The existing runs are not that
+evidence: the first predates the R2.7C correction/provenance hardening, and the
+later ones were never structured. Until the E2E is recorded, R2.7C stays open.
+
+On an installation with no provider configured the feature is **inert**: Radiora
+reports it unavailable and phone/imported audio behaves exactly as it did in
+R2.7 — the recording attaches to the report and the transcript can be typed.
 
 ---
 
@@ -35,6 +44,15 @@ WORKSTATION                          PHONE / IMPORT
 
 **Convergence is on TEXT, not audio.** The workstation never round-trips through
 the provider; it already has words.
+
+**Multiple passes.** A report may be dictated several times (phone, import, or
+both). Each pass keeps its own `transcription_runs` row and audio asset, and is
+appended to the ONE report-owned transcript row — to `raw_text` (the source,
+evidence) and to `corrected_text` (the working copy, the doctor's edits)
+**separately**, so an edit made between two dictations survives the second one.
+The rule is `applyTranscriptPass` in `src/lib/dictation/transcription-state.ts`.
+Before R2.7C-MULTIPASS-FIX-01 the second pass wrote the raw append into both
+columns and silently reverted the working copy to the provider's words.
 
 ---
 
@@ -105,6 +123,9 @@ re-run.
 
 Add the variables above to the Vercel project (Production scope).
 
+**Done in production** — see the status line at the top. The procedure is
+retained for new installations and for rollback.
+
 **Vercel does not apply new environment variables to an existing deployment.**
 After adding them, redeploy production — otherwise the running deployment still
 sees them as unset and the diagnostic will keep reporting `UNCONFIGURED`.
@@ -165,8 +186,19 @@ Then confirm:
 - [ ] repeat the whole flow with *Importer un fichier* — identical behaviour
 
 Record the four durations while doing it: upload, STT, structuring, total.
-**None are measured yet** — no provider has been configured, and inventing
-numbers would be worse than leaving them blank.
+**Only STT has been observed so far**: the completed production runs took
+2.5–3.7 s each for recordings under 0.6 MB (`audio/mp4`). Upload, structuring
+and total are still unmeasured — record them during the E2E rather than
+inventing them.
+
+**Closure evidence lives in SQL, not in this file.** After the E2E, run the
+read-only `supabase/verify/R2_7C_e2e_verify.sql` on the `TEST-R27CE2E-001`
+fixture (created by `R2_7C_e2e_fixture_create.sql`) and keep its output. It
+proves raw-transcript immutability, the applied correction event, structured
+RÉSULTATS/CONCLUSION, persisted section provenance, version history and the
+continued-dictation contract. Include a **second dictation pass after a manual
+edit of the transcript box**, so section 7 of the verifier exercises the
+multi-pass rule and the edit can be seen to survive.
 
 ---
 
@@ -194,6 +226,7 @@ surface in the UI or the audit trail.
 | cancelled QR session | session cancelled | audio may already exist | n/a | kept | session audit |
 | upload ok, STT fails | transcription failed + **Retry** | asset kept, run `failed` | yes, same audio | kept | `transcription.failed` |
 | STT ok, structuring fails | transcript present, structuring error | run `completed` | structure again | kept | completion audited |
+| second pass after a clinician edit | edit kept, new pass appended below it | `raw_text` and `corrected_text` advanced separately | n/a | kept | completion audited |
 
 Two invariants hold across every row: **no failure invents transcript text**,
 and **no failure marks a transcription completed**.
@@ -223,5 +256,6 @@ additive and harmless when unused, and completed transcripts stay readable.
   one; nothing populates it, pending a privacy review of what may be sent.
 - **No provider accuracy claim.** None has been measured. The safety rules are
   tested against the pipeline, not against a provider's real output.
-- **No performance figures.** Pending a configured endpoint.
+- **No performance figures beyond STT latency** (section 4). Upload,
+  structuring and end-to-end timings are still unmeasured.
 - The diagnostic's model check is advisory: some servers do not enumerate models.

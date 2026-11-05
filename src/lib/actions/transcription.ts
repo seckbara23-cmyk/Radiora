@@ -28,7 +28,7 @@ import {
   type SttErrorCode,
 } from '@/lib/stt/types'
 import {
-  appendTranscriptPass,
+  applyTranscriptPass,
   transcriptionStage,
   type TranscriptionStage,
 } from '@/lib/dictation/transcription-state'
@@ -41,7 +41,11 @@ export interface TranscribeResult {
   /** Safe category for the UI to branch on. Never a provider body. */
   code?: SttErrorCode | 'not_allowed' | 'no_audio' | 'already_processing' | 'report_locked'
   stage?: TranscriptionStage
-  /** The canonical transcript after this pass, for the workspace to display. */
+  /**
+   * The WORKING transcript after this pass — the doctor's edits kept, this
+   * pass appended — for the workspace to display and structure. The source
+   * column (`raw_text`) is advanced separately and is never returned here.
+   */
   transcript?: string
 }
 
@@ -89,7 +93,7 @@ export async function transcribeReportAudio(reportId: string): Promise<Transcrib
   // ── The transcript row this report owns (R2.2/044).
   const { data: transcription, error: trError } = await supabase
     .from('transcriptions')
-    .select('id, raw_text, audio_asset_id')
+    .select('id, audio_asset_id')
     .eq('report_id', reportId)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -248,14 +252,35 @@ export async function transcribeReportAudio(reportId: string): Promise<Transcrib
     .eq('id', runId)
   if (runError) return fail('unknown', 'The transcript could not be saved.')
 
-  // A report may be dictated in several passes. Earlier text is never
-  // destroyed: this pass is appended, and the combined canonical transcript is
-  // what the structuring pipeline later reads as ONE complete transcript.
-  const canonical = appendTranscriptPass((transcription.raw_text as string) ?? '', text)
+  // A report may be dictated in several passes, and the doctor may have edited
+  // the transcript box between them. The row is re-read HERE, after the
+  // provider returned, because the call takes seconds and the workspace saves
+  // edits meanwhile: reusing the read from the top of the action would write a
+  // stale working copy back over a newer edit.
+  const { data: current, error: currentError } = await supabase
+    .from('transcriptions')
+    .select('raw_text, corrected_text')
+    .eq('id', transcriptionId)
+    .maybeSingle()
+  if (currentError || !current) return fail('unknown', 'The transcript could not be saved.')
+
+  // Earlier text is never destroyed. The pass is appended to the SOURCE
+  // (raw_text — evidence, never edited) and to the WORKING COPY
+  // (corrected_text — the doctor's edits) separately; see applyTranscriptPass.
+  // R2.7C-MULTIPASS-FIX-01: writing the raw append into both columns, as this
+  // used to, silently reverted every clinician edit on the second pass. The
+  // working copy is what the structuring pipeline later reads as ONE complete
+  // transcript.
+  const next = applyTranscriptPass(
+    { raw: (current.raw_text as string) ?? '', corrected: (current.corrected_text as string) ?? '' },
+    text,
+  )
+  const canonical = next.raw
+  const working   = next.corrected
 
   const { error: saveError } = await supabase
     .from('transcriptions')
-    .update({ raw_text: canonical, corrected_text: canonical })
+    .update({ raw_text: canonical, corrected_text: working })
     .eq('id', transcriptionId)
   if (saveError) return fail('unknown', 'The transcript could not be saved.')
 
@@ -275,7 +300,7 @@ export async function transcribeReportAudio(reportId: string): Promise<Transcrib
   }).catch(() => {})
 
   revalidatePath(`/reports/${reportId}`)
-  return { error: null, stage: 'completed', transcript: canonical }
+  return { error: null, stage: 'completed', transcript: working }
 }
 
 /**

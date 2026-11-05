@@ -92,3 +92,43 @@ export function appendTranscriptPass(existing: string, next: string): string {
   if (previous.endsWith(addition)) return previous
   return `${previous}\n\n${addition}`
 }
+
+/**
+ * R2.7C-MULTIPASS-FIX-01 — what BOTH transcript columns become after a
+ * provider pass, given what the row holds at that moment.
+ *
+ * The two columns mean different things and must be advanced separately:
+ *
+ *   • `raw_text` is evidence. The pass is appended to it with
+ *     `appendTranscriptPass`; nothing a clinician typed ever enters it.
+ *   • `corrected_text` is the working copy — the box the doctor edits and the
+ *     text structuring prefers. The pass is appended to THAT, so an edit made
+ *     between two dictations survives the second one.
+ *
+ * Before this rule the service wrote the raw canonical into both columns, so a
+ * second phone or import pass silently reverted every clinician edit to the
+ * provider's words. Both paths attach each new recording to the ONE
+ * report-owned transcript row, which is exactly why the two columns collided.
+ *
+ * When the working copy is empty — nothing saved to it yet, or the doctor
+ * cleared the box — the source is the working copy. That is the same fallback
+ * `structureReportTranscript` reads by (`corrected_text || raw_text`), so the
+ * write side and the read side agree.
+ *
+ * Pure. The caller decides WHEN to read the row (after the provider returns,
+ * not before it is called, because the call takes seconds and the workspace
+ * may save an edit meanwhile); this function decides WHAT to write.
+ */
+export interface TranscriptColumns {
+  /** `transcriptions.raw_text` — the source, append-only. */
+  raw: string
+  /** `transcriptions.corrected_text` — the working copy, the doctor's edits. */
+  corrected: string
+}
+
+export function applyTranscriptPass(stored: TranscriptColumns, pass: string): TranscriptColumns {
+  const raw = appendTranscriptPass(stored.raw ?? '', pass)
+  const workingBase = (stored.corrected ?? '').trim() ? stored.corrected : (stored.raw ?? '')
+  const corrected = appendTranscriptPass(workingBase, pass)
+  return { raw, corrected }
+}
