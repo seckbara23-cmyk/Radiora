@@ -361,3 +361,39 @@ describe('the lifecycle vocabulary', () => {
     expect(isTranscriptionBusy('completed')).toBe(false)
   })
 })
+
+describe('R2.7C release gate — a transcript cannot be edited in-session while its transcription is in flight', () => {
+  // The STT action re-reads the row after the provider returns, which covers
+  // the seconds the provider takes. What it cannot cover is an edit SAVED in
+  // the milliseconds between that re-read and the write: the write is a plain
+  // UPDATE, so the last writer wins. Inside ONE browser session that cannot
+  // happen — transcription runs inside a React transition, and the transcript
+  // box and its Save control are disabled while a transition is pending. These
+  // assertions pin that gate so a UI refactor cannot silently reopen the
+  // same-session race. The cross-session window is recorded in the release
+  // gate report and in the last test below.
+  const WORKSPACE = read('app/[locale]/(dashboard)/reports/[id]/DictationWorkspace.tsx')
+
+  it('transcription runs inside a pending transition', () => {
+    expect(WORKSPACE).toMatch(/function runTranscription\([^)]*\)\s*\{[\s\S]{0,200}startTransition\(async \(\) => \{/)
+  })
+
+  it('busy includes the pending transition', () => {
+    expect(WORKSPACE).toMatch(/const busy = isBusy\(state\) \|\| isPending/)
+  })
+
+  it('the transcript box and its Save control are disabled while busy', () => {
+    expect(WORKSPACE).toMatch(/id="workspace-transcript"[\s\S]{0,200}disabled=\{busy\}/)
+    expect(WORKSPACE).toMatch(/onClick=\{saveTranscript\}[\s\S]{0,80}disabled=\{busy/)
+  })
+
+  it('the transcript write is one UPDATE keyed by row id — last writer wins, by design for now', () => {
+    // No lock, no version column, no compare-and-set. The cross-session window
+    // is one database round trip wide. Closing it is a deliberate follow-up
+    // (compare-and-set on the trigger-maintained `updated_at`), and when that
+    // lands this assertion is the one to rewrite.
+    expect(CODE).toMatch(/\.update\(\{ raw_text: canonical, corrected_text: working \}\)\s*\.eq\('id', transcriptionId\)/)
+  })
+})
+
+// Release-gate assertions above: see the commit message for the concurrency findings.
